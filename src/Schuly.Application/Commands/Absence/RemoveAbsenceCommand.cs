@@ -1,10 +1,13 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Models;
 using Schuly.Infrastructure;
+
+using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Commands.Absence
 {
+    [AllowAuthenticated]
     public record RemoveAbsenceCommand(Guid AbsenceId) : ICommand<Result>;
 
     public class RemoveAbsenceCommandHandler(SchulyDbContext dbContext) : ICommandHandler<RemoveAbsenceCommand, Result>

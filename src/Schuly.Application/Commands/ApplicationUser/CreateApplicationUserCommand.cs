@@ -1,15 +1,13 @@
 using Mediator;
-using Schuly.Application.Contracts.Authorization;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Authorization;
+using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
 namespace Schuly.Application.Commands.ApplicationUser
 {
-    public record CreateApplicationUserCommand(string ExternalId, string Email, string? DisplayName) : ICommand<Result<Guid>>, IHasAuthorization
-    {
-        public Roles GetRequiredRole() => Roles.Administrator;
-    }
+    [AuthorizedRoles(Roles.Administrator)]
+    public record CreateApplicationUserCommand(string ExternalId, string Email, string? DisplayName) : ICommand<Result<Guid>>;
 
     public class CreateApplicationUserCommandHandler(SchulyDbContext dbContext) : ICommandHandler<CreateApplicationUserCommand, Result<Guid>>
     {

@@ -1,16 +1,14 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
-using Schuly.Application.Contracts.Authorization;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Authorization;
+using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
 namespace Schuly.Application.Commands.ApplicationUser
 {
-    public record UpdateApplicationUserCommand(Guid ApplicationUserId, string? DisplayName, string? ProfilePictureUrl) : ICommand<Result>, IHasAuthorization
-    {
-        public Roles GetRequiredRole() => Roles.Administrator;
-    }
+    [AuthorizedRoles(Roles.Administrator)]
+    public record UpdateApplicationUserCommand(Guid ApplicationUserId, string? DisplayName, string? ProfilePictureUrl) : ICommand<Result>;
 
     public class UpdateApplicationUserCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateApplicationUserCommand, Result>
     {

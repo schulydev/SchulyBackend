@@ -1,10 +1,13 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Models;
 using Schuly.Infrastructure;
+
+using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Commands.Class
 {
+    [AllowAuthenticated]
     public record DeleteClassCommand(Guid ClassId) : ICommand<Result>;
 
     public class DeleteClassCommandHandler(SchulyDbContext dbContext) : ICommandHandler<DeleteClassCommand, Result>

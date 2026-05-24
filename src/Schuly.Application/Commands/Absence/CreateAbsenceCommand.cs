@@ -1,10 +1,13 @@
 using Mediator;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
+using Schuly.Application.Authorization;
+
 namespace Schuly.Application.Commands.Absence
 {
+    [AllowAuthenticated]
     public record CreateAbsenceCommand(string Reason, AbsenceType Type, DateTime From, DateTime Until, Guid SchoolUserId) : ICommand<Result>;
 
     public class CreateAbsenceCommandHandler(SchulyDbContext dbContext) : ICommandHandler<CreateAbsenceCommand, Result>

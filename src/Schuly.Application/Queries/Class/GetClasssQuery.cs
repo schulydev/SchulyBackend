@@ -2,11 +2,14 @@ using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Dtos;
 using Schuly.Application.Mappers;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Models;
 using Schuly.Infrastructure;
+
+using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Queries.Class
 {
+    [AllowAuthenticated]
     public record GetClassesQuery() : IQuery<Result<List<ClassDto>>>;
 
     public class GetClassesQueryHandler(SchulyDbContext dbContext) : IQueryHandler<GetClassesQuery, Result<List<ClassDto>>>

@@ -2,11 +2,14 @@ using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Dtos;
 using Schuly.Application.Mappers;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Models;
 using Schuly.Infrastructure;
+
+using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Queries.Agenda
 {
+    [AllowAuthenticated]
     public record GetAgendasQuery() : IQuery<Result<List<AgendaEntryDto>>>;
 
     public class GetAgendasQueryHandler(SchulyDbContext dbContext) : IQueryHandler<GetAgendasQuery, Result<List<AgendaEntryDto>>>

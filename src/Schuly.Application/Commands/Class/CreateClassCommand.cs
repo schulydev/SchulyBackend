@@ -1,15 +1,13 @@
 using Mediator;
-using Schuly.Application.Contracts.Authorization;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Authorization;
+using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
 namespace Schuly.Application.Commands.Class
 {
-    public record CreateClassCommand(string Name, string? Description) : ICommand<Result>, IHasAuthorization
-    {
-        public Roles GetRequiredRole() => Roles.Teacher;
-    }
+    [AuthorizedRoles(Roles.Teacher)]
+    public record CreateClassCommand(string Name, string? Description) : ICommand<Result>;
 
     public class CreateClassCommandHandler(SchulyDbContext dbContext) : ICommandHandler<CreateClassCommand, Result>
     {

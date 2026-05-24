@@ -1,18 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <PackageId>Schuly.Domain</PackageId>
-    <Description>Schuly domain entities and enums. Consumed by plugins.</Description>
-    <Authors>schulydev</Authors>
-    <PackageProjectUrl>https://github.com/schulydev/SchulyBackend</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/schulydev/SchulyBackend</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>schuly;domain;entities</PackageTags>
-    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
 </Project>

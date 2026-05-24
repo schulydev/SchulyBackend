@@ -2,12 +2,15 @@ using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Dtos;
 using Schuly.Application.Mappers;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Models;
 using Schuly.Infrastructure;
 using Schuly.Infrastructure.Services;
 
+using Schuly.Application.Authorization;
+
 namespace Schuly.Application.Queries.User
 {
+    [AllowAuthenticated]
     public record GetCurrentUserQuery() : IQuery<Result<ApplicationUserDto>>;
 
     public class GetCurrentUserQueryHandler(IUserService userService, SchulyDbContext dbContext) : IQueryHandler<GetCurrentUserQuery, Result<ApplicationUserDto>>

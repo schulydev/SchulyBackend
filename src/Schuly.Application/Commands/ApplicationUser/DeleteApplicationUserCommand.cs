@@ -1,16 +1,14 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
-using Schuly.Application.Contracts.Authorization;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Authorization;
+using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
 namespace Schuly.Application.Commands.ApplicationUser
 {
-    public record DeleteApplicationUserCommand(Guid ApplicationUserId) : ICommand<Result>, IHasAuthorization
-    {
-        public Roles GetRequiredRole() => Roles.Administrator;
-    }
+    [AuthorizedRoles(Roles.Administrator)]
+    public record DeleteApplicationUserCommand(Guid ApplicationUserId) : ICommand<Result>;
 
     public class DeleteApplicationUserCommandHandler(SchulyDbContext dbContext) : ICommandHandler<DeleteApplicationUserCommand, Result>
     {

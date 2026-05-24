@@ -1,11 +1,12 @@
 using Mediator;
-using Schuly.Application.Contracts.Authorization;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Authorization;
+using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
 namespace Schuly.Application.Commands.School
 {
+    [AuthorizedRoles(Roles.Administrator)]
     public record UpdateSchoolCommand(
         Guid Id,
         string Name,
@@ -17,10 +18,7 @@ namespace Schuly.Application.Commands.School
         string? City,
         string? State,
         string? Zip,
-        string? Country) : ICommand<Result>, IHasAuthorization
-    {
-        public Roles GetRequiredRole() => Roles.Administrator;
-    }
+        string? Country) : ICommand<Result>;
 
     public class UpdateSchoolCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateSchoolCommand, Result>
     {

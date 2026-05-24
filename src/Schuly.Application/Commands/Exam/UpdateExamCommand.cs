@@ -1,11 +1,14 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
+using Schuly.Application.Authorization;
+
 namespace Schuly.Application.Commands.Exam
 {
+    [AllowAuthenticated]
     public record UpdateExamCommand(Guid ExamId, string Name, string? Description, ExamType Type, Guid ClassId) : ICommand<Result>;
 
     public class UpdateExamCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateExamCommand, Result>

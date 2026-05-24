@@ -2,11 +2,14 @@ using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Dtos;
 using Schuly.Application.Mappers;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Models;
 using Schuly.Infrastructure;
+
+using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Queries.Absence
 {
+    [AllowAuthenticated]
     public record GetAbsenceQuery(Guid AbsenceId) : IQuery<Result<AbsenceDto>>;
 
     public class GetAbsenceQueryHandler(SchulyDbContext dbContext) : IQueryHandler<GetAbsenceQuery, Result<AbsenceDto>>

@@ -1,18 +1,16 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
-using Schuly.Application.Contracts.Authorization;
+using Schuly.Application.Authorization;
 using Schuly.Application.Dtos;
 using Schuly.Application.Mappers;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
 namespace Schuly.Application.Queries.SchoolUser
 {
-    public record GetSchoolUsersQuery(Guid? ApplicationUserId = null) : IQuery<Result<List<SchoolUserDto>>>, IHasAuthorization
-    {
-        public Roles GetRequiredRole() => Roles.Teacher;
-    }
+    [AuthorizedRoles(Roles.Teacher)]
+    public record GetSchoolUsersQuery(Guid? ApplicationUserId = null) : IQuery<Result<List<SchoolUserDto>>>;
 
     public class GetSchoolUsersQueryHandler(SchulyDbContext dbContext) : IQueryHandler<GetSchoolUsersQuery, Result<List<SchoolUserDto>>>
     {

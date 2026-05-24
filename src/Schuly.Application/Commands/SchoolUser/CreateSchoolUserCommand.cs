@@ -1,11 +1,29 @@
 using Mediator;
-using Schuly.Application.Contracts.Commands.SchoolUser;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Authorization;
+using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
 namespace Schuly.Application.Commands.SchoolUser
 {
+    [AuthorizedRoles(Roles.Administrator)]
+    public record CreateSchoolUserCommand(
+        Guid ApplicationUserId,
+        Guid SchoolId,
+        string FirstName,
+        string LastName,
+        string Email,
+        string? PrivateEmail,
+        string? PhoneNumber,
+        string? Street,
+        string? City,
+        string? Zip,
+        DateOnly Birthday,
+        DateOnly EntryDate,
+        Roles Role,
+        string? StudentNumber,
+        string? TeacherCode) : ICommand<Result<Guid>>;
+
     public class CreateSchoolUserCommandHandler(SchulyDbContext dbContext) : ICommandHandler<CreateSchoolUserCommand, Result<Guid>>
     {
         public async ValueTask<Result<Guid>> Handle(CreateSchoolUserCommand command, CancellationToken cancellationToken)

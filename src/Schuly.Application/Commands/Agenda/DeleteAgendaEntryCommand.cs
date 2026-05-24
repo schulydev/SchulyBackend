@@ -1,10 +1,13 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Models;
 using Schuly.Infrastructure;
+
+using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Commands.Agenda
 {
+    [AllowAuthenticated]
     public record DeleteAgendaEntryCommand(Guid AgendaEntryId) : ICommand<Result>;
 
     public class DeleteAgendaEntryCommandHandler(SchulyDbContext dbContext) : ICommandHandler<DeleteAgendaEntryCommand, Result>
