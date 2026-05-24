@@ -1,4 +1,4 @@
-namespace Schuly.Application.Models
+namespace Schuly.Application.Contracts.Models
 {
     public class Result
     {

@@ -58,6 +58,32 @@ jobs:
             --label CI/CD)
           gh pr merge "$PR_URL" --admin --squash --delete-branch
 
+  publish-nuget:
+    name: Pack and push Domain + Application.Contracts to NuGet.org
+    needs: sync-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Pack Schuly.Domain
+        run: dotnet pack src/Schuly.Domain/Schuly.Domain.csproj --configuration Release -o ./out
+
+      - name: Pack Schuly.Application.Contracts
+        run: dotnet pack src/Schuly.Application.Contracts/Schuly.Application.Contracts.csproj --configuration Release -o ./out
+
+      - name: Push to NuGet.org
+        run: |
+          dotnet nuget push ./out/*.nupkg \
+            --api-key ${{ secrets.NUGET_API_KEY }} \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+
   build-and-push-multiarch:
     name: Build and Push Multi-Arch Docker Images
     needs: sync-version

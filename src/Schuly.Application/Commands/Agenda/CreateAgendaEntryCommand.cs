@@ -1,5 +1,5 @@
 using Mediator;
-using Schuly.Application.Models;
+using Schuly.Application.Contracts.Models;
 using Schuly.Domain;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;

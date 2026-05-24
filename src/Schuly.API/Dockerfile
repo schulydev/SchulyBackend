@@ -27,4 +27,7 @@ RUN dotnet publish "./Schuly.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+# Plugin drop-in folder: mount or COPY plugin DLLs into /app/plugins to load them at startup.
+# The plugin loader (PluginExtensions.DiscoverPlugins) reads Plugins:Directory (default "plugins").
+RUN mkdir -p /app/plugins
 ENTRYPOINT ["dotnet", "Schuly.API.dll"]
