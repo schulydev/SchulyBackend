@@ -1,0 +1,14 @@
+<Project>
+
+  <PropertyGroup>
+    <_VersionFile>$(MSBuildThisFileDirectory)..\application.properties</_VersionFile>
+  </PropertyGroup>
+
+  <!-- Evaluate version eagerly at project-load time so `dotnet pack` picks it up
+       (a BeforeTargets target runs too late for the pack/nuspec pipeline). -->
+  <PropertyGroup Condition="Exists('$(_VersionFile)')">
+    <_VersionFileContent>$([System.IO.File]::ReadAllText('$(_VersionFile)'))</_VersionFileContent>
+    <Version>$([System.Text.RegularExpressions.Regex]::Match('$(_VersionFileContent)', '&lt;version&gt;(.*?)&lt;/version&gt;').Groups[1].Value)</Version>
+  </PropertyGroup>
+
+</Project>
