@@ -25,38 +25,74 @@ jobs:
           token: ${{ secrets.MAIN_PUSH_TOKEN }}
           path: abstractions
 
+      - name: Compute source hash for Domain + Infrastructure
+        id: hash
+        run: |
+          # Stable hash over all .cs and .csproj content in the two projects.
+          # Compile timestamps embedded in DLLs make built-artifact diffing useless,
+          # so we diff sources directly.
+          HASH=$(find backend/src/Schuly.Domain backend/src/Schuly.Infrastructure \
+            -type f \( -name '*.cs' -o -name '*.csproj' \) \
+            -not -path '*/bin/*' -not -path '*/obj/*' \
+            | LC_ALL=C sort \
+            | xargs cat \
+            | sha256sum | cut -d' ' -f1)
+          echo "current=$HASH" >> $GITHUB_OUTPUT
+
+          STORED_FILE=abstractions/src/Schuly.Plugin.Abstractions/libs/.source-hash
+          STORED=$(cat "$STORED_FILE" 2>/dev/null || echo "")
+          echo "stored=$STORED" >> $GITHUB_OUTPUT
+          echo "Current source hash:  $HASH"
+          echo "Stored  source hash:  ${STORED:-<none>}"
+          if [ "$HASH" = "$STORED" ]; then
+            echo "match=true" >> $GITHUB_OUTPUT
+          else
+            echo "match=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Short-circuit if source unchanged
+        if: steps.hash.outputs.match == 'true'
+        run: |
+          echo "Domain + Infrastructure sources unchanged. Skipping rebuild + sync."
+
       - uses: actions/setup-dotnet@v4
+        if: steps.hash.outputs.match != 'true'
         with:
           dotnet-version: '10.0.x'
 
       - name: Build Schuly.Domain + Schuly.Infrastructure
+        if: steps.hash.outputs.match != 'true'
         working-directory: backend
         run: |
           dotnet build src/Schuly.Domain/Schuly.Domain.csproj -c Release
           dotnet build src/Schuly.Infrastructure/Schuly.Infrastructure.csproj -c Release
 
       - name: Configure git as the maintainer
+        if: steps.hash.outputs.match != 'true'
         working-directory: abstractions
         run: |
           git config user.name "PianoNic"
           git config user.email "79938743+PianoNic@users.noreply.github.com"
 
-      - name: Replace abstractions libs with freshly built DLLs
+      - name: Replace abstractions libs + write new source hash
+        if: steps.hash.outputs.match != 'true'
         run: |
           DEST=abstractions/src/Schuly.Plugin.Abstractions/libs
           rm -rf "$DEST"
           mkdir -p "$DEST"
           cp backend/src/Schuly.Domain/bin/Release/net10.0/Schuly.Domain.dll "$DEST/"
           cp backend/src/Schuly.Infrastructure/bin/Release/net10.0/Schuly.Infrastructure.dll "$DEST/"
+          echo "${{ steps.hash.outputs.current }}" > "$DEST/.source-hash"
           ls -l "$DEST"
 
-      - name: Open + merge sync PR if there is a diff
+      - name: Open + merge sync PR
+        if: steps.hash.outputs.match != 'true'
         working-directory: abstractions
         env:
           GH_TOKEN: ${{ secrets.MAIN_PUSH_TOKEN }}
         run: |
           if [ -z "$(git status --porcelain)" ]; then
-            echo "No changes to backend DLLs."
+            echo "Source hash changed but no file diff — odd, but nothing to push."
             exit 0
           fi
 
@@ -71,6 +107,6 @@ jobs:
             --base main \
             --head "$BRANCH" \
             --title "Synced backend DLLs from backend@$SHORT_SHA" \
-            --body "Mirrored \`Schuly.Domain.dll\` and \`Schuly.Infrastructure.dll\` from schulydev/SchulyBackend@${{ github.sha }}." \
+            --body "Source hash changed (was \`${{ steps.hash.outputs.stored }}\`, now \`${{ steps.hash.outputs.current }}\`). Rebuilt \`Schuly.Domain.dll\` and \`Schuly.Infrastructure.dll\` from schulydev/SchulyBackend@${{ github.sha }}." \
             --label CI/CD)
           gh pr merge "$PR_URL" --admin --squash --delete-branch
