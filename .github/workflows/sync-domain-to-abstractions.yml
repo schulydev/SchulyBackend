@@ -41,13 +41,14 @@ jobs:
           git config user.name "PianoNic"
           git config user.email "79938743+PianoNic@users.noreply.github.com"
 
-      - name: Replace abstractions/libs with freshly built DLLs
+      - name: Replace abstractions libs with freshly built DLLs
         run: |
-          rm -rf abstractions/libs abstractions/Domain
-          mkdir -p abstractions/libs
-          cp backend/src/Schuly.Domain/bin/Release/net10.0/Schuly.Domain.dll abstractions/libs/
-          cp backend/src/Schuly.Infrastructure/bin/Release/net10.0/Schuly.Infrastructure.dll abstractions/libs/
-          ls -l abstractions/libs/
+          DEST=abstractions/src/Schuly.Plugin.Abstractions/libs
+          rm -rf "$DEST"
+          mkdir -p "$DEST"
+          cp backend/src/Schuly.Domain/bin/Release/net10.0/Schuly.Domain.dll "$DEST/"
+          cp backend/src/Schuly.Infrastructure/bin/Release/net10.0/Schuly.Infrastructure.dll "$DEST/"
+          ls -l "$DEST"
 
       - name: Open + merge sync PR if there is a diff
         working-directory: abstractions
