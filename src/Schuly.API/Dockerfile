@@ -27,4 +27,10 @@ RUN dotnet publish "./Schuly.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+# Plugins are dropped into /app/plugins/<Name>.dll.
+# Each plugin's runtime config lives at /app/plugins-config/<AssemblyName>.yml.
+# Keeping them apart lets DLLs be swapped without touching config and vice versa.
+USER root
+RUN mkdir -p /app/plugins /app/plugins-config && chown -R $APP_UID:$APP_UID /app/plugins /app/plugins-config
+USER $APP_UID
 ENTRYPOINT ["dotnet", "Schuly.API.dll"]
