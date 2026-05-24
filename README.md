@@ -1,60 +1,48 @@
-# <p align="center">Schuly</p>
+# <p align="center">SchulyBackend</p>
 <p align="center">
-  <img src="./assets/app_icon.png" width="200" alt="Schuly Logo">
+  <img src="https://raw.githubusercontent.com/schulydev/Schuly/main/assets/app_icon.png" width="160" alt="Schuly Logo">
 </p>
 <p align="center">
-  <strong>Schuly, the better Schulnetz app</strong>
+  <strong>ASP.NET Core backend powering the Schuly ecosystem</strong>
 </p>
 <p align="center">
-  <a href="https://github.com/PianoNic/schuly/stargazers"><img src="https://img.shields.io/github/stars/PianoNic/schuly?style=flat&color=3da8ff" alt="GitHub stars"/></a>
-  <a href="https://github.com/PianoNic/schuly"><img src="https://badgetrack.pianonic.ch/badge?tag=schuly&label=visits&color=3da8ff&style=flat" alt="visits"/></a>
-  <a href="https://github.com/PianoNic/schuly/blob/main/LICENSE"><img src="https://img.shields.io/github/license/PianoNic/schuly?color=3da8ff" alt="License"/></a>
-  <a href="https://github.com/PianoNic/schuly/releases"><img src="https://img.shields.io/github/v/release/PianoNic/schuly?include_prereleases&color=3da8ff&label=Latest%20Release" alt="Latest Release"/></a>
-  <a href="#installation"><img src="https://img.shields.io/badge/Selfhost-Instructions-3da8ff.svg" alt="Installation"/></a>
+  <a href="https://github.com/schulydev/SchulyBackend/stargazers"><img src="https://img.shields.io/github/stars/schulydev/SchulyBackend?style=flat&color=3da8ff" alt="GitHub stars"/></a>
+  <a href="https://dotnet.microsoft.com/"><img src="https://img.shields.io/badge/.NET-9.0-3da8ff" alt=".NET"/></a>
+  <a href="https://schuly.dev"><img src="https://img.shields.io/badge/site-schuly.dev-3da8ff" alt="Website"/></a>
 </p>
 
-A modern mobile app that provides a superior alternative to the official Schulnetz client. Features an intuitive interface, multi-user support, and seamless access to grades, schedules, and student information. Connects to **[SchulwareAPI](https://github.com/PianoNic/SchulwareAPI)** for reliable data access across different Schulnetz systems.
+Clean-architecture C# API serving the Schuly mobile app. Built on ASP.NET Core with CQRS via Mediator, EF Core on PostgreSQL, OIDC authentication, and an extensible plugin runtime.
 
-> [!IMPORTANT]
-> This project is **NOT** affiliated with, endorsed by, or connected to Schulnetz or Centerboard AG in any way. This is an independent, unofficial API wrapper that provides a unified interface to interact with their existing systems.
+## What's in this repo
 
-## Screenshots
+- `src/Schuly.API` — ASP.NET Core entry point + controllers
+- `src/Schuly.Application` — CQRS commands/queries + handlers
+- `src/Schuly.Domain` — entities (`School`, `Class`, `Exam`, `Grade`, `Absence`, `AgendaEntry`, ...)
+- `src/Schuly.Infrastructure` — EF Core, OIDC, plugin host
+- `src/Schuly.Tests` — unit + integration tests
 
-<p align="center">
-  <img src="./assets/screenshot_home.png" width="19%" alt="Start Screen">
-  <img src="./assets/screenshot_agenda.png" width="19%" alt="Agenda Calendar">
-  <img src="./assets/screenshot_grades.png" width="19%" alt="Grades View">
-  <img src="./assets/screenshot_absences.png" width="19%" alt="Absences Tracker">
-  <img src="./assets/screenshot_account.png" width="19%" alt="Account Profile">
-</p>
+## The Schuly ecosystem
 
-## Features
+| Repo | Purpose |
+|---|---|
+| [**Schuly**](https://github.com/schulydev/Schuly) | Flutter mobile app |
+| [**SchulyBackend**](https://github.com/schulydev/SchulyBackend) | ASP.NET Core API backend *(this repo)* |
+| [**SchulyPluginAbstractions**](https://github.com/schulydev/SchulyPluginAbstractions) | Plugin contract (NuGet) |
+| [**SchulyPlugins**](https://github.com/schulydev/SchulyPlugins) | Official plugins monorepo |
+| [**SchulyWebsite**](https://github.com/schulydev/SchulyWebsite) | Landing site ([schuly.dev](https://schuly.dev)) |
 
-- Grades, agenda, absences, student ID
-- Multi-user account switching
-- Material 3 theming with dark/light mode
-- Tons of customization options
-- Push notifications
-- Android, iOS, and Web support
-- Error tracking with GlitchTip (automatic in release builds)
+## Run
 
-## Installation
+```sh
+# Requires PostgreSQL — see compose.dev.yml
+cd src/Schuly.API
+dotnet run --urls=http://localhost:5033
+```
 
-Download from **[Releases](https://github.com/PianoNic/schuly/releases)**:
-- **Android**: `.apk` file
-- **iOS**: `.ipa` file (sideloading required)
+OpenAPI / Swagger: `http://localhost:5033/swagger`
 
-## Configuration
+## Migrations
 
-1. Open the app
-2. Go to Account settings
-3. Configure SchulwareAPI URL (or use default)
-4. Login with Schulnetz credentials
-
-Requires **[SchulwareAPI](https://github.com/PianoNic/SchulwareAPI)** backend (hosted or self-hosted).
-
----
-<p align="center">Made with ❤️ by <a href="https://github.com/Pianonic">Pianonic</a></p>
-<p align="center">
-  <a href="https://buymeacoffee.com/pianonic"><img src="https://img.shields.io/badge/-buy_me_a%C2%A0coffee-gray?logo=buy-me-a-coffee" alt="Buy Me A Coffee"/></a>
-</p>
+```sh
+./scripts/migration.sh    # or migration.ps1 on Windows
+```
