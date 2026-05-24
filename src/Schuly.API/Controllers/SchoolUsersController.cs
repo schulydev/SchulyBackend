@@ -2,7 +2,6 @@ using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Schuly.Application.Commands.SchoolUser;
-using Schuly.Application.Contracts.Commands.SchoolUser;
 using Schuly.Application.Dtos;
 using Schuly.Application.Queries.SchoolUser;
 

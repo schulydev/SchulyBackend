@@ -1,6 +1,6 @@
 using Mediator;
-using Schuly.Application.Contracts.Authorization;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Authorization;
+using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 

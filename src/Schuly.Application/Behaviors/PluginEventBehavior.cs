@@ -1,7 +1,6 @@
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Schuly.Application.Contracts.Models;
 using Schuly.Plugin.Abstractions;
 
 namespace Schuly.Application.Behaviors
@@ -49,11 +48,11 @@ namespace Schuly.Application.Behaviors
 
         private static bool IsSuccessResult(TResponse response)
         {
-            if (response is Result result)
+            if (response is Models.Result result)
                 return result.IsSuccess;
 
             var type = typeof(TResponse);
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Result<>))
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Models.Result<>))
             {
                 var prop = type.GetProperty("IsSuccess");
                 return prop?.GetValue(response) is true;

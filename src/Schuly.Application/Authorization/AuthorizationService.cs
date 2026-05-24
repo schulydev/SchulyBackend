@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Http;
-using Schuly.Application.Contracts.Authorization;
 using Schuly.Domain.Enums;
 using System.Security.Claims;
 

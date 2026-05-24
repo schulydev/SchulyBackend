@@ -1,6 +1,6 @@
 using Schuly.Domain.Enums;
 
-namespace Schuly.Application.Contracts.Authorization
+namespace Schuly.Application.Authorization
 {
     public interface IHasAuthorization
     {

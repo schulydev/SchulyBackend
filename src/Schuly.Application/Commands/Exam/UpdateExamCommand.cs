@@ -1,6 +1,6 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
-using Schuly.Application.Contracts.Models;
+using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
