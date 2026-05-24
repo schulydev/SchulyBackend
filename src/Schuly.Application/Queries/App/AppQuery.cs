@@ -1,7 +1,7 @@
 using Mediator;
 using Microsoft.Extensions.Configuration;
 using Schuly.Application.Dtos;
-using Schuly.Application.Models;
+using Schuly.Application.Contracts.Models;
 
 namespace Schuly.Application.Queries.App
 {

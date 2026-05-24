@@ -4,15 +4,24 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <PackageId>Schuly.Domain</PackageId>
-    <Description>Schuly domain entities and enums. Consumed by plugins.</Description>
+    <PackageId>Schuly.Application.Contracts</PackageId>
+    <Description>Public command/query records and result types for the Schuly backend. Consumed by plugins.</Description>
     <Authors>schulydev</Authors>
     <PackageProjectUrl>https://github.com/schulydev/SchulyBackend</PackageProjectUrl>
     <RepositoryUrl>https://github.com/schulydev/SchulyBackend</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>schuly;domain;entities</PackageTags>
+    <PackageTags>schuly;contracts;commands</PackageTags>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Mediator.Abstractions" Version="3.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Schuly.Domain\Schuly.Domain.csproj" />
+  </ItemGroup>
 
 </Project>

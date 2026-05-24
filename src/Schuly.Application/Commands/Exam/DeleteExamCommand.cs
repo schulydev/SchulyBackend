@@ -1,6 +1,6 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
-using Schuly.Application.Models;
+using Schuly.Application.Contracts.Models;
 using Schuly.Infrastructure;
 
 namespace Schuly.Application.Commands.Exam

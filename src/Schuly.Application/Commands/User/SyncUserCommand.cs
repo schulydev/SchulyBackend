@@ -1,5 +1,5 @@
 using Mediator;
-using Schuly.Application.Models;
+using Schuly.Application.Contracts.Models;
 using Schuly.Infrastructure.Services;
 
 namespace Schuly.Application.Commands.User
