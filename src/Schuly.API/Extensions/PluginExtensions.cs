@@ -37,11 +37,6 @@ namespace Schuly.API.Extensions
                 app.Logger.LogInformation("Loaded plugin: {Name} v{Version}", plugin.Name, plugin.Version);
             }
 
-            // Expose what's loaded so operators can verify drop-in plugins worked.
-            app.MapGet("/api/plugins", (IReadOnlyList<ISchulyPlugin> loaded) =>
-                Results.Ok(loaded.Select(p => new { p.Name, p.Version }))
-            ).AllowAnonymous();
-
             return app;
         }
 
