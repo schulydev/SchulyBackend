@@ -11,11 +11,15 @@ namespace Schuly.API.Extensions
             var mainConnectionString = configuration.GetConnectionString("SchulyDatabase")
                 ?? throw new InvalidOperationException("SchulyDatabase connection string not configured");
 
+            var pluginsConfigDir = configuration["Plugins:ConfigDirectory"] ?? "plugins-config";
+            if (!Path.IsPathRooted(pluginsConfigDir))
+                pluginsConfigDir = Path.Combine(AppContext.BaseDirectory, pluginsConfigDir);
+
             foreach (var plugin in plugins)
             {
                 var pluginDbName = $"schuly_plugin_{plugin.Name.ToLowerInvariant().Replace(" ", "_")}";
                 var pluginConnectionString = ReplaceDatabase(mainConnectionString, pluginDbName);
-                var pluginConfig = LoadPluginConfig(plugin);
+                var pluginConfig = LoadPluginConfig(plugin, pluginsConfigDir);
                 var context = new PluginServiceContext(pluginConnectionString, pluginConfig);
 
                 plugin.ConfigureServices(services, context);
@@ -40,17 +44,27 @@ namespace Schuly.API.Extensions
             return app;
         }
 
-        private static IConfiguration LoadPluginConfig(ISchulyPlugin plugin)
+        /// <summary>
+        /// Per-plugin config lives at <c>{configDir}/{PluginAssemblyName}.yml</c>
+        /// (e.g. <c>plugins-config/Schuly.Plugin.Schulware.yml</c>). Keeps deployment-
+        /// specific config out of the plugin drop folder so DLLs can be replaced
+        /// without touching config — and so a single config dir can be mounted as a
+        /// volume / ConfigMap.
+        /// </summary>
+        private static IConfiguration LoadPluginConfig(ISchulyPlugin plugin, string configDir)
         {
-            var assemblyLocation = plugin.GetType().Assembly.Location;
-            var pluginDir = Path.GetDirectoryName(assemblyLocation) ?? AppContext.BaseDirectory;
-            var configPath = Path.Combine(pluginDir, "config.json");
+            var assemblyName = plugin.GetType().Assembly.GetName().Name ?? plugin.Name;
+            var ymlPath = Path.Combine(configDir, $"{assemblyName}.yml");
+            var yamlPath = Path.Combine(configDir, $"{assemblyName}.yaml");
 
             var builder = new ConfigurationBuilder();
 
-            if (File.Exists(configPath))
-                builder.AddJsonFile(configPath, optional: true, reloadOnChange: true);
+            if (File.Exists(ymlPath))
+                builder.AddYamlFile(ymlPath, optional: true, reloadOnChange: true);
+            else if (File.Exists(yamlPath))
+                builder.AddYamlFile(yamlPath, optional: true, reloadOnChange: true);
 
+            // Env var overlay: SCHULY_PLUGIN_<NAME>__Section__Key=value (double underscore for nesting)
             builder.AddEnvironmentVariables($"SCHULY_PLUGIN_{plugin.Name.ToUpperInvariant().Replace(" ", "_")}_");
 
             return builder.Build();
