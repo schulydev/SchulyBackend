@@ -97,7 +97,7 @@ jobs:
           fi
 
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          BRANCH="domain-sync/$SHORT_SHA"
+          BRANCH="domain-sync/$SHORT_SHA-${{ github.run_id }}"
           git checkout -b "$BRANCH"
           git add -A
           git commit -m "Synced backend DLLs from backend@$SHORT_SHA"
