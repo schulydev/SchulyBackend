@@ -1,0 +1,68 @@
+name: Sync Domain to Plugin.Abstractions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/Schuly.Domain/**'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  sync:
+    name: Mirror Schuly.Domain source into SchulyPluginAbstractions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout backend
+        uses: actions/checkout@v5
+        with:
+          path: backend
+
+      - name: Checkout abstractions
+        uses: actions/checkout@v5
+        with:
+          repository: schulydev/SchulyPluginAbstractions
+          token: ${{ secrets.MAIN_PUSH_TOKEN }}
+          path: abstractions
+
+      - name: Configure git as the maintainer
+        working-directory: abstractions
+        run: |
+          git config user.name "PianoNic"
+          git config user.email "79938743+PianoNic@users.noreply.github.com"
+
+      - name: Mirror Domain *.cs files
+        run: |
+          rm -rf abstractions/Domain
+          mkdir -p abstractions/Domain
+          # Copy all .cs files preserving subfolder structure, skip bin/obj
+          (cd backend/src/Schuly.Domain && find . -name '*.cs' -not -path './bin/*' -not -path './obj/*' | tar -cf - -T -) | (cd abstractions/Domain && tar -xf -)
+          echo "Synced files:"
+          find abstractions/Domain -name '*.cs' | sort
+
+      - name: Open + merge sync PR if there is a diff
+        working-directory: abstractions
+        env:
+          GH_TOKEN: ${{ secrets.MAIN_PUSH_TOKEN }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to Domain files."
+            exit 0
+          fi
+
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          BRANCH="domain-sync/$SHORT_SHA"
+          git checkout -b "$BRANCH"
+          git add Domain
+          git commit -m "Synced Schuly.Domain from backend@$SHORT_SHA"
+          git push origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "Synced Schuly.Domain from backend@$SHORT_SHA" \
+            --body "Mirrored \`src/Schuly.Domain/**\` from schulydev/SchulyBackend@${{ github.sha }}." \
+            --label CI/CD)
+          gh pr merge "$PR_URL" --admin --squash --delete-branch
