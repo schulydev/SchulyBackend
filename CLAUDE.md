@@ -1,0 +1,64 @@
+# Notes for Claude (and humans) — SchulyBackend
+
+ASP.NET Core 10 API. Clean architecture + CQRS via [Mediator](https://github.com/martinothamar/Mediator). EF Core on PostgreSQL. OIDC auth. Plugin host.
+
+## Run
+
+```sh
+# Bring up Postgres
+docker compose -f compose.dev.yml up -d
+
+# Run the API
+cd src/Schuly.API
+dotnet run --urls=http://localhost:5033
+```
+
+Swagger: <http://localhost:5033/swagger>
+
+## Project layout
+
+| Project | Role |
+|---|---|
+| `Schuly.API` | Entry point. Controllers, OIDC wiring, EF migrations applied on startup, plugin host registration. Has the `Dockerfile`. |
+| `Schuly.Application` | CQRS commands/queries + Mediator handlers. **Don't** reference Infrastructure from here. |
+| `Schuly.Domain` | Pure entities (`School`, `Class`, `Exam`, `Grade`, `Absence`, `AgendaEntry`, `ApplicationUser`, `SchoolUser`). Base type with `Id`, `CreatedAt`, `UpdatedAt`. |
+| `Schuly.Infrastructure` | `SchulyDbContext`, OIDC services, repositories, plugin runtime (`PluginBackgroundTaskHost`). |
+| `Schuly.Tests` | TUnit. |
+
+`Schuly.Plugin.Abstractions` is a **NuGet `PackageReference`**, not a project ref — see the abstractions repo. Plugin projects (Example, Schulware) live in a separate repo entirely.
+
+## Adding an entity + endpoint
+
+1. **Entity** in `Schuly.Domain` (inherits `Base`).
+2. **DbSet + config** in `Infrastructure/SchulyDbContext.cs`.
+3. **Migration**: `./scripts/migration.sh "AddXyz"` or `migration.ps1` on Windows.
+4. **Command/Query** in `Schuly.Application/Commands/<Entity>/` or `Queries/<Entity>/`.
+5. **Handler** alongside the command, registered automatically via Mediator source-gen.
+6. **Controller** in `Schuly.API/Controllers/` — thin, delegates to Mediator.
+
+## Migrations
+
+```sh
+./scripts/migration.sh "MigrationName"     # bash
+./scripts/migration.ps1 "MigrationName"    # PowerShell
+./scripts/DbScript.ps1                     # generate SQL script
+```
+
+Applied at startup by `ApplyMigrations()` in `Program.cs`.
+
+## Auth
+
+- OIDC authority + clientId configured via `appsettings.json` (`Oidc:Authority`, `Oidc:ClientId`).
+- `groups` claim → role mapping (`Student`, `Teacher`, `Administrator`).
+- Default policy requires auth; only `/api/app` is anonymous.
+
+## Versioning + release
+
+Single source of truth: `application.properties`. `src/Directory.Build.props` reads via `XmlPeek`. Cutting a release triggers `docker-publish-release.yaml`:
+
+1. `sync-version` job updates `application.properties` to match the tag via an auto-merged PR.
+2. `build-and-push-multiarch` builds the API container and pushes to:
+   - `ghcr.io/schulydev/schuly:<semver>` (+ `:latest`, `:<major>`, `:<major>.<minor>`)
+   - `<DOCKERHUB_USERNAME>/schuly:<semver>` (best-effort)
+
+Docker build context is `./src` (Dockerfile's `COPY` paths are relative to it).
