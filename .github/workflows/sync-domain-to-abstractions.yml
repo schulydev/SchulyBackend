@@ -1,10 +1,8 @@
-name: Sync Domain to Plugin.Abstractions
+name: Sync backend DLLs to Plugin.Abstractions
 
 on:
   push:
     branches: [main]
-    paths:
-      - 'src/Schuly.Domain/**'
   workflow_dispatch:
 
 env:
@@ -12,7 +10,7 @@ env:
 
 jobs:
   sync:
-    name: Mirror Schuly.Domain source into SchulyPluginAbstractions
+    name: Build + ship Schuly.Domain.dll and Schuly.Infrastructure.dll
     runs-on: ubuntu-latest
     steps:
       - name: Checkout backend
@@ -27,20 +25,29 @@ jobs:
           token: ${{ secrets.MAIN_PUSH_TOKEN }}
           path: abstractions
 
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build Schuly.Domain + Schuly.Infrastructure
+        working-directory: backend
+        run: |
+          dotnet build src/Schuly.Domain/Schuly.Domain.csproj -c Release
+          dotnet build src/Schuly.Infrastructure/Schuly.Infrastructure.csproj -c Release
+
       - name: Configure git as the maintainer
         working-directory: abstractions
         run: |
           git config user.name "PianoNic"
           git config user.email "79938743+PianoNic@users.noreply.github.com"
 
-      - name: Mirror Domain *.cs files
+      - name: Replace abstractions/libs with freshly built DLLs
         run: |
-          rm -rf abstractions/Domain
-          mkdir -p abstractions/Domain
-          # Copy all .cs files preserving subfolder structure, skip bin/obj
-          (cd backend/src/Schuly.Domain && find . -name '*.cs' -not -path './bin/*' -not -path './obj/*' | tar -cf - -T -) | (cd abstractions/Domain && tar -xf -)
-          echo "Synced files:"
-          find abstractions/Domain -name '*.cs' | sort
+          rm -rf abstractions/libs abstractions/Domain
+          mkdir -p abstractions/libs
+          cp backend/src/Schuly.Domain/bin/Release/net10.0/Schuly.Domain.dll abstractions/libs/
+          cp backend/src/Schuly.Infrastructure/bin/Release/net10.0/Schuly.Infrastructure.dll abstractions/libs/
+          ls -l abstractions/libs/
 
       - name: Open + merge sync PR if there is a diff
         working-directory: abstractions
@@ -48,21 +55,21 @@ jobs:
           GH_TOKEN: ${{ secrets.MAIN_PUSH_TOKEN }}
         run: |
           if [ -z "$(git status --porcelain)" ]; then
-            echo "No changes to Domain files."
+            echo "No changes to backend DLLs."
             exit 0
           fi
 
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           BRANCH="domain-sync/$SHORT_SHA"
           git checkout -b "$BRANCH"
-          git add Domain
-          git commit -m "Synced Schuly.Domain from backend@$SHORT_SHA"
+          git add -A
+          git commit -m "Synced backend DLLs from backend@$SHORT_SHA"
           git push origin "$BRANCH"
 
           PR_URL=$(gh pr create \
             --base main \
             --head "$BRANCH" \
-            --title "Synced Schuly.Domain from backend@$SHORT_SHA" \
-            --body "Mirrored \`src/Schuly.Domain/**\` from schulydev/SchulyBackend@${{ github.sha }}." \
+            --title "Synced backend DLLs from backend@$SHORT_SHA" \
+            --body "Mirrored \`Schuly.Domain.dll\` and \`Schuly.Infrastructure.dll\` from schulydev/SchulyBackend@${{ github.sha }}." \
             --label CI/CD)
           gh pr merge "$PR_URL" --admin --squash --delete-branch
