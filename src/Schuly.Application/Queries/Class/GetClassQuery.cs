@@ -5,8 +5,11 @@ using Schuly.Application.Mappers;
 using Schuly.Application.Models;
 using Schuly.Infrastructure;
 
+using Schuly.Application.Authorization;
+
 namespace Schuly.Application.Queries.Class
 {
+    [AllowAuthenticated]
     public record GetClassQuery(Guid ClassId) : IQuery<Result<ClassDto>>;
 
     public class GetClassQueryHandler(SchulyDbContext dbContext) : IQueryHandler<GetClassQuery, Result<ClassDto>>

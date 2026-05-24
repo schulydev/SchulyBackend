@@ -4,8 +4,11 @@ using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
+using Schuly.Application.Authorization;
+
 namespace Schuly.Application.Commands.Agenda
 {
+    [AllowAuthenticated]
     public record UpdateAgendaEntryCommand(Guid AgendaEntryId, AgendaEntryType EntryType, string Title, string? Description, string? Place, DateTime Date, Guid ClassId) : ICommand<Result>;
 
     public class UpdateAgendaEntryCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateAgendaEntryCommand, Result>

@@ -3,8 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Models;
 using Schuly.Infrastructure;
 
+using Schuly.Application.Authorization;
+
 namespace Schuly.Application.Commands.Exam
 {
+    [AllowAuthenticated]
     public record DeleteExamCommand(Guid ExamId) : ICommand<Result>;
 
     public class DeleteExamCommandHandler(SchulyDbContext dbContext) : ICommandHandler<DeleteExamCommand, Result>

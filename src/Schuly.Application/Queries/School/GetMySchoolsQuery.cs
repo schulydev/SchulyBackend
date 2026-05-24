@@ -10,10 +10,8 @@ using Schuly.Infrastructure.Services;
 
 namespace Schuly.Application.Queries.School
 {
-    public record GetMySchoolsQuery() : IQuery<Result<List<SchoolDto>>>, IHasAuthorization
-    {
-        public Roles GetRequiredRole() => Roles.Student;
-    }
+    [AuthorizedRoles(Roles.Student)]
+    public record GetMySchoolsQuery() : IQuery<Result<List<SchoolDto>>>;
 
     public class GetMySchoolsQueryHandler(SchulyDbContext dbContext, IUserService userService) : IQueryHandler<GetMySchoolsQuery, Result<List<SchoolDto>>>
     {

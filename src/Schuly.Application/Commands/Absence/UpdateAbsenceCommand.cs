@@ -4,8 +4,11 @@ using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
+using Schuly.Application.Authorization;
+
 namespace Schuly.Application.Commands.Absence
 {
+    [AllowAuthenticated]
     public record UpdateAbsenceCommand(Guid AbsenceId, string Reason, AbsenceType Type, DateTime From, DateTime Until, Guid SchoolUserId) : ICommand<Result>;
 
     public class UpdateAbsenceCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateAbsenceCommand, Result>

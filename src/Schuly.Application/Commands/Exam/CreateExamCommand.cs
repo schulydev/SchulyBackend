@@ -6,10 +6,8 @@ using Schuly.Infrastructure;
 
 namespace Schuly.Application.Commands.Exam
 {
-    public record CreateExamCommand(string Name, string? Description, ExamType Type, Guid ClassId) : ICommand<Result>, IHasAuthorization
-    {
-        public Roles GetRequiredRole() => Roles.Teacher;
-    }
+    [AuthorizedRoles(Roles.Teacher)]
+    public record CreateExamCommand(string Name, string? Description, ExamType Type, Guid ClassId) : ICommand<Result>;
 
     public class CreateExamCommandHandler(SchulyDbContext dbContext) : ICommandHandler<CreateExamCommand, Result>
     {

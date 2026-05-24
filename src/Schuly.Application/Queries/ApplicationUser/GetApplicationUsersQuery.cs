@@ -9,10 +9,8 @@ using Schuly.Infrastructure;
 
 namespace Schuly.Application.Queries.ApplicationUser
 {
-    public record GetApplicationUsersQuery() : IQuery<Result<List<ApplicationUserDto>>>, IHasAuthorization
-    {
-        public Roles GetRequiredRole() => Roles.Administrator;
-    }
+    [AuthorizedRoles(Roles.Administrator)]
+    public record GetApplicationUsersQuery() : IQuery<Result<List<ApplicationUserDto>>>;
 
     public class GetApplicationUsersQueryHandler(SchulyDbContext dbContext) : IQueryHandler<GetApplicationUsersQuery, Result<List<ApplicationUserDto>>>
     {

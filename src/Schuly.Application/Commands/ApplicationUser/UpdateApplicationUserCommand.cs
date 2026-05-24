@@ -7,10 +7,8 @@ using Schuly.Infrastructure;
 
 namespace Schuly.Application.Commands.ApplicationUser
 {
-    public record UpdateApplicationUserCommand(Guid ApplicationUserId, string? DisplayName, string? ProfilePictureUrl) : ICommand<Result>, IHasAuthorization
-    {
-        public Roles GetRequiredRole() => Roles.Administrator;
-    }
+    [AuthorizedRoles(Roles.Administrator)]
+    public record UpdateApplicationUserCommand(Guid ApplicationUserId, string? DisplayName, string? ProfilePictureUrl) : ICommand<Result>;
 
     public class UpdateApplicationUserCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateApplicationUserCommand, Result>
     {

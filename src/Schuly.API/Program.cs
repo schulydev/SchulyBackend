@@ -68,7 +68,6 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IOidcService, OidcService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
-builder.Services.AddScoped<Schuly.Application.Authorization.IAppAuthorizationService, Schuly.Application.Authorization.AuthorizationService>();
 
 builder.Services.AddPlugins(builder.Configuration);
 builder.Services.AddHostedService<PluginBackgroundTaskHost>();

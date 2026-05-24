@@ -3,8 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Models;
 using Schuly.Infrastructure;
 
+using Schuly.Application.Authorization;
+
 namespace Schuly.Application.Commands.Class
 {
+    [AllowAuthenticated]
     public record UpdateClassCommand(Guid ClassId, string Name, string? Description) : ICommand<Result>;
 
     public class UpdateClassCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateClassCommand, Result>

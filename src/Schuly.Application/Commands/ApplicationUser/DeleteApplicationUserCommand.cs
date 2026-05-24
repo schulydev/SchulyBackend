@@ -7,10 +7,8 @@ using Schuly.Infrastructure;
 
 namespace Schuly.Application.Commands.ApplicationUser
 {
-    public record DeleteApplicationUserCommand(Guid ApplicationUserId) : ICommand<Result>, IHasAuthorization
-    {
-        public Roles GetRequiredRole() => Roles.Administrator;
-    }
+    [AuthorizedRoles(Roles.Administrator)]
+    public record DeleteApplicationUserCommand(Guid ApplicationUserId) : ICommand<Result>;
 
     public class DeleteApplicationUserCommandHandler(SchulyDbContext dbContext) : ICommandHandler<DeleteApplicationUserCommand, Result>
     {

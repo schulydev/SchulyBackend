@@ -5,8 +5,11 @@ using Schuly.Application.Mappers;
 using Schuly.Application.Models;
 using Schuly.Infrastructure;
 
+using Schuly.Application.Authorization;
+
 namespace Schuly.Application.Queries.Agenda
 {
+    [AllowAuthenticated]
     public record GetAgendaQuery(Guid AgendaEntryId) : IQuery<Result<AgendaEntryDto>>;
 
     public class GetAgendaQueryHandler(SchulyDbContext dbContext) : IQueryHandler<GetAgendaQuery, Result<AgendaEntryDto>>

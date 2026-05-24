@@ -7,6 +7,7 @@ using Schuly.Infrastructure;
 
 namespace Schuly.Application.Commands.SchoolUser
 {
+    [AuthorizedRoles(Roles.Administrator)]
     public record UpdateSchoolUserCommand(
         Guid SchoolUserId,
         string? FirstName,
@@ -18,10 +19,7 @@ namespace Schuly.Application.Commands.SchoolUser
         string? City,
         string? Zip,
         DateOnly? LeaveDate,
-        UserState? State) : ICommand<Result>, IHasAuthorization
-    {
-        public Roles GetRequiredRole() => Roles.Administrator;
-    }
+        UserState? State) : ICommand<Result>;
 
     public class UpdateSchoolUserCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateSchoolUserCommand, Result>
     {

@@ -5,8 +5,11 @@ using Schuly.Application.Mappers;
 using Schuly.Application.Models;
 using Schuly.Infrastructure;
 
+using Schuly.Application.Authorization;
+
 namespace Schuly.Application.Queries.Exam
 {
+    [AllowAuthenticated]
     public record GetExamQuery(Guid ExamId) : IQuery<Result<ExamDto>>;
 
     public class GetExamQueryHandler(SchulyDbContext dbContext) : IQueryHandler<GetExamQuery, Result<ExamDto>>

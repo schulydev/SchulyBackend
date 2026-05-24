@@ -3,8 +3,11 @@ using Microsoft.Extensions.Configuration;
 using Schuly.Application.Dtos;
 using Schuly.Application.Models;
 
+using Schuly.Application.Authorization;
+
 namespace Schuly.Application.Queries.App
 {
+    [AllowAuthenticated]
     public record AppQuery() : IQuery<Result<AppDto>>;
 
     public class AppQueryHandler(IConfiguration configuration) : IQueryHandler<AppQuery, Result<AppDto>>
