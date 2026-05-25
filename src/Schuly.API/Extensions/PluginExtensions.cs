@@ -121,9 +121,17 @@ namespace Schuly.API.Extensions
                             plugins.Add(plugin);
                     }
                 }
-                catch
+                catch (ReflectionTypeLoadException rex)
                 {
-                    // Skip DLLs that can't be loaded
+                    Console.Error.WriteLine($"[PluginDiscovery] {dll}: type-load failed ({rex.Message})");
+                    foreach (var le in rex.LoaderExceptions.Take(5))
+                        Console.Error.WriteLine($"    - {le?.Message}");
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"[PluginDiscovery] {dll}: {ex.GetType().Name}: {ex.Message}");
+                    if (ex.InnerException is not null)
+                        Console.Error.WriteLine($"    inner: {ex.InnerException.Message}");
                 }
             }
 
