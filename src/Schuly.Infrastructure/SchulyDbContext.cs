@@ -134,6 +134,23 @@ namespace Schuly.Infrastructure
                     .WithMany(c => c.Agenda)
                     .HasForeignKey(ae => ae.ClassId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(ae => ae.School)
+                    .WithMany(s => s.Agenda)
+                    .HasForeignKey(ae => ae.SchoolId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(ae => ae.SchoolUser)
+                    .WithMany(su => su.Agenda)
+                    .HasForeignKey(ae => ae.SchoolUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Exactly one of ClassId / SchoolId / SchoolUserId must be set.
+                entity.ToTable(t => t.HasCheckConstraint(
+                    "CK_AgendaEntry_ExactlyOneScope",
+                    "(CASE WHEN \"ClassId\" IS NULL THEN 0 ELSE 1 END" +
+                    " + CASE WHEN \"SchoolId\" IS NULL THEN 0 ELSE 1 END" +
+                    " + CASE WHEN \"SchoolUserId\" IS NULL THEN 0 ELSE 1 END) = 1"));
             });
 
             modelBuilder.Entity<Absence>(entity =>

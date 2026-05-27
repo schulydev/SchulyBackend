@@ -32,5 +32,6 @@ namespace Schuly.Domain
         public ICollection<Absence> Absences { get; set; } = [];
         public ICollection<Grade> Grades { get; set; } = [];
         public ICollection<Class> Classes { get; set; } = [];
+        public ICollection<AgendaEntry> Agenda { get; set; } = [];
     }
 }

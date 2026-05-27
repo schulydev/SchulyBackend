@@ -9,12 +9,27 @@ using Schuly.Application.Authorization;
 namespace Schuly.Application.Commands.Agenda
 {
     [AllowAuthenticated]
-    public record UpdateAgendaEntryCommand(Guid AgendaEntryId, AgendaEntryType EntryType, string Title, string? Description, string? Place, DateTime Date, Guid ClassId) : ICommand<Result>;
+    public record UpdateAgendaEntryCommand(
+        Guid AgendaEntryId,
+        AgendaEntryType EntryType,
+        string Title,
+        string? Description,
+        string? Place,
+        DateTime Date,
+        Guid? ClassId,
+        Guid? SchoolId,
+        Guid? SchoolUserId) : ICommand<Result>;
 
     public class UpdateAgendaEntryCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateAgendaEntryCommand, Result>
     {
         public async ValueTask<Result> Handle(UpdateAgendaEntryCommand command, CancellationToken cancellationToken)
         {
+            var scopes = (command.ClassId.HasValue ? 1 : 0)
+                       + (command.SchoolId.HasValue ? 1 : 0)
+                       + (command.SchoolUserId.HasValue ? 1 : 0);
+            if (scopes != 1)
+                return Result.Failure("Exactly one of ClassId / SchoolId / SchoolUserId must be set");
+
             var agendaEntry = await dbContext.AgendaEntries
                 .SingleOrDefaultAsync(a => a.Id == command.AgendaEntryId, cancellationToken);
 
@@ -27,6 +42,8 @@ namespace Schuly.Application.Commands.Agenda
             agendaEntry.Place = command.Place;
             agendaEntry.Date = command.Date;
             agendaEntry.ClassId = command.ClassId;
+            agendaEntry.SchoolId = command.SchoolId;
+            agendaEntry.SchoolUserId = command.SchoolUserId;
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
