@@ -98,8 +98,7 @@ namespace Schuly.Infrastructure
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Name).HasMaxLength(200);
-                // Hot path: list exams for a class.
-                entity.HasIndex(e => e.ClassId);
+                // EF creates an FK index on ClassId automatically; no HasIndex needed.
 
                 entity.HasOne(e => e.Class)
                     .WithMany(c => c.Exams)
