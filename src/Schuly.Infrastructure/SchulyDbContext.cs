@@ -99,9 +99,10 @@ namespace Schuly.Infrastructure
             {
                 entity.HasKey(g => g.Id);
                 // Swiss grades: 1.00–6.00 with 0.25/0.5 steps; weighting 0.00–9.99.
-                // Pin precision so PG doesn't pick a provider default that drifts.
+                // Points: raw exam points (e.g. 23.5/30) before grade conversion.
                 entity.Property(g => g.Score).HasPrecision(4, 2);
                 entity.Property(g => g.Weighting).HasPrecision(4, 2);
+                entity.Property(g => g.Points).HasPrecision(6, 2);
                 entity.HasOne(g => g.SchoolUser)
                     .WithMany(su => su.Grades)
                     .HasForeignKey(g => g.SchoolUserId)
@@ -123,7 +124,11 @@ namespace Schuly.Infrastructure
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Name).HasMaxLength(200);
-                // EF creates an FK index on ClassId automatically; no HasIndex needed.
+                entity.Property(e => e.Group).HasMaxLength(100);
+                entity.Property(e => e.ClassAverage).HasPrecision(4, 2);
+                // EF creates an FK index on ClassId automatically.
+                // Composite for "exams in class X ordered by date".
+                entity.HasIndex(e => new { e.ClassId, e.Date });
 
                 entity.HasOne(e => e.Class)
                     .WithMany(c => c.Exams)
