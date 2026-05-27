@@ -433,4 +433,7 @@ FodyWeavers.xsd
 /flutter
 
 # Claude
-.claude/
+.claude/data/
+
+# SeaweedFS dev data (bind mount, host-persisted)
+/data/

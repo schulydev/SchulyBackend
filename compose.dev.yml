@@ -10,5 +10,27 @@ services:
       - "2406:5432"
     volumes:
       - postgres-data-dev:/var/lib/postgresql
+
+  # Single-binary SeaweedFS with master + volume server + S3 API on :8333.
+  # S3 credentials are configured via the static config file mounted in.
+  dev-s3:
+    image: chrislusf/seaweedfs:latest
+    container_name: schuly-s3-dev
+    restart: always
+    command: >
+      server -dir=/data
+      -s3 -s3.config=/etc/seaweedfs/s3-config.json
+      -s3.port=8333
+      -master.volumeSizeLimitMB=1024
+    ports:
+      - "8333:8333"  # S3 API
+      - "9333:9333"  # master UI
+      - "8888:8888"  # filer
+    volumes:
+      # Bind mount: blobs live on the host disk at ./data/seaweedfs so they
+      # survive `docker compose down -v` and can be backed up / inspected.
+      - ./data/seaweedfs:/data
+      - ./scripts/seaweedfs/s3-config.json:/etc/seaweedfs/s3-config.json:ro
+
 volumes:
   postgres-data-dev:
