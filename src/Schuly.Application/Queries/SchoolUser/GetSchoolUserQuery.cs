@@ -4,15 +4,17 @@ using Schuly.Application.Authorization;
 using Schuly.Application.Dtos;
 using Schuly.Application.Mappers;
 using Schuly.Application.Models;
-using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
+using Schuly.Infrastructure.Services;
 
 namespace Schuly.Application.Queries.SchoolUser
 {
-    [AuthorizedRoles(Roles.Student)]
+    [AllowAuthenticated]
     public record GetSchoolUserQuery(Guid SchoolUserId) : IQuery<Result<SchoolUserDto>>;
 
-    public class GetSchoolUserQueryHandler(SchulyDbContext dbContext) : IQueryHandler<GetSchoolUserQuery, Result<SchoolUserDto>>
+    public class GetSchoolUserQueryHandler(
+        SchulyDbContext dbContext,
+        IUserService userService) : IQueryHandler<GetSchoolUserQuery, Result<SchoolUserDto>>
     {
         public async ValueTask<Result<SchoolUserDto>> Handle(GetSchoolUserQuery query, CancellationToken cancellationToken)
         {
@@ -26,6 +28,14 @@ namespace Schuly.Application.Queries.SchoolUser
 
             if (schoolUser == null)
                 return Result<SchoolUserDto>.Failure($"SchoolUser with ID '{query.SchoolUserId}' not found");
+
+            // Non-admins can only read their own row. Admins bypass.
+            if (!userService.IsCurrentUserAdmin())
+            {
+                var currentUserId = await userService.GetCurrentUserIdAsync(cancellationToken);
+                if (schoolUser.ApplicationUserId != currentUserId)
+                    return Result<SchoolUserDto>.Failure("Forbidden");
+            }
 
             return Result<SchoolUserDto>.Success(schoolUser.ToDto());
         }

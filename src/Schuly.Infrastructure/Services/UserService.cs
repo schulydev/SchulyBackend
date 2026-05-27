@@ -1,11 +1,23 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Schuly.Domain;
 using Schuly.Domain.Enums;
+using System.Security.Claims;
 
 namespace Schuly.Infrastructure.Services
 {
-    public class UserService(IOidcService oidcService, SchulyDbContext dbContext) : IUserService
+    public class UserService(
+        IOidcService oidcService,
+        SchulyDbContext dbContext,
+        IHttpContextAccessor httpContextAccessor) : IUserService
     {
+        public bool IsCurrentUserAdmin()
+        {
+            var roleClaim = httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value;
+            return Enum.TryParse<Roles>(roleClaim, out var role) && role == Roles.Administrator;
+        }
+
+
         public async Task<bool> ExistsAsync(string externalId, CancellationToken cancellationToken = default)
         {
             return await dbContext.ApplicationUsers.AnyAsync(u => u.ExternalId == externalId, cancellationToken);
