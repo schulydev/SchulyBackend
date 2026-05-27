@@ -21,8 +21,6 @@ namespace Schuly.Application.Dtos
         public DateOnly? LeaveDate { get; set; }
         public required Roles Role { get; set; }
         public UserState State { get; set; }
-        public string? StudentNumber { get; set; }
-        public string? TeacherCode { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public List<AbsenceDto> Absences { get; set; } = new List<AbsenceDto>();
