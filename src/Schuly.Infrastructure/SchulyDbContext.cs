@@ -132,7 +132,8 @@ namespace Schuly.Infrastructure
                 entity.HasKey(c => c.Id);
                 entity.Property(c => c.Name).HasMaxLength(100);
                 entity.Property(c => c.Description).HasMaxLength(1000);
-                entity.HasIndex(c => c.Name).IsUnique();
+                // Name unique per school — different schools can both have a "Math" class.
+                entity.HasIndex(c => new { c.SchoolId, c.Name }).IsUnique();
 
                 entity.HasMany(c => c.Students)
                       .WithMany(su => su.Classes);
