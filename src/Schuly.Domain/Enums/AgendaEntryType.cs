@@ -1,7 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace Schuly.Domain.Enums
 {
     public enum AgendaEntryType
@@ -9,5 +5,6 @@ namespace Schuly.Domain.Enums
         Event = 0,
         Lesson = 1,
         Test = 2,
+        Holiday = 3,
     }
 }
