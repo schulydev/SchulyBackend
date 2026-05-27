@@ -30,5 +30,7 @@ namespace Schuly.Domain
         public ICollection<Grade> Grades { get; set; } = [];
         public ICollection<Class> Classes { get; set; } = [];
         public ICollection<AgendaEntry> Agenda { get; set; } = [];
+        public ICollection<StudentDocument> Documents { get; set; } = [];
+        public ICollection<SemesterReport> SemesterReports { get; set; } = [];
     }
 }
