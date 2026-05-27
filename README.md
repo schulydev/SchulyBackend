@@ -34,12 +34,60 @@ Clean-architecture C# API serving the Schuly mobile app. Built on ASP.NET Core w
 ## Run
 
 ```sh
-# Requires PostgreSQL — see compose.dev.yml
+# Spin up Postgres + SeaweedFS (document storage):
+docker compose -f compose.dev.yml up -d
+
+# Configure secrets once (see "Secrets" below)
 cd src/Schuly.API
 dotnet run --urls=http://localhost:5033
 ```
 
 OpenAPI / Swagger: `http://localhost:5033/swagger`
+
+## Secrets
+
+Sensitive config (OIDC client, DB connection, S3 credentials) lives in
+`dotnet user-secrets`, **not** in `appsettings.*.json`. Set these once per
+machine:
+
+```sh
+cd src/Schuly.API
+
+# OIDC (Pocket ID etc.)
+dotnet user-secrets set "Oidc:Authority" "https://your-oidc-provider"
+dotnet user-secrets set "Oidc:ClientId" "your-client-id"
+
+# Database
+dotnet user-secrets set "ConnectionStrings:SchulyDatabase" \
+    "Host=localhost;Port=2406;Database=schuly-dev;Username=postgres;Password=…"
+
+# S3 / SeaweedFS (document storage) — matches compose.dev.yml defaults
+dotnet user-secrets set "S3:Endpoint"     "http://localhost:8333"
+dotnet user-secrets set "S3:Bucket"       "schuly-documents"
+dotnet user-secrets set "S3:AccessKey"    "schuly-dev-access"
+dotnet user-secrets set "S3:SecretKey"    "schuly-dev-secret"
+dotnet user-secrets set "S3:UsePathStyle" "true"
+```
+
+`dotnet user-secrets list` shows everything currently set.
+
+## Document storage (SeaweedFS)
+
+Student documents (Schulnetz "Dokumente") are stored in a self-hosted
+**SeaweedFS** instance — S3-compatible, Apache 2.0 licensed, single binary.
+The default `compose.dev.yml` runs it locally on `:8333` with the credentials
+from the section above.
+
+Static dev credentials live in `scripts/seaweedfs/s3-config.json`; blob data
+is bind-mounted to `./data/seaweedfs/` on the host (gitignored) so it
+persists across container rebuilds.
+
+The backend **proxies all bytes** through itself — clients never see S3 URLs
+and never connect to SeaweedFS directly. Upload: `POST /api/students/{id}/documents`
+(multipart). Download: `GET /api/documents/{id}` (file response).
+
+For production, swap the `S3:*` user-secrets to point at AWS S3, Cloudflare R2,
+or a hardened SeaweedFS deployment — no code change.
 
 ## Migrations
 
