@@ -6,6 +6,12 @@ on:
 
 permissions: write-all
 
+# Newer run on the same ref cancels older in-flight runs (avoids races on
+# force-push, e.g. Co-Authored-By scrub).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
