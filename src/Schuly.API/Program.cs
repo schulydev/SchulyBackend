@@ -6,6 +6,7 @@ using Schuly.API.Extensions;
 using Schuly.API.Services;
 using Schuly.Infrastructure;
 using Schuly.Infrastructure.Services;
+using Schuly.Infrastructure.Storage;
 using Schuly.Plugin.Abstractions;
 using System.Text.Json.Serialization;
 
@@ -71,6 +72,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IOidcService, OidcService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
+builder.Services.AddSchulyDocumentStorage(builder.Configuration);
 
 builder.Services.AddPlugins(builder.Configuration, mvcBuilder);
 builder.Services.AddHostedService<PluginBackgroundTaskHost>();

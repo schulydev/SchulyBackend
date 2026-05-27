@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "schuly-backend",
+      "credentials": [
+        {
+          "accessKey": "schuly-dev-access",
+          "secretKey": "schuly-dev-secret"
+        }
+      ],
+      "actions": ["Admin", "Read", "Write", "List"]
+    }
+  ]
+}
