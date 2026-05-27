@@ -39,9 +39,15 @@ namespace Schuly.Infrastructure
             {
                 entity.HasKey(s => s.Id);
                 entity.Property(s => s.Name).HasMaxLength(200).IsRequired();
+                entity.Property(s => s.Description).HasMaxLength(1000);
                 entity.Property(s => s.Email).HasMaxLength(255);
                 entity.Property(s => s.PhoneNumber).HasMaxLength(50);
                 entity.Property(s => s.Website).HasMaxLength(255);
+                entity.Property(s => s.Street).HasMaxLength(200);
+                entity.Property(s => s.City).HasMaxLength(100);
+                entity.Property(s => s.State).HasMaxLength(100);
+                entity.Property(s => s.Zip).HasMaxLength(20);
+                entity.Property(s => s.Country).HasMaxLength(100);
                 entity.HasIndex(s => s.Name);
 
                 entity.HasMany(s => s.SchoolUsers)
@@ -60,8 +66,13 @@ namespace Schuly.Infrastructure
                 entity.HasKey(su => su.Id);
                 entity.HasIndex(su => su.Email).IsUnique();
                 entity.Property(su => su.Email).HasMaxLength(255);
+                entity.Property(su => su.PrivateEmail).HasMaxLength(255);
+                entity.Property(su => su.PhoneNumber).HasMaxLength(50);
                 entity.Property(su => su.FirstName).HasMaxLength(100);
                 entity.Property(su => su.LastName).HasMaxLength(100);
+                entity.Property(su => su.Street).HasMaxLength(200);
+                entity.Property(su => su.City).HasMaxLength(100);
+                entity.Property(su => su.Zip).HasMaxLength(20);
                 entity.Property(su => su.Role).IsRequired();
 
                 entity.HasOne(su => su.ApplicationUser)
@@ -82,6 +93,10 @@ namespace Schuly.Infrastructure
             modelBuilder.Entity<Grade>(entity =>
             {
                 entity.HasKey(g => g.Id);
+                // Swiss grades: 1.00–6.00 with 0.25/0.5 steps; weighting 0.00–9.99.
+                // Pin precision so PG doesn't pick a provider default that drifts.
+                entity.Property(g => g.Score).HasPrecision(4, 2);
+                entity.Property(g => g.Weighting).HasPrecision(4, 2);
                 entity.HasOne(g => g.SchoolUser)
                     .WithMany(su => su.Grades)
                     .HasForeignKey(g => g.SchoolUserId)
@@ -115,6 +130,7 @@ namespace Schuly.Infrastructure
             {
                 entity.HasKey(c => c.Id);
                 entity.Property(c => c.Name).HasMaxLength(100);
+                entity.Property(c => c.Description).HasMaxLength(1000);
                 entity.HasIndex(c => c.Name).IsUnique();
 
                 entity.HasMany(c => c.Students)
@@ -166,6 +182,7 @@ namespace Schuly.Infrastructure
             modelBuilder.Entity<Absence>(entity =>
             {
                 entity.HasKey(a => a.Id);
+                entity.Property(a => a.Reason).HasMaxLength(500);
 
                 entity.HasOne(a => a.SchoolUser)
                     .WithMany(su => su.Absences)
@@ -173,6 +190,12 @@ namespace Schuly.Infrastructure
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(a => new { a.SchoolUserId, a.From, a.Until, a.Type });
+
+                // From must precede Until — otherwise period math downstream
+                // (durations, overlaps) silently produces nonsense.
+                entity.ToTable(t => t.HasCheckConstraint(
+                    "CK_Absence_FromBeforeUntil",
+                    "\"From\" <= \"Until\""));
             });
         }
 
