@@ -15,6 +15,7 @@ namespace Schuly.Domain
 
         public ICollection<SchoolUser> SchoolUsers { get; set; } = [];
         public ICollection<Class> Classes { get; set; } = [];
+        public ICollection<Teacher> Teachers { get; set; } = [];
         public ICollection<AgendaEntry> Agenda { get; set; } = [];
     }
 }
