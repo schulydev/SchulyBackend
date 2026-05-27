@@ -63,8 +63,6 @@ namespace Schuly.Infrastructure
                 entity.Property(su => su.FirstName).HasMaxLength(100);
                 entity.Property(su => su.LastName).HasMaxLength(100);
                 entity.Property(su => su.Role).IsRequired();
-                entity.Property(su => su.StudentNumber).HasMaxLength(50);
-                entity.Property(su => su.TeacherCode).HasMaxLength(50);
 
                 entity.HasOne(su => su.ApplicationUser)
                     .WithMany(au => au.SchoolUsers)

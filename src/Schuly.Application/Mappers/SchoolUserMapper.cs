@@ -26,8 +26,6 @@ namespace Schuly.Application.Mappers
                 LeaveDate = schoolUser.LeaveDate,
                 Role = schoolUser.Role,
                 State = schoolUser.State,
-                StudentNumber = schoolUser.StudentNumber,
-                TeacherCode = schoolUser.TeacherCode,
                 CreatedAt = schoolUser.CreatedAt,
                 UpdatedAt = schoolUser.UpdatedAt,
                 Absences = schoolUser.Absences.Select(a => a.ToDto()).ToList(),
@@ -60,8 +58,6 @@ namespace Schuly.Application.Mappers
                 LeaveDate = dto.LeaveDate,
                 Role = dto.Role,
                 State = dto.State,
-                StudentNumber = dto.StudentNumber,
-                TeacherCode = dto.TeacherCode
             };
         }
 

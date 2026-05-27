@@ -20,9 +20,7 @@ namespace Schuly.Application.Commands.SchoolUser
         string? Zip,
         DateOnly Birthday,
         DateOnly EntryDate,
-        Roles Role,
-        string? StudentNumber,
-        string? TeacherCode) : ICommand<Result<Guid>>;
+        Roles Role) : ICommand<Result<Guid>>;
 
     public class CreateSchoolUserCommandHandler(SchulyDbContext dbContext) : ICommandHandler<CreateSchoolUserCommand, Result<Guid>>
     {
@@ -44,8 +42,6 @@ namespace Schuly.Application.Commands.SchoolUser
                 EntryDate = command.EntryDate,
                 Role = command.Role,
                 State = UserState.Active,
-                StudentNumber = command.StudentNumber,
-                TeacherCode = command.TeacherCode
             };
 
             await dbContext.SchoolUsers.AddAsync(schoolUser, cancellationToken);
