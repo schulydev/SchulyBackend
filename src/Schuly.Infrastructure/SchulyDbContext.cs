@@ -64,7 +64,8 @@ namespace Schuly.Infrastructure
             modelBuilder.Entity<SchoolUser>(entity =>
             {
                 entity.HasKey(su => su.Id);
-                entity.HasIndex(su => su.Email).IsUnique();
+                // Email unique per school — same person at two schools is fine.
+                entity.HasIndex(su => new { su.SchoolId, su.Email }).IsUnique();
                 entity.Property(su => su.Email).HasMaxLength(255);
                 entity.Property(su => su.PrivateEmail).HasMaxLength(255);
                 entity.Property(su => su.PhoneNumber).HasMaxLength(50);
