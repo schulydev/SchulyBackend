@@ -19,6 +19,7 @@ namespace Schuly.Application.Queries.User
         {
             var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
             var user = await dbContext.ApplicationUsers
+                .AsNoTracking()
                 .Include(u => u.SchoolUsers)
                 .SingleOrDefaultAsync(u => u.Id == userId, cancellationToken);
 

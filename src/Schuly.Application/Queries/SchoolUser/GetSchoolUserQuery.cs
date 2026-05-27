@@ -17,6 +17,8 @@ namespace Schuly.Application.Queries.SchoolUser
         public async ValueTask<Result<SchoolUserDto>> Handle(GetSchoolUserQuery query, CancellationToken cancellationToken)
         {
             var schoolUser = await dbContext.SchoolUsers
+                .AsNoTracking()
+                .AsSplitQuery()
                 .Include(su => su.Absences)
                 .Include(su => su.Grades)
                 .Include(su => su.Classes)
