@@ -17,6 +17,7 @@ namespace Schuly.Infrastructure
         public DbSet<StudentDocument> StudentDocuments { get; set; }
         public DbSet<SemesterReport> SemesterReports { get; set; }
         public DbSet<SemesterSubjectGrade> SemesterSubjectGrades { get; set; }
+        public DbSet<Teacher> Teachers { get; set; }
 
         public SchulyDbContext(DbContextOptions<SchulyDbContext> options) : base(options) { }
 
@@ -135,11 +136,15 @@ namespace Schuly.Infrastructure
                 entity.HasKey(c => c.Id);
                 entity.Property(c => c.Name).HasMaxLength(100);
                 entity.Property(c => c.Description).HasMaxLength(1000);
+                entity.Property(c => c.DisplayName).HasMaxLength(300);
+                entity.Property(c => c.Type).HasMaxLength(20);
                 // Name unique per school — different schools can both have a "Math" class.
                 entity.HasIndex(c => new { c.SchoolId, c.Name }).IsUnique();
 
                 entity.HasMany(c => c.Students)
                       .WithMany(su => su.Classes);
+                entity.HasMany(c => c.Teachers)
+                      .WithMany(t => t.Classes);
 
                 entity.HasOne(c => c.School)
                     .WithMany(s => s.Classes)
@@ -147,6 +152,29 @@ namespace Schuly.Infrastructure
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasIndex(c => c.SchoolId);
+                // Listing "courses I have this semester" is a hot query.
+                entity.HasIndex(c => new { c.SchoolId, c.SchoolYearStart, c.SemesterHalf });
+
+                entity.ToTable(t => t.HasCheckConstraint(
+                    "CK_Class_SemesterHalf",
+                    "\"SemesterHalf\" IS NULL OR \"SemesterHalf\" IN (1, 2)"));
+            });
+
+            modelBuilder.Entity<Teacher>(entity =>
+            {
+                entity.HasKey(t => t.Id);
+                entity.Property(t => t.FirstName).HasMaxLength(100).IsRequired();
+                entity.Property(t => t.LastName).HasMaxLength(100).IsRequired();
+                entity.Property(t => t.Code).HasMaxLength(20).IsRequired();
+                entity.Property(t => t.Email).HasMaxLength(255);
+
+                entity.HasOne(t => t.School)
+                    .WithMany(s => s.Teachers)
+                    .HasForeignKey(t => t.SchoolId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Kürzel uniquely identifies a teacher within a school.
+                entity.HasIndex(t => new { t.SchoolId, t.Code }).IsUnique();
             });
 
             modelBuilder.Entity<AgendaEntry>(entity =>
