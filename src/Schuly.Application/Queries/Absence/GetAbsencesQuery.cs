@@ -16,7 +16,7 @@ namespace Schuly.Application.Queries.Absence
     {
         public async ValueTask<Result<List<AbsenceDto>>> Handle(GetAbsencesQuery query, CancellationToken cancellationToken)
         {
-            var absences = await dbContext.Absences.ToListAsync(cancellationToken);
+            var absences = await dbContext.Absences.AsNoTracking().ToListAsync(cancellationToken);
             return Result<List<AbsenceDto>>.Success(absences.ToDto());
         }
     }

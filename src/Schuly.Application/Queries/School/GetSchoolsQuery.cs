@@ -16,7 +16,7 @@ namespace Schuly.Application.Queries.School
     {
         public async ValueTask<Result<List<SchoolDto>>> Handle(GetSchoolsQuery query, CancellationToken cancellationToken)
         {
-            var schools = await dbContext.Schools.ToListAsync(cancellationToken);
+            var schools = await dbContext.Schools.AsNoTracking().ToListAsync(cancellationToken);
             return Result<List<SchoolDto>>.Success(schools.ToDto());
         }
     }

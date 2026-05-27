@@ -16,7 +16,7 @@ namespace Schuly.Application.Queries.Agenda
     {
         public async ValueTask<Result<List<AgendaEntryDto>>> Handle(GetAgendasQuery query, CancellationToken cancellationToken)
         {
-            var agendaEntries = await dbContext.AgendaEntries.ToListAsync(cancellationToken);
+            var agendaEntries = await dbContext.AgendaEntries.AsNoTracking().ToListAsync(cancellationToken);
             return Result<List<AgendaEntryDto>>.Success(agendaEntries.ToDto());
         }
     }

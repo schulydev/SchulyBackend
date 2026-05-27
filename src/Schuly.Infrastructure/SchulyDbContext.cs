@@ -98,6 +98,8 @@ namespace Schuly.Infrastructure
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Name).HasMaxLength(200);
+                // Hot path: list exams for a class.
+                entity.HasIndex(e => e.ClassId);
 
                 entity.HasOne(e => e.Class)
                     .WithMany(c => c.Exams)
@@ -126,7 +128,9 @@ namespace Schuly.Infrastructure
             {
                 entity.HasKey(ae => ae.Id);
                 entity.Property(ae => ae.Title).HasMaxLength(200);
-                entity.HasIndex(ae => ae.Date);
+                // Composite supports "events for class X around date Y" without
+                // a separate index on Date alone.
+                entity.HasIndex(ae => new { ae.ClassId, ae.Date });
 
                 entity.HasOne(ae => ae.Class)
                     .WithMany(c => c.Agenda)

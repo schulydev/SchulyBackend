@@ -17,6 +17,7 @@ namespace Schuly.Application.Queries.ApplicationUser
         public async ValueTask<Result<List<ApplicationUserDto>>> Handle(GetApplicationUsersQuery query, CancellationToken cancellationToken)
         {
             var applicationUsers = await dbContext.ApplicationUsers
+                .AsNoTracking()
                 .Include(au => au.SchoolUsers)
                 .ToListAsync(cancellationToken);
 

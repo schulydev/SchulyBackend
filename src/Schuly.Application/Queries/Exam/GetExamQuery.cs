@@ -17,6 +17,7 @@ namespace Schuly.Application.Queries.Exam
         public async ValueTask<Result<ExamDto>> Handle(GetExamQuery query, CancellationToken cancellationToken)
         {
             var exam = await dbContext.Exams
+                .AsNoTracking()
                 .Include(e => e.Grades)
                 .SingleOrDefaultAsync(e => e.Id == query.ExamId, cancellationToken);
 
