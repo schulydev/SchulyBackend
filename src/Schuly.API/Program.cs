@@ -13,9 +13,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 
-builder.Services.AddControllers()
+var mvcBuilder = builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// Required for Swashbuckle to discover Minimal API endpoints (incl. plugin endpoints).
+builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(options =>
 {
@@ -69,7 +72,7 @@ builder.Services.AddScoped<IOidcService, OidcService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
 
-builder.Services.AddPlugins(builder.Configuration);
+builder.Services.AddPlugins(builder.Configuration, mvcBuilder);
 builder.Services.AddHostedService<PluginBackgroundTaskHost>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

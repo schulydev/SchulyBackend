@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Schuly.Plugin.Abstractions;
 using System.Reflection;
 
@@ -5,7 +6,16 @@ namespace Schuly.API.Extensions
 {
     public static class PluginExtensions
     {
-        public static IServiceCollection AddPlugins(this IServiceCollection services, IConfiguration configuration)
+        /// <summary>
+        /// Discovers plugins under <c>plugins/</c>, lets each one register its
+        /// services, and registers each plugin's assembly as an MVC
+        /// <see cref="ApplicationPart"/>. That registration is what lets plugin
+        /// authors choose: minimal-API endpoints via <c>ConfigureEndpoints</c>,
+        /// or a regular ASP.NET Controller in the plugin DLL — both appear in
+        /// Swagger.
+        /// </summary>
+        public static IServiceCollection AddPlugins(
+            this IServiceCollection services, IConfiguration configuration, IMvcBuilder mvcBuilder)
         {
             var plugins = DiscoverPlugins(configuration);
             var mainConnectionString = configuration.GetConnectionString("SchulyDatabase")
@@ -23,6 +33,7 @@ namespace Schuly.API.Extensions
                 var context = new PluginServiceContext(pluginConnectionString, pluginConfig);
 
                 plugin.ConfigureServices(services, context);
+                mvcBuilder.AddApplicationPart(plugin.GetType().Assembly);
             }
 
             services.AddSingleton<IReadOnlyList<ISchulyPlugin>>(plugins);

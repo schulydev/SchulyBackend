@@ -24,7 +24,12 @@
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
     <PackageReference Include="NetEscapades.Configuration.Yaml" Version="3.1.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
-    <PackageReference Include="Schuly.Plugin.Abstractions" Version="0.2.*" />
+    <!-- See Schuly.Application.csproj for why ExcludeAssets is needed. -->
+    <PackageReference Include="Schuly.Plugin.Abstractions" Version="0.2.*"
+                      GeneratePathProperty="true" ExcludeAssets="compile;runtime" />
+    <Reference Include="Schuly.Plugin.Abstractions">
+      <HintPath>$(PkgSchuly_Plugin_Abstractions)\lib\net10.0\Schuly.Plugin.Abstractions.dll</HintPath>
+    </Reference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.7" />
   </ItemGroup>
