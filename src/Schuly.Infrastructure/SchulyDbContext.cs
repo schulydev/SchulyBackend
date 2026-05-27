@@ -75,6 +75,8 @@ namespace Schuly.Infrastructure
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasIndex(su => new { su.ApplicationUserId, su.SchoolId });
+                // Admin: list teachers / students of a school.
+                entity.HasIndex(su => new { su.SchoolId, su.Role });
             });
 
             modelBuilder.Entity<Grade>(entity =>
@@ -91,6 +93,9 @@ namespace Schuly.Infrastructure
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(g => new { g.SchoolUserId, g.ExamId });
+                // Standalone ExamId index supports "all grades for exam X" —
+                // a composite (SchoolUserId, ExamId) only helps when filtering
+                // by the leading column.
                 entity.HasIndex(g => g.ExamId);
             });
 
@@ -130,6 +135,10 @@ namespace Schuly.Infrastructure
                 // Composite supports "events for class X around date Y" without
                 // a separate index on Date alone.
                 entity.HasIndex(ae => new { ae.ClassId, ae.Date });
+                // Mirror the (scope, Date) pattern for school-wide + personal
+                // scopes so each is fast for "events between two dates".
+                entity.HasIndex(ae => new { ae.SchoolId, ae.Date });
+                entity.HasIndex(ae => new { ae.SchoolUserId, ae.Date });
 
                 entity.HasOne(ae => ae.Class)
                     .WithMany(c => c.Agenda)
