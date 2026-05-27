@@ -7,7 +7,6 @@ namespace Schuly.Domain
         public required string Name { get; set; }
         public string? Description { get; set; }
         public ExamType Type { get; set; }
-        public string? Group { get; set; }
         public DateOnly? Date { get; set; }
         public decimal? ClassAverage { get; set; }
 
