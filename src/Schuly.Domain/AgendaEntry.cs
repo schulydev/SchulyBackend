@@ -9,7 +9,14 @@ namespace Schuly.Domain
         public string? Description { get; set; }
         public string? Place { get; set; }
         public required DateTime Date { get; set; }
-        public Guid ClassId { get; set; }
+
+        public Guid? ClassId { get; set; }
         public Class? Class { get; set; }
+
+        public Guid? SchoolId { get; set; }
+        public School? School { get; set; }
+
+        public Guid? SchoolUserId { get; set; }
+        public SchoolUser? SchoolUser { get; set; }
     }
 }

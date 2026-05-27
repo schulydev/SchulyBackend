@@ -10,6 +10,8 @@ namespace Schuly.Application.Dtos
         public string? Description { get; set; }
         public string? Place { get; set; }
         public required DateTime Date { get; set; }
-        public Guid ClassId { get; set; }
+        public Guid? ClassId { get; set; }
+        public Guid? SchoolId { get; set; }
+        public Guid? SchoolUserId { get; set; }
     }
 }

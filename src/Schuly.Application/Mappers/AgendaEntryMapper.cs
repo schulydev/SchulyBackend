@@ -15,7 +15,9 @@ namespace Schuly.Application.Mappers
                 Description = agendaEntry.Description,
                 Place = agendaEntry.Place,
                 Date = agendaEntry.Date,
-                ClassId = agendaEntry.ClassId
+                ClassId = agendaEntry.ClassId,
+                SchoolId = agendaEntry.SchoolId,
+                SchoolUserId = agendaEntry.SchoolUserId,
             };
         }
 
@@ -29,7 +31,9 @@ namespace Schuly.Application.Mappers
                 Description = dto.Description,
                 Place = dto.Place,
                 Date = dto.Date,
-                ClassId = dto.ClassId
+                ClassId = dto.ClassId,
+                SchoolId = dto.SchoolId,
+                SchoolUserId = dto.SchoolUserId,
             };
         }
 
