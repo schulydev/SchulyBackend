@@ -208,12 +208,19 @@ namespace Schuly.Infrastructure
                     .HasForeignKey(ae => ae.SchoolUserId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                // Exactly one of ClassId / SchoolId / SchoolUserId must be set.
-                entity.ToTable(t => t.HasCheckConstraint(
-                    "CK_AgendaEntry_ExactlyOneScope",
-                    "(CASE WHEN \"ClassId\" IS NULL THEN 0 ELSE 1 END" +
-                    " + CASE WHEN \"SchoolId\" IS NULL THEN 0 ELSE 1 END" +
-                    " + CASE WHEN \"SchoolUserId\" IS NULL THEN 0 ELSE 1 END) = 1"));
+                entity.ToTable(t =>
+                {
+                    // Exactly one of ClassId / SchoolId / SchoolUserId must be set.
+                    t.HasCheckConstraint(
+                        "CK_AgendaEntry_ExactlyOneScope",
+                        "(CASE WHEN \"ClassId\" IS NULL THEN 0 ELSE 1 END" +
+                        " + CASE WHEN \"SchoolId\" IS NULL THEN 0 ELSE 1 END" +
+                        " + CASE WHEN \"SchoolUserId\" IS NULL THEN 0 ELSE 1 END) = 1");
+                    // EndDate, when set, must not precede Date.
+                    t.HasCheckConstraint(
+                        "CK_AgendaEntry_EndDateAfterDate",
+                        "\"EndDate\" IS NULL OR \"EndDate\" >= \"Date\"");
+                });
             });
 
             modelBuilder.Entity<Absence>(entity =>
