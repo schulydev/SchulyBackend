@@ -4,6 +4,8 @@ namespace Schuly.Domain
     {
         public decimal Score { get; set; }
         public decimal Weighting { get; set; }
+        public decimal? Points { get; set; }
+
         public Guid ExamId { get; set; }
         public Exam? Exam { get; set; }
         public Guid SchoolUserId { get; set; }
