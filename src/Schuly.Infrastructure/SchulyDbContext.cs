@@ -124,7 +124,6 @@ namespace Schuly.Infrastructure
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Name).HasMaxLength(200);
-                entity.Property(e => e.Group).HasMaxLength(100);
                 entity.Property(e => e.ClassAverage).HasPrecision(4, 2);
                 // EF creates an FK index on ClassId automatically.
                 // Composite for "exams in class X ordered by date".
