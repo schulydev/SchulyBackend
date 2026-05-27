@@ -91,12 +91,28 @@ builder.Services.AddAuthorization(options =>
         .RequireAuthenticatedUser()
         .Build());
 
+// Dev-only HTTP request logging — surfaces method, path, status, and body
+// (e.g. 400 reason) for every request. Off in production.
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddHttpLogging(o =>
+    {
+        o.LoggingFields = Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.RequestPath
+                        | Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.RequestMethod
+                        | Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.RequestQuery
+                        | Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.ResponseStatusCode
+                        | Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.ResponseBody;
+        o.ResponseBodyLogLimit = 2048;
+    });
+}
+
 var app = builder.Build();
 
 app.ApplyMigrations();
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseHttpLogging();
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
