@@ -26,9 +26,6 @@ namespace Schuly.Domain
         public required Roles Role { get; set; }
         public UserState State { get; set; } = UserState.Active;
 
-        public string? StudentNumber { get; set; }
-        public string? TeacherCode { get; set; }
-
         public ICollection<Absence> Absences { get; set; } = [];
         public ICollection<Grade> Grades { get; set; } = [];
         public ICollection<Class> Classes { get; set; } = [];
