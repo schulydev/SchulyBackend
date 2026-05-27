@@ -14,6 +14,9 @@ namespace Schuly.Infrastructure
         public DbSet<Exam> Exams { get; set; }
         public DbSet<Absence> Absences { get; set; }
         public DbSet<AgendaEntry> AgendaEntries { get; set; }
+        public DbSet<StudentDocument> StudentDocuments { get; set; }
+        public DbSet<SemesterReport> SemesterReports { get; set; }
+        public DbSet<SemesterSubjectGrade> SemesterSubjectGrades { get; set; }
 
         public SchulyDbContext(DbContextOptions<SchulyDbContext> options) : base(options) { }
 
@@ -198,6 +201,65 @@ namespace Schuly.Infrastructure
                 entity.ToTable(t => t.HasCheckConstraint(
                     "CK_Absence_FromBeforeUntil",
                     "\"From\" <= \"Until\""));
+            });
+
+            modelBuilder.Entity<StudentDocument>(entity =>
+            {
+                entity.HasKey(d => d.Id);
+                entity.Property(d => d.Title).HasMaxLength(300).IsRequired();
+                entity.Property(d => d.Comment).HasMaxLength(2000);
+                entity.Property(d => d.Category).HasMaxLength(100);
+                entity.Property(d => d.EnteredBy).HasMaxLength(200);
+                entity.Property(d => d.FileName).HasMaxLength(300);
+                entity.Property(d => d.FileUrl).HasMaxLength(2000);
+                entity.Property(d => d.FollowUpAction).HasMaxLength(500);
+
+                entity.HasOne(d => d.SchoolUser)
+                    .WithMany(su => su.Documents)
+                    .HasForeignKey(d => d.SchoolUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(d => new { d.SchoolUserId, d.Category });
+            });
+
+            modelBuilder.Entity<SemesterReport>(entity =>
+            {
+                entity.HasKey(r => r.Id);
+                entity.Property(r => r.ProgramCode).HasMaxLength(50).IsRequired();
+                entity.Property(r => r.ClassName).HasMaxLength(100).IsRequired();
+                entity.Property(r => r.PromotionDecision).HasMaxLength(10);
+                entity.Property(r => r.GradeAverage).HasPrecision(4, 2);
+
+                entity.HasOne(r => r.SchoolUser)
+                    .WithMany(su => su.SemesterReports)
+                    .HasForeignKey(r => r.SchoolUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // One report per student × program × semester.
+                entity.HasIndex(r => new { r.SchoolUserId, r.ProgramCode, r.SchoolYearStart, r.SemesterHalf })
+                    .IsUnique();
+
+                entity.ToTable(t => t.HasCheckConstraint(
+                    "CK_SemesterReport_SemesterHalf",
+                    "\"SemesterHalf\" IN (1, 2)"));
+            });
+
+            modelBuilder.Entity<SemesterSubjectGrade>(entity =>
+            {
+                entity.HasKey(sg => sg.Id);
+                entity.Property(sg => sg.SubjectCode).HasMaxLength(50).IsRequired();
+                entity.Property(sg => sg.SubjectName).HasMaxLength(200).IsRequired();
+                entity.Property(sg => sg.SubjectTypeMarker).HasMaxLength(10);
+                entity.Property(sg => sg.Grade).HasPrecision(4, 2);
+                entity.Property(sg => sg.Marker).HasMaxLength(20);
+
+                entity.HasOne(sg => sg.SemesterReport)
+                    .WithMany(r => r.Subjects)
+                    .HasForeignKey(sg => sg.SemesterReportId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // One row per report × subject.
+                entity.HasIndex(sg => new { sg.SemesterReportId, sg.SubjectCode }).IsUnique();
             });
         }
 
