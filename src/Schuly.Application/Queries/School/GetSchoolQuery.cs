@@ -17,6 +17,7 @@ namespace Schuly.Application.Queries.School
         public async ValueTask<Result<SchoolDto>> Handle(GetSchoolQuery query, CancellationToken cancellationToken)
         {
             var school = await dbContext.Schools
+                .AsNoTracking()
                 .SingleOrDefaultAsync(s => s.Id == query.SchoolId, cancellationToken);
 
             if (school == null)

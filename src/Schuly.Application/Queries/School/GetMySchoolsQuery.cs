@@ -20,8 +20,8 @@ namespace Schuly.Application.Queries.School
             var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
 
             var schools = await dbContext.SchoolUsers
+                .AsNoTracking()
                 .Where(su => su.ApplicationUserId == userId)
-                .Include(su => su.School)
                 .Select(su => su.School!)
                 .Distinct()
                 .ToListAsync(cancellationToken);

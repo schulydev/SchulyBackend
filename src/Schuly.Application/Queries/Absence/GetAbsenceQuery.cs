@@ -17,6 +17,7 @@ namespace Schuly.Application.Queries.Absence
         public async ValueTask<Result<AbsenceDto>> Handle(GetAbsenceQuery query, CancellationToken cancellationToken)
         {
             var absence = await dbContext.Absences
+                .AsNoTracking()
                 .SingleOrDefaultAsync(a => a.Id == query.AbsenceId, cancellationToken);
 
             if (absence == null)

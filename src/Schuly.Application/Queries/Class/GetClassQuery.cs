@@ -17,6 +17,8 @@ namespace Schuly.Application.Queries.Class
         public async ValueTask<Result<ClassDto>> Handle(GetClassQuery query, CancellationToken cancellationToken)
         {
             var classEntity = await dbContext.Classes
+                .AsNoTracking()
+                .AsSplitQuery()
                 .Include(c => c.Students)
                     .ThenInclude(s => s.Absences)
                 .Include(c => c.Students)
