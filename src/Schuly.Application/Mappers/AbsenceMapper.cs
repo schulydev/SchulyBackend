@@ -14,7 +14,8 @@ namespace Schuly.Application.Mappers
                 Type = absence.Type,
                 From = absence.From,
                 Until = absence.Until,
-                SchoolUserId = absence.SchoolUserId
+                SchoolUserId = absence.SchoolUserId,
+                SchoolId = absence.SchoolUser?.SchoolId
             };
         }
 
