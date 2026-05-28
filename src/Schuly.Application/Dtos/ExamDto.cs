@@ -10,6 +10,7 @@ namespace Schuly.Application.Dtos
         public ExamType Type { get; set; }
         public required decimal ClassAverage { get; set; }
         public Guid ClassId { get; set; }
+        public Guid? SchoolId { get; set; }
         public List<GradeDto> Grades { get; set; } = new List<GradeDto>();
     }
 }
