@@ -18,6 +18,7 @@ namespace Schuly.Application.Queries.Absence
         {
             var absence = await dbContext.Absences
                 .AsNoTracking()
+                .Include(a => a.SchoolUser)
                 .SingleOrDefaultAsync(a => a.Id == query.AbsenceId, cancellationToken);
 
             if (absence == null)

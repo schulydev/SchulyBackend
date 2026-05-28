@@ -15,6 +15,7 @@ namespace Schuly.Application.Mappers
                 Type = exam.Type,
                 ClassAverage = exam.Grades.Any() ? exam.Grades.Sum(g => g.Score) / exam.Grades.Count : 0,
                 ClassId = exam.ClassId,
+                SchoolId = exam.Class?.SchoolId,
                 Grades = exam.Grades.Select(g => g.ToDto()).ToList()
             };
         }

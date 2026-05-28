@@ -18,6 +18,7 @@ namespace Schuly.Application.Queries.Exam
         {
             var exams = await dbContext.Exams
                 .AsNoTracking()
+                .Include(e => e.Class)
                 .Include(e => e.Grades)
                 .ToListAsync(cancellationToken);
 
