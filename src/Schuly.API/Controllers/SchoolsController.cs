@@ -25,7 +25,7 @@ namespace Schuly.API.Controllers
         }
 
         [HttpGet("my-schools")]
-        [ProducesResponseType(typeof(List<SchoolDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(List<MySchoolDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> GetMySchools(CancellationToken cancellationToken)
         {
