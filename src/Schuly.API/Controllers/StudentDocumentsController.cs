@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Schuly.Application.Commands.StudentDocument;
+using Schuly.Application.Dtos;
 using Schuly.Application.Queries.StudentDocument;
 
 namespace Schuly.API.Controllers
@@ -10,6 +11,20 @@ namespace Schuly.API.Controllers
     [Authorize]
     public class StudentDocumentsController(IMediator mediator) : ControllerBase
     {
+        /// <summary>
+        /// Lists document metadata (no bytes). Optionally filtered by student;
+        /// non-admins only ever see their own. Download content via
+        /// GET /api/documents/{id}.
+        /// </summary>
+        [HttpGet("api/documents")]
+        [ProducesResponseType(typeof(List<StudentDocumentDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> List([FromQuery] Guid? schoolUserId, CancellationToken ct)
+        {
+            var result = await mediator.Send(new GetStudentDocumentsQuery(schoolUserId), ct);
+            return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
+        }
+
         [HttpPost("api/students/{schoolUserId:guid}/documents")]
         [Consumes("multipart/form-data")]
         [RequestSizeLimit(50_000_000)]   // 50 MB hard cap; tune later if needed.
