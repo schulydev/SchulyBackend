@@ -76,6 +76,7 @@ builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
 builder.Services.AddSchulyDocumentStorage(builder.Configuration);
 
 builder.Services.AddPlugins(builder.Configuration, mvcBuilder);
+builder.Services.AddSingleton<PluginSchedulerRegistry>();
 builder.Services.AddHostedService<PluginBackgroundTaskHost>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
