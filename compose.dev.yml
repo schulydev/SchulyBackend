@@ -47,6 +47,11 @@ services:
     ipc: host    # Chromium shared-memory; avoids OOM crashes
     environment:
       - PYTHONUNBUFFERED=1
+      # Required at import. Public Schulnetz mobile client id; the per-school
+      # base URL is supplied per-request (X-Schulnetz-Base-Url header), so this
+      # default works across instances.
+      - SCHULNETZ_CLIENT_ID=ppyybShnMerHdtBQ
+      - SCHULNETZ_WEB_BASE_URL=https://schulnetz.web.app
     ports:
       - "8000:8000"
 
