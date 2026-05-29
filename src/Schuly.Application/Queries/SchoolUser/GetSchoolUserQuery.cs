@@ -14,7 +14,8 @@ namespace Schuly.Application.Queries.SchoolUser
 
     public class GetSchoolUserQueryHandler(
         SchulyDbContext dbContext,
-        IUserService userService) : IQueryHandler<GetSchoolUserQuery, Result<SchoolUserDto>>
+        IUserService userService,
+        IAvatarUrlSigner avatarSigner) : IQueryHandler<GetSchoolUserQuery, Result<SchoolUserDto>>
     {
         public async ValueTask<Result<SchoolUserDto>> Handle(GetSchoolUserQuery query, CancellationToken cancellationToken)
         {
@@ -37,7 +38,9 @@ namespace Schuly.Application.Queries.SchoolUser
                     return Result<SchoolUserDto>.Failure("Forbidden");
             }
 
-            return Result<SchoolUserDto>.Success(schoolUser.ToDto());
+            var dto = schoolUser.ToDto();
+            dto.ProfilePictureUrl = avatarSigner.ToPublicUrl(dto.Id, dto.ProfilePictureUrl);
+            return Result<SchoolUserDto>.Success(dto);
         }
     }
 }
