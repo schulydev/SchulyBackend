@@ -32,15 +32,12 @@ services:
       - ./data/seaweedfs:/data
       - ./scripts/seaweedfs/s3-config.json:/etc/seaweedfs/s3-config.json:ro
 
-  # Local SchulwareAPI (Schulnetz bridge the Schulware plugin talks to).
-  # Built from the sibling ../SchulwareAPI checkout so dev runs against current
-  # code — the public schlwr.pianonic.ch instance lags behind main and is
-  # missing endpoint/refresh fixes the plugin depends on. Point the plugin's
-  # SchulwareApi.BaseUrl at http://localhost:8000.
+  # SchulwareAPI (Schulnetz bridge the Schulware plugin talks to).
+  # Uses the latest GHCR image, which tracks main and carries the endpoint/refresh
+  # fixes the plugin depends on — unlike the public schlwr.pianonic.ch instance,
+  # which lags behind. Point the plugin's SchulwareApi.BaseUrl at http://localhost:8000.
   dev-schulware:
-    build:
-      context: ../SchulwareAPI
-      dockerfile: Dockerfile
+    image: ghcr.io/pianonic/schulwareapi:latest
     container_name: schuly-schulware-dev
     restart: unless-stopped
     init: true   # reap zombie Chromium processes
