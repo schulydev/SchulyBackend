@@ -71,6 +71,7 @@ builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddScoped<IOidcService, OidcService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddSingleton<IAvatarUrlSigner, AvatarUrlSigner>();
 builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
 builder.Services.AddSchulyDocumentStorage(builder.Configuration);
 
