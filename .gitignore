@@ -437,3 +437,7 @@ FodyWeavers.xsd
 
 # SeaweedFS dev data (bind mount, host-persisted)
 /data/
+
+# Local runtime plugins (built artifacts dropped in from the SchulyPlugins repo)
+/src/Schuly.API/plugins/
+/src/Schuly.API/plugins-config/
