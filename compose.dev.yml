@@ -32,5 +32,23 @@ services:
       - ./data/seaweedfs:/data
       - ./scripts/seaweedfs/s3-config.json:/etc/seaweedfs/s3-config.json:ro
 
+  # Local SchulwareAPI (Schulnetz bridge the Schulware plugin talks to).
+  # Built from the sibling ../SchulwareAPI checkout so dev runs against current
+  # code — the public schlwr.pianonic.ch instance lags behind main and is
+  # missing endpoint/refresh fixes the plugin depends on. Point the plugin's
+  # SchulwareApi.BaseUrl at http://localhost:8000.
+  dev-schulware:
+    build:
+      context: ../SchulwareAPI
+      dockerfile: Dockerfile
+    container_name: schuly-schulware-dev
+    restart: unless-stopped
+    init: true   # reap zombie Chromium processes
+    ipc: host    # Chromium shared-memory; avoids OOM crashes
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8000:8000"
+
 volumes:
   postgres-data-dev:
