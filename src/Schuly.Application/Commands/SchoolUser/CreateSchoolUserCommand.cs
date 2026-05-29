@@ -20,7 +20,8 @@ namespace Schuly.Application.Commands.SchoolUser
         string? Zip,
         DateOnly Birthday,
         DateOnly EntryDate,
-        Roles Role) : ICommand<Result<Guid>>;
+        Roles Role,
+        string? ProfilePictureUrl = null) : ICommand<Result<Guid>>;
 
     public class CreateSchoolUserCommandHandler(SchulyDbContext dbContext) : ICommandHandler<CreateSchoolUserCommand, Result<Guid>>
     {
@@ -35,6 +36,7 @@ namespace Schuly.Application.Commands.SchoolUser
                 Email = command.Email,
                 PrivateEmail = command.PrivateEmail,
                 PhoneNumber = command.PhoneNumber,
+                ProfilePictureUrl = command.ProfilePictureUrl,
                 Street = command.Street,
                 City = command.City,
                 Zip = command.Zip,

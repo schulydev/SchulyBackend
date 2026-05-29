@@ -19,7 +19,8 @@ namespace Schuly.Application.Commands.SchoolUser
         string? City,
         string? Zip,
         DateOnly? LeaveDate,
-        UserState? State) : ICommand<Result>;
+        UserState? State,
+        string? ProfilePictureUrl = null) : ICommand<Result>;
 
     public class UpdateSchoolUserCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateSchoolUserCommand, Result>
     {
@@ -60,6 +61,9 @@ namespace Schuly.Application.Commands.SchoolUser
 
             if (command.State.HasValue)
                 schoolUser.State = command.State.Value;
+
+            if (!string.IsNullOrEmpty(command.ProfilePictureUrl))
+                schoolUser.ProfilePictureUrl = command.ProfilePictureUrl;
 
             await dbContext.SaveChangesAsync(cancellationToken);
 

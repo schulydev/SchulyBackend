@@ -17,7 +17,8 @@ namespace Schuly.Application.Commands.School
         string? City,
         string? State,
         string? Zip,
-        string? Country) : ICommand<Result<Guid>>;
+        string? Country,
+        string? LogoUrl = null) : ICommand<Result<Guid>>;
 
     public class CreateSchoolCommandHandler(SchulyDbContext dbContext) : ICommandHandler<CreateSchoolCommand, Result<Guid>>
     {
@@ -34,7 +35,8 @@ namespace Schuly.Application.Commands.School
                 City = command.City,
                 State = command.State,
                 Zip = command.Zip,
-                Country = command.Country
+                Country = command.Country,
+                LogoUrl = command.LogoUrl
             };
 
             await dbContext.Schools.AddAsync(school, cancellationToken);

@@ -15,6 +15,7 @@ namespace Schuly.Domain
         public required string Email { get; set; }
         public string? PrivateEmail { get; set; }
         public string? PhoneNumber { get; set; }
+        public string? ProfilePictureUrl { get; set; }
 
         public string? Street { get; set; }
         public string? City { get; set; }

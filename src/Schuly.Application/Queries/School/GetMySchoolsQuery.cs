@@ -27,6 +27,8 @@ namespace Schuly.Application.Queries.School
                     Name = su.School.Name,
                     Email = su.Email,
                     FullName = (su.FirstName + " " + su.LastName).Trim(),
+                    LogoUrl = su.School.LogoUrl,
+                    ProfilePictureUrl = su.ProfilePictureUrl,
                 })
                 .ToListAsync(cancellationToken);
 

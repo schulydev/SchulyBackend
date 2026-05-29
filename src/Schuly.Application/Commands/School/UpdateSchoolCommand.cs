@@ -18,7 +18,8 @@ namespace Schuly.Application.Commands.School
         string? City,
         string? State,
         string? Zip,
-        string? Country) : ICommand<Result>;
+        string? Country,
+        string? LogoUrl = null) : ICommand<Result>;
 
     public class UpdateSchoolCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateSchoolCommand, Result>
     {
@@ -39,6 +40,7 @@ namespace Schuly.Application.Commands.School
             school.State = command.State;
             school.Zip = command.Zip;
             school.Country = command.Country;
+            school.LogoUrl = command.LogoUrl;
 
             await dbContext.SaveChangesAsync(cancellationToken);
 
