@@ -4,6 +4,7 @@ using Schuly.Application.Dtos;
 using Schuly.Application.Mappers;
 using Schuly.Application.Models;
 using Schuly.Infrastructure;
+using Schuly.Infrastructure.Services;
 
 using Schuly.Application.Authorization;
 
@@ -12,7 +13,7 @@ namespace Schuly.Application.Queries.Class
     [AllowAuthenticated]
     public record GetClassQuery(Guid ClassId) : IQuery<Result<ClassDto>>;
 
-    public class GetClassQueryHandler(SchulyDbContext dbContext) : IQueryHandler<GetClassQuery, Result<ClassDto>>
+    public class GetClassQueryHandler(SchulyDbContext dbContext, IAvatarUrlSigner avatarSigner) : IQueryHandler<GetClassQuery, Result<ClassDto>>
     {
         public async ValueTask<Result<ClassDto>> Handle(GetClassQuery query, CancellationToken cancellationToken)
         {
@@ -31,7 +32,10 @@ namespace Schuly.Application.Queries.Class
             if (classEntity == null)
                 return Result<ClassDto>.Failure($"Class with ID '{query.ClassId}' not found");
 
-            return Result<ClassDto>.Success(classEntity.ToDto());
+            var dto = classEntity.ToDto();
+            foreach (var student in dto.Students)
+                student.ProfilePictureUrl = avatarSigner.ToPublicUrl(student.Id, student.ProfilePictureUrl);
+            return Result<ClassDto>.Success(dto);
         }
     }
 }

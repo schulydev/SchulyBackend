@@ -6,13 +6,14 @@ using Schuly.Application.Mappers;
 using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
+using Schuly.Infrastructure.Services;
 
 namespace Schuly.Application.Queries.SchoolUser
 {
     [AuthorizedRoles(Roles.Teacher)]
     public record GetSchoolUsersQuery(Guid? ApplicationUserId = null) : IQuery<Result<List<SchoolUserDto>>>;
 
-    public class GetSchoolUsersQueryHandler(SchulyDbContext dbContext) : IQueryHandler<GetSchoolUsersQuery, Result<List<SchoolUserDto>>>
+    public class GetSchoolUsersQueryHandler(SchulyDbContext dbContext, IAvatarUrlSigner avatarSigner) : IQueryHandler<GetSchoolUsersQuery, Result<List<SchoolUserDto>>>
     {
         public async ValueTask<Result<List<SchoolUserDto>>> Handle(GetSchoolUsersQuery query, CancellationToken cancellationToken)
         {
@@ -28,7 +29,10 @@ namespace Schuly.Application.Queries.SchoolUser
                 dbQuery = dbQuery.Where(su => su.ApplicationUserId == query.ApplicationUserId.Value);
 
             var schoolUsers = await dbQuery.ToListAsync(cancellationToken);
-            return Result<List<SchoolUserDto>>.Success(schoolUsers.ToDto());
+            var dtos = schoolUsers.ToDto();
+            foreach (var dto in dtos)
+                dto.ProfilePictureUrl = avatarSigner.ToPublicUrl(dto.Id, dto.ProfilePictureUrl);
+            return Result<List<SchoolUserDto>>.Success(dtos);
         }
     }
 }
