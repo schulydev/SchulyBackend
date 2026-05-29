@@ -2,7 +2,10 @@ using Schuly.Plugin.Abstractions;
 
 namespace Schuly.API.Services
 {
-    public class PluginBackgroundTaskHost(IServiceProvider serviceProvider, ILogger<PluginBackgroundTaskHost> logger) : BackgroundService
+    public class PluginBackgroundTaskHost(
+        IServiceProvider serviceProvider,
+        PluginSchedulerRegistry registry,
+        ILogger<PluginBackgroundTaskHost> logger) : BackgroundService
     {
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -15,15 +18,20 @@ namespace Schuly.API.Services
         private async Task RunTaskLoop(IPluginBackgroundTask task, CancellationToken stoppingToken)
         {
             logger.LogInformation("Plugin background task '{Name}' started with interval {Interval}", task.Name, task.Interval);
+            registry.Register(task.Name, task.Interval);
 
             while (!stoppingToken.IsCancellationRequested)
             {
+                var startedAt = System.Diagnostics.Stopwatch.GetTimestamp();
+                registry.RecordStart(task.Name);
                 try
                 {
                     await task.ExecuteAsync(serviceProvider, stoppingToken);
+                    registry.RecordSuccess(task.Name, ElapsedMs(startedAt));
                 }
                 catch (Exception ex)
                 {
+                    registry.RecordFailure(task.Name, ElapsedMs(startedAt), ex.Message);
                     logger.LogError(ex, "Plugin background task '{Name}' failed", task.Name);
                 }
 
@@ -39,5 +47,8 @@ namespace Schuly.API.Services
 
             logger.LogInformation("Plugin background task '{Name}' stopped", task.Name);
         }
+
+        private static long ElapsedMs(long startTimestamp) =>
+            (long)System.Diagnostics.Stopwatch.GetElapsedTime(startTimestamp).TotalMilliseconds;
     }
 }
