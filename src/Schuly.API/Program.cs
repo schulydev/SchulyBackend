@@ -8,6 +8,7 @@ using Schuly.Infrastructure;
 using Schuly.Infrastructure.Services;
 using Schuly.Infrastructure.Storage;
 using Schuly.Plugin.Abstractions;
+using Scalar.AspNetCore;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -117,13 +118,28 @@ app.ApplyMigrations();
 if (app.Environment.IsDevelopment())
 {
     app.UseHttpLogging();
+
+    // Swashbuckle still produces the OpenAPI document at /swagger/v1/swagger.json
+    // (the Dart client is generated from it); Scalar renders the interactive UI.
     app.UseSwagger();
-    app.UseSwaggerUI(options =>
+    // AllowAnonymous: the app's global RequireAuthenticatedUser fallback policy would
+    // otherwise 401 the Scalar reference endpoint (the static assets are already
+    // exempt internally).
+    app.MapScalarApiReference(options =>
     {
-        options.OAuthClientId(builder.Configuration["Oidc:ClientId"]);
-        options.OAuthUsePkce();
-        options.OAuthScopes("openid", "profile", "email", "groups", "picture");
-    });
+        options
+            .WithTitle("Schuly API")
+            // Swashbuckle serves the doc at /swagger/v1/swagger.json; register it
+            // so Scalar maps the reference page at /scalar (and /scalar/v1).
+            .AddDocument("v1", routePattern: "/swagger/{documentName}/swagger.json")
+            .AddPreferredSecuritySchemes("OAuth2")
+            .AddAuthorizationCodeFlow("OAuth2", flow =>
+            {
+                flow.ClientId = builder.Configuration["Oidc:ClientId"];
+                flow.Pkce = Pkce.Sha256;
+                flow.SelectedScopes = ["openid", "profile", "email", "groups", "picture"];
+            });
+    }).AllowAnonymous();
 }
 
 app.UseAuthentication();
