@@ -12,6 +12,7 @@ namespace Schuly.Domain
         public string? State { get; set; }
         public string? Zip { get; set; }
         public string? Country { get; set; }
+        public string? LogoUrl { get; set; }
 
         public ICollection<SchoolUser> SchoolUsers { get; set; } = [];
         public ICollection<Class> Classes { get; set; } = [];
