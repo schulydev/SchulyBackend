@@ -31,9 +31,6 @@
     <Reference Include="Schuly.Plugin.Abstractions">
       <HintPath>$(PkgSchuly_Plugin_Abstractions)\lib\net10.0\Schuly.Plugin.Abstractions.dll</HintPath>
     </Reference>
-    <!-- Swashbuckle generates the OpenAPI document (/swagger/v1/swagger.json);
-         the interactive UI is served by Scalar, not Swashbuckle's SwaggerUI. -->
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
   </ItemGroup>
 
   <ItemGroup>
