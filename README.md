@@ -42,7 +42,7 @@ cd src/Schuly.API
 dotnet run --urls=http://localhost:5033
 ```
 
-API reference (Scalar): `http://localhost:5033/scalar` · OpenAPI document: `http://localhost:5033/swagger/v1/swagger.json`
+API reference (Scalar): `http://localhost:5033/scalar` · OpenAPI document: `http://localhost:5033/openapi/v1.json`
 
 ## Secrets
 
