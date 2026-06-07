@@ -13,6 +13,7 @@ namespace Schuly.Application.Mappers
                 Name = exam.Name,
                 Description = exam.Description,
                 Type = exam.Type,
+                Date = exam.Date,
                 ClassAverage = exam.Grades.Any() ? exam.Grades.Sum(g => g.Score) / exam.Grades.Count : 0,
                 ClassId = exam.ClassId,
                 SchoolId = exam.Class?.SchoolId,
@@ -28,6 +29,7 @@ namespace Schuly.Application.Mappers
                 Name = dto.Name,
                 Description = dto.Description,
                 Type = dto.Type,
+                Date = dto.Date,
                 ClassId = dto.ClassId,
                 Grades = dto.Grades.Select(g => g.ToDomain()).ToList()
             };

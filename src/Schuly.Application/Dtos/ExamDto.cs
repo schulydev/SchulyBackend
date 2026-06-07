@@ -8,6 +8,7 @@ namespace Schuly.Application.Dtos
         public required string Name { get; set; }
         public string? Description { get; set; }
         public ExamType Type { get; set; }
+        public DateOnly? Date { get; set; }
         public required decimal ClassAverage { get; set; }
         public Guid ClassId { get; set; }
         public Guid? SchoolId { get; set; }
