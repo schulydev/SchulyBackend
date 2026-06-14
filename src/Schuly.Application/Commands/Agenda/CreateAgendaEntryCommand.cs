@@ -4,7 +4,6 @@ using Schuly.Domain;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 using Schuly.Infrastructure.Services;
-
 using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Commands.Agenda

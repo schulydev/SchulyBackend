@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
-
 using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Commands.Exam

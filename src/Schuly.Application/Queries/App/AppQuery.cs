@@ -2,7 +2,6 @@ using Mediator;
 using Microsoft.Extensions.Configuration;
 using Schuly.Application.Dtos;
 using Schuly.Application.Models;
-
 using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Queries.App

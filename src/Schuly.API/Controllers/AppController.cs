@@ -17,10 +17,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new AppQuery(), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpGet("test", Name = "TestEndpointWithAuth")]
