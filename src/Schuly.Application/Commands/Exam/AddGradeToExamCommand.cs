@@ -1,13 +1,14 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Models;
+using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
 using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Commands.Exam
 {
-    [AllowAuthenticated]
+    [AuthorizedRoles(Roles.Teacher)]
     public record AddGradeToExamCommand(Guid ExamId, Guid StudentId, decimal Grade, decimal Weight = 1) : ICommand<Result>;
 
     public class AddGradeToExamCommandHandler(SchulyDbContext dbContext) : ICommandHandler<AddGradeToExamCommand, Result>

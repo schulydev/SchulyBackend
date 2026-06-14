@@ -1,13 +1,14 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Models;
+using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
 using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Commands.Class
 {
-    [AllowAuthenticated]
+    [AuthorizedRoles(Roles.Teacher)]
     public record EnrolStudentCommand(Guid UserId, Guid ClassId) : ICommand<Result>;
 
     public class EnrolStudentCommandHandler(SchulyDbContext dbContext) : ICommandHandler<EnrolStudentCommand, Result>

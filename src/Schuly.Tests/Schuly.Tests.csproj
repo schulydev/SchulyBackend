@@ -8,7 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="TUnit" Version="1.40.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.7" />
     <!-- See Schuly.Application.csproj for why ExcludeAssets is needed. -->
     <PackageReference Include="Schuly.Plugin.Abstractions" Version="0.2.*"
                       GeneratePathProperty="true" ExcludeAssets="compile;runtime" />

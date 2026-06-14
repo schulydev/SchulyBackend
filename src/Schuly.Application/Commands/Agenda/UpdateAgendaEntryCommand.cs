@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
+using Schuly.Infrastructure.Services;
 
 using Schuly.Application.Authorization;
 
@@ -20,7 +21,7 @@ namespace Schuly.Application.Commands.Agenda
         Guid? SchoolId,
         Guid? SchoolUserId) : ICommand<Result>;
 
-    public class UpdateAgendaEntryCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateAgendaEntryCommand, Result>
+    public class UpdateAgendaEntryCommandHandler(SchulyDbContext dbContext, IUserService userService) : ICommandHandler<UpdateAgendaEntryCommand, Result>
     {
         public async ValueTask<Result> Handle(UpdateAgendaEntryCommand command, CancellationToken cancellationToken)
         {
@@ -35,6 +36,17 @@ namespace Schuly.Application.Commands.Agenda
 
             if (agendaEntry == null)
                 return Result.Failure($"Agenda entry with ID '{command.AgendaEntryId}' not found");
+
+            // Non-admins may only edit their own personal entry, and may not turn
+            // it into a class/school entry or hand it to another user.
+            if (!userService.IsCurrentUserAdmin())
+            {
+                var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+                var ownsExisting = agendaEntry.SchoolUserId is Guid existing && myIds.Contains(existing);
+                var ownsTarget = command.SchoolUserId is Guid target && myIds.Contains(target);
+                if (!ownsExisting || !ownsTarget)
+                    return Result.Failure("Forbidden");
+            }
 
             agendaEntry.EntryType = command.EntryType;
             agendaEntry.Title = command.Title;
