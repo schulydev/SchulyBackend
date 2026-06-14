@@ -35,7 +35,7 @@ namespace Schuly.Application.Commands.Agenda
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
                 if (command.SchoolUserId is not Guid ownerId || !myIds.Contains(ownerId))
-                    return Result.Failure("Forbidden");
+                    return Result.Forbidden();
             }
 
             await dbContext.AgendaEntries.AddAsync(new AgendaEntry

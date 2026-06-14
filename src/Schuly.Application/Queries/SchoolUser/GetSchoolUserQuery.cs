@@ -35,7 +35,7 @@ namespace Schuly.Application.Queries.SchoolUser
             {
                 var currentUserId = await userService.GetCurrentUserIdAsync(cancellationToken);
                 if (schoolUser.ApplicationUserId != currentUserId)
-                    return Result<SchoolUserDto>.Failure("Forbidden");
+                    return Result<SchoolUserDto>.Forbidden();
             }
 
             var dto = schoolUser.ToDto();

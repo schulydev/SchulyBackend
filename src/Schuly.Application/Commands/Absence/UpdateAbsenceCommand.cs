@@ -27,7 +27,7 @@ namespace Schuly.Application.Commands.Absence
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
                 if (!myIds.Contains(absence.SchoolUserId) || !myIds.Contains(command.SchoolUserId))
-                    return Result.Failure("Forbidden");
+                    return Result.Forbidden();
             }
 
             absence.Reason = command.Reason;
