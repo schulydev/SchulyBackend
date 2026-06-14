@@ -45,6 +45,26 @@ namespace Schuly.Infrastructure.Services
                 .ToListAsync(cancellationToken);
         }
 
+        public async Task<bool> CanManageClassAsync(Guid classId, CancellationToken cancellationToken = default)
+        {
+            if (IsCurrentUserAdmin())
+                return true;
+
+            var currentUserId = await GetCurrentUserIdAsync(cancellationToken);
+
+            var teacherIds = await dbContext.Teachers
+                .Where(t => t.ApplicationUserId == currentUserId)
+                .Select(t => t.Id)
+                .ToListAsync(cancellationToken);
+
+            // Unlinked teacher: keep the pre-link, role-only behaviour.
+            if (teacherIds.Count == 0)
+                return true;
+
+            return await dbContext.Classes
+                .AnyAsync(c => c.Id == classId && c.Teachers.Any(t => teacherIds.Contains(t.Id)), cancellationToken);
+        }
+
         public async Task SyncCurrentUserAsync(CancellationToken cancellationToken = default)
         {
             var oidcUser = await oidcService.GetCurrentUserAsync(cancellationToken)

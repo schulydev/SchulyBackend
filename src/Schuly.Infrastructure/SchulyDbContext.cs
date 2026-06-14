@@ -177,8 +177,15 @@ namespace Schuly.Infrastructure
                     .HasForeignKey(t => t.SchoolId)
                     .OnDelete(DeleteBehavior.Restrict);
 
+                entity.HasOne(t => t.ApplicationUser)
+                    .WithMany(au => au.Teachers)
+                    .HasForeignKey(t => t.ApplicationUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
                 // Kürzel uniquely identifies a teacher within a school.
                 entity.HasIndex(t => new { t.SchoolId, t.Code }).IsUnique();
+                // Resolve the current login's teacher records for per-class authz.
+                entity.HasIndex(t => t.ApplicationUserId);
             });
 
             modelBuilder.Entity<AgendaEntry>(entity =>
