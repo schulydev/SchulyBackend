@@ -1,7 +1,7 @@
 # <p align="center">SchulyBackend</p>
 <p align="center">
   <img src="./assets/app_icon.png" width="160" alt="Schuly Logo">
-</p>
+</p> 
 <p align="center">
   <strong>ASP.NET Core backend powering the Schuly ecosystem</strong>
 </p>
