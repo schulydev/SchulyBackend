@@ -36,7 +36,7 @@ namespace Schuly.Application.Queries.StudentDocument
             {
                 var currentUserId = await userService.GetCurrentUserIdAsync(ct);
                 if (doc.SchoolUser?.ApplicationUserId != currentUserId)
-                    return Result<DocumentDownload>.Failure("Forbidden");
+                    return Result<DocumentDownload>.Forbidden();
             }
 
             if (string.IsNullOrWhiteSpace(doc.FileUrl))

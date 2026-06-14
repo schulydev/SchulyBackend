@@ -44,7 +44,7 @@ namespace Schuly.Application.Commands.Agenda
                 var ownsExisting = agendaEntry.SchoolUserId is Guid existing && myIds.Contains(existing);
                 var ownsTarget = command.SchoolUserId is Guid target && myIds.Contains(target);
                 if (!ownsExisting || !ownsTarget)
-                    return Result.Failure("Forbidden");
+                    return Result.Forbidden();
             }
 
             agendaEntry.EntryType = command.EntryType;

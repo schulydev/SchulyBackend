@@ -25,7 +25,7 @@ namespace Schuly.Application.Commands.Agenda
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
                 if (agendaEntry.SchoolUserId is not Guid ownerId || !myIds.Contains(ownerId))
-                    return Result.Failure("Forbidden");
+                    return Result.Forbidden();
             }
 
             dbContext.AgendaEntries.Remove(agendaEntry);

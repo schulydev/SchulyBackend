@@ -40,7 +40,7 @@ namespace Schuly.Application.Commands.StudentDocument
                 var owned = await db.SchoolUsers
                     .AnyAsync(su => su.Id == command.SchoolUserId && su.ApplicationUserId == currentUserId, ct);
                 if (!owned)
-                    return Result<Guid>.Failure("Forbidden");
+                    return Result<Guid>.Forbidden();
             }
 
             var blob = await storage.UploadAsync(command.Content, command.FileName, command.ContentType, ct);

@@ -29,7 +29,7 @@ namespace Schuly.Application.Queries.Absence
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
                 if (!myIds.Contains(absence.SchoolUserId))
-                    return Result<AbsenceDto>.Failure("Forbidden");
+                    return Result<AbsenceDto>.Forbidden();
             }
 
             return Result<AbsenceDto>.Success(absence.ToDto());
