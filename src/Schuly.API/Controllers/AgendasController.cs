@@ -18,10 +18,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetAgendas(CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetAgendasQuery(), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpGet("search")]
@@ -30,10 +27,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetAgenda([FromQuery] Guid agendaEntryId, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetAgendaQuery(agendaEntryId), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpPost]
@@ -42,10 +36,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> CreateEntry([FromBody] CreateAgendaEntryCommand command, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(command, cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpPut]
@@ -54,10 +45,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> UpdateEntry([FromBody] UpdateAgendaEntryCommand command, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(command, cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpDelete("{id:guid}")]
@@ -66,10 +54,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> DeleteEntry(Guid id, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new DeleteAgendaEntryCommand(id), cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
     }
 }

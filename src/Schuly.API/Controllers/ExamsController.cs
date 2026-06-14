@@ -18,10 +18,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetExam([FromQuery] Guid examId, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetExamQuery(examId), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpGet]
@@ -30,10 +27,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetExams(CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetExamsQuery(), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpPost]
@@ -42,10 +36,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> AddExam([FromBody] CreateExamCommand command, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(command, cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpPost("grade")]
@@ -54,10 +45,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> AddGradeToExam([FromBody] AddGradeToExamCommand command, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(command, cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpPut]
@@ -66,10 +54,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> UpdateExam([FromBody] UpdateExamCommand command, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(command, cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpDelete("{id:guid}")]
@@ -78,10 +63,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> DeleteExam(Guid id, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new DeleteExamCommand(id), cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
     }
 }

@@ -17,10 +17,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetCurrentUser(CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetCurrentUserQuery(), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpGet("sync")]
@@ -29,10 +26,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> Sync(CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new SyncUserCommand(), cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
     }
 }

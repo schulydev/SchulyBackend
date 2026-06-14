@@ -18,10 +18,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetSchools(CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetSchoolsQuery(), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpGet("my-schools")]
@@ -30,10 +27,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetMySchools(CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetMySchoolsQuery(), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpGet("{id:guid}")]
@@ -42,10 +36,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetSchool(Guid id, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetSchoolQuery(id), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpPost]
@@ -54,10 +45,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> CreateSchool([FromBody] CreateSchoolCommand command, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(command, cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpPut]
@@ -66,10 +54,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> UpdateSchool([FromBody] UpdateSchoolCommand command, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(command, cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpDelete("{id:guid}")]
@@ -78,10 +63,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> DeleteSchool(Guid id, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new DeleteSchoolCommand(id), cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
     }
 }
