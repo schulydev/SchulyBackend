@@ -22,7 +22,7 @@ namespace Schuly.Application.Commands.ApplicationUser
                 return Result.Failure($"ApplicationUser with ID '{command.ApplicationUserId}' not found");
 
             if (applicationUser.SchoolUsers.Count > 0)
-                return Result.Failure(
+                return Result.Conflict(
                     $"Cannot delete ApplicationUser with {applicationUser.SchoolUsers.Count} linked SchoolUser(s). " +
                     "Delete all linked SchoolUsers first.");
 
