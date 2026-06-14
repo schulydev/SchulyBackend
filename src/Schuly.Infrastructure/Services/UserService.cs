@@ -35,6 +35,16 @@ namespace Schuly.Infrastructure.Services
             return user.Id;
         }
 
+        public async Task<IReadOnlyList<Guid>> GetCurrentUserSchoolUserIdsAsync(CancellationToken cancellationToken = default)
+        {
+            var currentUserId = await GetCurrentUserIdAsync(cancellationToken);
+
+            return await dbContext.SchoolUsers
+                .Where(su => su.ApplicationUserId == currentUserId)
+                .Select(su => su.Id)
+                .ToListAsync(cancellationToken);
+        }
+
         public async Task SyncCurrentUserAsync(CancellationToken cancellationToken = default)
         {
             var oidcUser = await oidcService.GetCurrentUserAsync(cancellationToken)
