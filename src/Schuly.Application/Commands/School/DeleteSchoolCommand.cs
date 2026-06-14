@@ -17,13 +17,16 @@ namespace Schuly.Application.Commands.School
             var school = await dbContext.Schools
                 .Include(s => s.SchoolUsers)
                 .Include(s => s.Classes)
+                .Include(s => s.Teachers)
                 .FirstOrDefaultAsync(s => s.Id == command.Id, cancellationToken: cancellationToken);
 
             if (school == null)
                 return Result.Failure($"School with ID {command.Id} not found");
 
-            if (school.SchoolUsers.Any() || school.Classes.Any())
-                return Result.Failure("Cannot delete school that has associated users or classes");
+            // All three relationships are Restrict — deleting with any dependent
+            // would raise an FK violation, so block it cleanly first (409).
+            if (school.SchoolUsers.Any() || school.Classes.Any() || school.Teachers.Any())
+                return Result.Conflict("Cannot delete school that has associated users, classes or teachers");
 
             dbContext.Schools.Remove(school);
             await dbContext.SaveChangesAsync(cancellationToken);
