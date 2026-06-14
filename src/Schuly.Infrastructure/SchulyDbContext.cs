@@ -29,7 +29,10 @@ namespace Schuly.Infrastructure
             {
                 entity.HasKey(au => au.Id);
                 entity.HasIndex(au => au.ExternalId).IsUnique();
-                entity.HasIndex(au => au.Email).IsUnique();
+                // ExternalId is the identity key; email isn't reliably unique across
+                // IdPs and the OIDC sync writes it blindly, so keep it indexed but
+                // not unique to avoid a login-time collision.
+                entity.HasIndex(au => au.Email);
                 entity.Property(au => au.Email).HasMaxLength(255);
                 entity.Property(au => au.DisplayName).HasMaxLength(200);
 
@@ -99,10 +102,8 @@ namespace Schuly.Infrastructure
             {
                 entity.HasKey(g => g.Id);
                 // Swiss grades: 1.00–6.00 with 0.25/0.5 steps; weighting 0.00–9.99.
-                // Points: raw exam points (e.g. 23.5/30) before grade conversion.
                 entity.Property(g => g.Score).HasPrecision(4, 2);
                 entity.Property(g => g.Weighting).HasPrecision(4, 2);
-                entity.Property(g => g.Points).HasPrecision(6, 2);
                 entity.HasOne(g => g.SchoolUser)
                     .WithMany(su => su.Grades)
                     .HasForeignKey(g => g.SchoolUserId)
@@ -124,7 +125,6 @@ namespace Schuly.Infrastructure
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Name).HasMaxLength(200);
-                entity.Property(e => e.ClassAverage).HasPrecision(4, 2);
                 // EF creates an FK index on ClassId automatically.
                 // Composite for "exams in class X ordered by date".
                 entity.HasIndex(e => new { e.ClassId, e.Date });
@@ -140,9 +140,8 @@ namespace Schuly.Infrastructure
                 entity.HasKey(c => c.Id);
                 entity.Property(c => c.Name).HasMaxLength(100);
                 entity.Property(c => c.Description).HasMaxLength(1000);
-                entity.Property(c => c.DisplayName).HasMaxLength(300);
-                entity.Property(c => c.Type).HasMaxLength(20);
                 // Name unique per school — different schools can both have a "Math" class.
+                // The leading SchoolId also serves FK lookups, so no separate index.
                 entity.HasIndex(c => new { c.SchoolId, c.Name }).IsUnique();
 
                 entity.HasMany(c => c.Students)
@@ -154,14 +153,6 @@ namespace Schuly.Infrastructure
                     .WithMany(s => s.Classes)
                     .HasForeignKey(c => c.SchoolId)
                     .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasIndex(c => c.SchoolId);
-                // Listing "courses I have this semester" is a hot query.
-                entity.HasIndex(c => new { c.SchoolId, c.SchoolYearStart, c.SemesterHalf });
-
-                entity.ToTable(t => t.HasCheckConstraint(
-                    "CK_Class_SemesterHalf",
-                    "\"SemesterHalf\" IS NULL OR \"SemesterHalf\" IN (1, 2)"));
             });
 
             modelBuilder.Entity<Teacher>(entity =>
