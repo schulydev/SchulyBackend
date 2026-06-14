@@ -7,5 +7,6 @@ namespace Schuly.Domain
         public string DisplayName { get; set; } = "Schuly User";
         public string? ProfilePictureUrl { get; set; }
         public ICollection<SchoolUser> SchoolUsers { get; set; } = [];
+        public ICollection<Teacher> Teachers { get; set; } = [];
     }
 }
