@@ -16,26 +16,19 @@ namespace Schuly.Application.Queries.Exam
     {
         public async ValueTask<Result<ExamDto>> Handle(GetExamQuery query, CancellationToken cancellationToken)
         {
-            var dbQuery = dbContext.Exams
-                .AsNoTracking()
-                .Include(e => e.Class)
-                .AsQueryable();
+            // Students only see an exam for a class they're enrolled in, and only
+            // their own grade on it. Admins see all.
+            var isAdmin = userService.IsCurrentUserAdmin();
+            IReadOnlyList<Guid> myIds = isAdmin ? [] : await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
 
-            if (userService.IsCurrentUserAdmin())
-            {
-                dbQuery = dbQuery.Include(e => e.Grades);
-            }
-            else
-            {
-                // Students only see an exam for a class they're enrolled in, and
-                // only their own grade on it.
-                var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
-                dbQuery = dbQuery
-                    .Where(e => e.Class!.Students.Any(su => myIds.Contains(su.Id)))
-                    .Include(e => e.Grades.Where(g => myIds.Contains(g.SchoolUserId)));
-            }
+            IQueryable<Domain.Exam> dbQuery = dbContext.Exams.AsNoTracking().Include(e => e.Class);
 
-            var exam = await dbQuery.SingleOrDefaultAsync(e => e.Id == query.ExamId, cancellationToken);
+            if (!isAdmin)
+                dbQuery = dbQuery.Where(e => e.Class!.Students.Any(su => myIds.Contains(su.Id)));
+
+            var exam = await dbQuery
+                .Include(e => e.Grades.Where(g => isAdmin || myIds.Contains(g.SchoolUserId)))
+                .SingleOrDefaultAsync(e => e.Id == query.ExamId, cancellationToken);
 
             if (exam == null)
                 return Result<ExamDto>.Failure($"Exam with ID '{query.ExamId}' not found");
