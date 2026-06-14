@@ -29,6 +29,7 @@ builder.Services.AddHostedService<PluginBackgroundTaskHost>();
 
 builder.Services.AddSchulyAuthentication(builder.Configuration);
 builder.Services.AddSchulyAuthorization();
+builder.Services.AddSchulyExceptionHandling();
 
 if (builder.Environment.IsDevelopment())
     builder.Services.AddSchulyRequestLogging();
@@ -36,6 +37,8 @@ if (builder.Environment.IsDevelopment())
 var app = builder.Build();
 
 app.ApplyMigrations();
+
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
