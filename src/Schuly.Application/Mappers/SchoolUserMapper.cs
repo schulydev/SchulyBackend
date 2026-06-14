@@ -39,30 +39,6 @@ namespace Schuly.Application.Mappers
             };
         }
 
-        public static SchoolUser ToDomain(this SchoolUserDto dto)
-        {
-            return new SchoolUser
-            {
-                Id = dto.Id,
-                ApplicationUserId = dto.ApplicationUserId,
-                SchoolId = dto.SchoolId,
-                FirstName = dto.FirstName,
-                LastName = dto.LastName,
-                Email = dto.Email,
-                PrivateEmail = dto.PrivateEmail,
-                PhoneNumber = dto.PhoneNumber,
-                ProfilePictureUrl = dto.ProfilePictureUrl,
-                Street = dto.Street,
-                City = dto.City,
-                Zip = dto.Zip,
-                Birthday = dto.Birthday,
-                EntryDate = dto.EntryDate,
-                LeaveDate = dto.LeaveDate,
-                Role = dto.Role,
-                State = dto.State,
-            };
-        }
-
         public static List<SchoolUserDto> ToDto(this List<SchoolUser> schoolUsers)
         {
             return schoolUsers.Select(su => su.ToDto()).ToList();
