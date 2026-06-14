@@ -21,28 +21,9 @@ namespace Schuly.Application.Mappers
             };
         }
 
-        public static Exam ToDomain(this ExamDto dto)
-        {
-            return new Exam
-            {
-                Id = dto.Id,
-                Name = dto.Name,
-                Description = dto.Description,
-                Type = dto.Type,
-                Date = dto.Date,
-                ClassId = dto.ClassId,
-                Grades = dto.Grades.Select(g => g.ToDomain()).ToList()
-            };
-        }
-
         public static List<ExamDto> ToDto(this List<Exam> exams)
         {
             return exams.Select(e => e.ToDto()).ToList();
-        }
-
-        public static List<Exam> ToDomain(this List<ExamDto> dtos)
-        {
-            return dtos.Select(d => d.ToDomain()).ToList();
         }
     }
 }

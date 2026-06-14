@@ -20,28 +20,9 @@ namespace Schuly.Application.Mappers
             };
         }
 
-        public static Class ToDomain(this ClassDto dto)
-        {
-            return new Class
-            {
-                Id = dto.Id,
-                Name = dto.Name,
-                Description = dto.Description,
-                SchoolId = dto.SchoolId,
-                Students = dto.Students.Select(s => s.ToDomain()).ToList(),
-                Agenda = dto.Agenda.Select(a => a.ToDomain()).ToList(),
-                Exams = dto.Exams.Select(e => e.ToDomain()).ToList()
-            };
-        }
-
         public static List<ClassDto> ToDto(this List<Class> classes)
         {
             return classes.Select(c => c.ToDto()).ToList();
-        }
-
-        public static List<Class> ToDomain(this List<ClassDto> dtos)
-        {
-            return dtos.Select(d => d.ToDomain()).ToList();
         }
     }
 }

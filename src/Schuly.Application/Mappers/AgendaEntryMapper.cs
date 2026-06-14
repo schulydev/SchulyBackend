@@ -22,31 +22,9 @@ namespace Schuly.Application.Mappers
             };
         }
 
-        public static AgendaEntry ToDomain(this AgendaEntryDto dto)
-        {
-            return new AgendaEntry
-            {
-                Id = dto.Id,
-                EntryType = dto.EntryType,
-                Title = dto.Title,
-                Description = dto.Description,
-                Place = dto.Place,
-                Date = dto.Date,
-                EndDate = dto.EndDate,
-                ClassId = dto.ClassId,
-                SchoolId = dto.SchoolId,
-                SchoolUserId = dto.SchoolUserId,
-            };
-        }
-
         public static List<AgendaEntryDto> ToDto(this List<AgendaEntry> agendaEntries)
         {
             return agendaEntries.Select(a => a.ToDto()).ToList();
-        }
-
-        public static List<AgendaEntry> ToDomain(this List<AgendaEntryDto> dtos)
-        {
-            return dtos.Select(d => d.ToDomain()).ToList();
         }
     }
 }
