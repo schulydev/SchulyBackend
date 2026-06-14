@@ -1,4 +1,5 @@
 using Schuly.Application.Commands.School;
+using Schuly.Application.Models;
 using Schuly.Domain;
 using Schuly.Tests.TestHelpers;
 
@@ -19,7 +20,7 @@ namespace Schuly.Tests
 
             var result = await new DeleteSchoolCommandHandler(ctx).Handle(new DeleteSchoolCommand(school.Id), CancellationToken.None);
 
-            await Assert.That(result.IsConflict).IsTrue();
+            await Assert.That(result.Status).IsEqualTo(ResultStatus.Conflict);
             await Assert.That(ctx.Schools.Any(s => s.Id == school.Id)).IsTrue();
         }
 
