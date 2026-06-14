@@ -19,27 +19,9 @@ namespace Schuly.Application.Mappers
             };
         }
 
-        public static Absence ToDomain(this AbsenceDto dto)
-        {
-            return new Absence
-            {
-                Id = dto.Id,
-                Reason = dto.Reason,
-                Type = dto.Type,
-                From = dto.From,
-                Until = dto.Until,
-                SchoolUserId = dto.SchoolUserId
-            };
-        }
-
         public static List<AbsenceDto> ToDto(this List<Absence> absences)
         {
             return absences.Select(a => a.ToDto()).ToList();
-        }
-
-        public static List<Absence> ToDomain(this List<AbsenceDto> dtos)
-        {
-            return dtos.Select(d => d.ToDomain()).ToList();
         }
     }
 }
