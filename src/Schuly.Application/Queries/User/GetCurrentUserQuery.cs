@@ -5,7 +5,6 @@ using Schuly.Application.Mappers;
 using Schuly.Application.Models;
 using Schuly.Infrastructure;
 using Schuly.Infrastructure.Services;
-
 using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Queries.User

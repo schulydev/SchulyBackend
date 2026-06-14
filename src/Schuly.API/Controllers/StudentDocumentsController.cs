@@ -22,7 +22,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> List([FromQuery] Guid? schoolUserId, CancellationToken ct)
         {
             var result = await mediator.Send(new GetStudentDocumentsQuery(schoolUserId), ct);
-            return result.IsSuccess ? Ok(result.Value) : BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpPost("api/students/{schoolUserId:guid}/documents")]

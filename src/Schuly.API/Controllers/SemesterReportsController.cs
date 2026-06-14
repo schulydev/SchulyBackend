@@ -17,10 +17,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetSemesterReports([FromQuery] Guid? schoolUserId, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetSemesterReportsQuery(schoolUserId), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
     }
 }

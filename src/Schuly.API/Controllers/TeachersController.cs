@@ -18,10 +18,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetTeacher(Guid id, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetTeacherQuery(id), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpGet]
@@ -30,10 +27,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetTeachers(CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetTeachersQuery(), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpPost]
@@ -42,10 +36,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> CreateTeacher([FromBody] CreateTeacherCommand command, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(command, cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpPut]
@@ -54,10 +45,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> UpdateTeacher([FromBody] UpdateTeacherCommand command, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(command, cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpDelete("{id:guid}")]
@@ -66,10 +54,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> DeleteTeacher(Guid id, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new DeleteTeacherCommand(id), cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
     }
 }

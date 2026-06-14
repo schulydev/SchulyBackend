@@ -18,10 +18,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetApplicationUser(Guid id, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetApplicationUserQuery(id), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpGet]
@@ -30,10 +27,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetApplicationUsers(CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetApplicationUsersQuery(), cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpPost]
@@ -42,10 +36,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> CreateApplicationUser([FromBody] CreateApplicationUserCommand command, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(command, cancellationToken);
-            if (result.IsSuccess)
-                return Ok(result.Value);
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpPut]
@@ -54,10 +45,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> UpdateApplicationUser([FromBody] UpdateApplicationUserCommand command, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(command, cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
 
         [HttpDelete("{id:guid}")]
@@ -66,10 +54,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> DeleteApplicationUser(Guid id, CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new DeleteApplicationUserCommand(id), cancellationToken);
-            if (result.IsSuccess)
-                return NoContent();
-
-            return BadRequest(result.Error);
+            return result.ToActionResult();
         }
     }
 }

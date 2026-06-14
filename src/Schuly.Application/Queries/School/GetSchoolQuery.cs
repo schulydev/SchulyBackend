@@ -4,7 +4,6 @@ using Schuly.Application.Dtos;
 using Schuly.Application.Mappers;
 using Schuly.Application.Models;
 using Schuly.Infrastructure;
-
 using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Queries.School
