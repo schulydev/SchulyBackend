@@ -28,6 +28,16 @@ namespace Schuly.Tests
         }
 
         [Test]
+        public async Task Conflict_result_maps_to_409()
+        {
+            var action = Result.Conflict("has dependents").ToActionResult();
+
+            var obj = action as ObjectResult;
+            await Assert.That(obj).IsNotNull();
+            await Assert.That(obj!.StatusCode).IsEqualTo(StatusCodes.Status409Conflict);
+        }
+
+        [Test]
         public async Task Plain_failure_still_maps_to_400()
         {
             var action = Result.Failure("nope").ToActionResult();
