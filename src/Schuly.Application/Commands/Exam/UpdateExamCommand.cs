@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Models;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
+using Schuly.Infrastructure.Services;
 using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Commands.Exam
@@ -10,7 +11,7 @@ namespace Schuly.Application.Commands.Exam
     [AuthorizedRoles(Roles.Teacher)]
     public record UpdateExamCommand(Guid ExamId, string Name, string? Description, ExamType Type, Guid ClassId) : ICommand<Result>;
 
-    public class UpdateExamCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateExamCommand, Result>
+    public class UpdateExamCommandHandler(SchulyDbContext dbContext, IUserService userService) : ICommandHandler<UpdateExamCommand, Result>
     {
         public async ValueTask<Result> Handle(UpdateExamCommand command, CancellationToken cancellationToken)
         {
@@ -19,6 +20,11 @@ namespace Schuly.Application.Commands.Exam
 
             if (exam == null)
                 return Result.Failure($"Exam with ID '{command.ExamId}' not found");
+
+            // Manage both the current class and the target class it's moving to.
+            if (!await userService.CanManageClassAsync(exam.ClassId, cancellationToken) ||
+                !await userService.CanManageClassAsync(command.ClassId, cancellationToken))
+                return Result.Forbidden();
 
             exam.Name = command.Name;
             exam.Description = command.Description;
