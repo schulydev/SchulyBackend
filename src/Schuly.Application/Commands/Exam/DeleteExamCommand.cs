@@ -1,13 +1,14 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Models;
+using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 
 using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Commands.Exam
 {
-    [AllowAuthenticated]
+    [AuthorizedRoles(Roles.Teacher)]
     public record DeleteExamCommand(Guid ExamId) : ICommand<Result>;
 
     public class DeleteExamCommandHandler(SchulyDbContext dbContext) : ICommandHandler<DeleteExamCommand, Result>
