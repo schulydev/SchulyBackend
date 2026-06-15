@@ -35,7 +35,9 @@ namespace Schuly.Infrastructure.Services
         private async Task<JsonElement?> FetchUserInfoAsync(CancellationToken cancellationToken)
         {
             var options = jwtOptionsMonitor.Get(JwtBearerDefaults.AuthenticationScheme);
-            var config = await options.ConfigurationManager!.GetConfigurationAsync(cancellationToken);
+            // No metadata (e.g. the dev fake-OIDC path) — fall back to token claims.
+            if (options.ConfigurationManager is null) return null;
+            var config = await options.ConfigurationManager.GetConfigurationAsync(cancellationToken);
             if (string.IsNullOrEmpty(config.UserInfoEndpoint)) return null;
 
             var context = httpContextAccessor.HttpContext;
