@@ -1,5 +1,7 @@
+using Mediator;
 using Schuly.API.Extensions;
 using Schuly.API.Services;
+using Schuly.Application.Behaviors;
 using Schuly.Infrastructure.Services;
 using Schuly.Infrastructure.Storage;
 using Schuly.Plugin.Abstractions;
@@ -12,6 +14,10 @@ var mvcBuilder = builder.Services.AddSchulyControllers();
 
 builder.Services.AddSchulyOpenApi(builder.Configuration);
 builder.Services.AddMediator(options => { options.ServiceLifetime = ServiceLifetime.Scoped; });
+// Mediator does not auto-register pipeline behaviors — they must be added explicitly,
+// and run in registration order. Authorization first so role gates are enforced.
+builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
+builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(PluginEventBehavior<,>));
 builder.Services.AddSchulyDatabase(builder.Configuration);
 
 builder.Services.AddHttpClient();
