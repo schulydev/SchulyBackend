@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Tokens;
 using Schuly.Infrastructure.Services;
 using System.Security.Claims;
 
@@ -9,17 +10,38 @@ namespace Schuly.API.Extensions
     public static class AuthenticationExtensions
     {
         // JWT bearer auth against the configured OIDC authority, plus user-sync on
-        // first valid token.
+        // first valid token. In Development, an opt-in fake-OIDC path validates
+        // locally minted tokens instead (see DevAuthDefaults / DevAuthController).
         public static IServiceCollection AddSchulyAuthentication(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
-                    options.Authority = configuration["Oidc:Authority"];
-                    options.RequireHttpsMetadata = configuration.GetValue("Oidc:RequireHttpsMetadata", true);
-                    options.TokenValidationParameters.NameClaimType = "name";
-                    options.TokenValidationParameters.RoleClaimType = "groups";
-                    options.TokenValidationParameters.ValidateAudience = false;
+                    if (DevAuthDefaults.IsEnabled(configuration))
+                    {
+                        // Local testing only: trust tokens minted by /api/dev/token,
+                        // signed with a symmetric key. No external IdP is contacted.
+                        options.RequireHttpsMetadata = false;
+                        options.MapInboundClaims = false;
+                        options.TokenValidationParameters = new TokenValidationParameters
+                        {
+                            ValidateIssuer = true,
+                            ValidIssuer = DevAuthDefaults.Issuer(configuration),
+                            ValidateAudience = false,
+                            ValidateIssuerSigningKey = true,
+                            IssuerSigningKey = DevAuthDefaults.SigningKey(configuration),
+                            NameClaimType = "name",
+                            RoleClaimType = ClaimTypes.Role,
+                        };
+                    }
+                    else
+                    {
+                        options.Authority = configuration["Oidc:Authority"];
+                        options.RequireHttpsMetadata = configuration.GetValue("Oidc:RequireHttpsMetadata", true);
+                        options.TokenValidationParameters.NameClaimType = "name";
+                        options.TokenValidationParameters.RoleClaimType = "groups";
+                        options.TokenValidationParameters.ValidateAudience = false;
+                    }
                 })
                 .AddUserSync();
             return services;
