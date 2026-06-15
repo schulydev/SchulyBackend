@@ -10,6 +10,7 @@ namespace Schuly.Infrastructure
         public DbSet<ApplicationUser> ApplicationUsers { get; set; }
         public DbSet<SchoolUser> SchoolUsers { get; set; }
         public DbSet<School> Schools { get; set; }
+        public DbSet<SchoolSystem> SchoolSystems { get; set; }
         public DbSet<Grade> Grades { get; set; }
         public DbSet<Exam> Exams { get; set; }
         public DbSet<Absence> Absences { get; set; }
@@ -66,6 +67,22 @@ namespace Schuly.Infrastructure
                     .WithOne(c => c.School)
                     .HasForeignKey(c => c.SchoolId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<SchoolSystem>(entity =>
+            {
+                entity.HasKey(s => s.Id);
+                // Key is the stable identifier the app and the config seeder match on.
+                entity.HasIndex(s => s.Key).IsUnique();
+                entity.Property(s => s.Key).HasMaxLength(50).IsRequired();
+                entity.Property(s => s.DisplayName).HasMaxLength(200).IsRequired();
+                entity.Property(s => s.LogoUrl).HasMaxLength(2000);
+                entity.Property(s => s.SchulwareApiBaseUrl).HasMaxLength(2000);
+                entity.Property(s => s.LoginMethod).HasMaxLength(50).IsRequired();
+
+                // Field descriptors are a small, always-loaded-together list — store
+                // them as JSON on the row rather than a separate table.
+                entity.OwnsMany(s => s.LoginFields, b => b.ToJson());
             });
 
             modelBuilder.Entity<SchoolUser>(entity =>

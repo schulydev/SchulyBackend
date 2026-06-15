@@ -1,0 +1,46 @@
+namespace Schuly.Domain
+{
+    /// <summary>
+    /// A login provider the app can offer (e.g. Schulnetz, OdAOrg). The backend owns
+    /// this catalog so the app can render the system picker and each system's login
+    /// form dynamically, instead of hardcoding them.
+    /// </summary>
+    public class SchoolSystem : Base
+    {
+        /// <summary>Stable identifier the app branches its login flow on, e.g. "schulnetz".</summary>
+        public required string Key { get; set; }
+
+        public required string DisplayName { get; set; }
+        public string? LogoUrl { get; set; }
+
+        /// <summary>Which SchulwareAPI (proxy) instance drives this system's login, when applicable.</summary>
+        public string? SchulwareApiBaseUrl { get; set; }
+
+        /// <summary>How the app should drive the login: "oauth-webview" or "credentials".</summary>
+        public required string LoginMethod { get; set; }
+
+        public bool Enabled { get; set; } = true;
+
+        /// <summary>Display order in the picker (ascending).</summary>
+        public int SortOrder { get; set; }
+
+        /// <summary>Inputs the app must render to collect what the login needs.</summary>
+        public List<SchoolSystemLoginField> LoginFields { get; set; } = [];
+    }
+
+    /// <summary>One input the app renders on a system's login form. Persisted as JSON on the owning system.</summary>
+    public class SchoolSystemLoginField
+    {
+        /// <summary>Field identifier sent back with the collected value, e.g. "baseUrl".</summary>
+        public required string Key { get; set; }
+
+        public required string Label { get; set; }
+
+        /// <summary>Input type hint: "url", "text" or "password".</summary>
+        public required string Type { get; set; }
+
+        public string? Placeholder { get; set; }
+        public string? DefaultValue { get; set; }
+        public bool Required { get; set; } = true;
+    }
+}
