@@ -43,6 +43,7 @@ if (builder.Environment.IsDevelopment())
 var app = builder.Build();
 
 app.ApplyMigrations();
+await app.SeedSchoolSystemsAsync();
 
 app.UseExceptionHandler();
 
