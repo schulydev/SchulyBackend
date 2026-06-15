@@ -16,6 +16,13 @@ namespace Schuly.Domain
         /// <summary>Which SchulwareAPI (proxy) instance drives this system's login, when applicable.</summary>
         public string? SchulwareApiBaseUrl { get; set; }
 
+        /// <summary>
+        /// Base path of this system's stateless plugin endpoints used by the app's
+        /// private mode, e.g. "/api/plugins/schulware/stateless". Lets the client
+        /// reach the right proxy without hardcoding plugin routes.
+        /// </summary>
+        public string? StatelessBasePath { get; set; }
+
         /// <summary>How the app should drive the login: "oauth-webview" or "credentials".</summary>
         public required string LoginMethod { get; set; }
 
