@@ -13,7 +13,7 @@ namespace Schuly.Application.Mappers
                 Key = system.Key,
                 DisplayName = system.DisplayName,
                 LogoUrl = system.LogoUrl,
-                SchulwareApiBaseUrl = system.SchulwareApiBaseUrl,
+                PrivateAuthStrategy = system.PrivateAuthStrategy,
                 StatelessBasePath = system.StatelessBasePath,
                 PluginBasePath = system.PluginBasePath,
                 LoginMethod = system.LoginMethod,
