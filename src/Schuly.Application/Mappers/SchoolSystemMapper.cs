@@ -15,6 +15,7 @@ namespace Schuly.Application.Mappers
                 LogoUrl = system.LogoUrl,
                 SchulwareApiBaseUrl = system.SchulwareApiBaseUrl,
                 StatelessBasePath = system.StatelessBasePath,
+                PluginBasePath = system.PluginBasePath,
                 LoginMethod = system.LoginMethod,
                 Enabled = system.Enabled,
                 SortOrder = system.SortOrder,
