@@ -34,6 +34,7 @@ namespace Schuly.Infrastructure.Seeding
                     LogoUrl = s.LogoUrl,
                     SchulwareApiBaseUrl = s.SchulwareApiBaseUrl,
                     StatelessBasePath = s.StatelessBasePath,
+                    PluginBasePath = s.PluginBasePath,
                     Enabled = s.Enabled,
                     SortOrder = s.SortOrder,
                     LoginFields = s.LoginFields.Select(f => new SchoolSystemLoginField
@@ -64,6 +65,7 @@ namespace Schuly.Infrastructure.Seeding
         public string? LogoUrl { get; set; }
         public string? SchulwareApiBaseUrl { get; set; }
         public string? StatelessBasePath { get; set; }
+        public string? PluginBasePath { get; set; }
         public bool Enabled { get; set; } = true;
         public int SortOrder { get; set; }
         public List<SchoolSystemLoginFieldSeed> LoginFields { get; set; } = [];

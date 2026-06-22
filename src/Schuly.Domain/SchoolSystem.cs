@@ -23,6 +23,14 @@ namespace Schuly.Domain
         /// </summary>
         public string? StatelessBasePath { get; set; }
 
+        /// <summary>
+        /// Base path of this system's plugin endpoints used by account mode for
+        /// accounts/sync/status, e.g. "/api/plugins/schulware". The system key
+        /// (e.g. "schulnetz") differs from the plugin name, so the app can't
+        /// derive this — it must be advertised.
+        /// </summary>
+        public string? PluginBasePath { get; set; }
+
         /// <summary>How the app should drive the login: "oauth-webview" or "credentials".</summary>
         public required string LoginMethod { get; set; }
 
