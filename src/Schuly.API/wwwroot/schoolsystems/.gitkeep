@@ -1,0 +1,2 @@
+# Operator-provided static assets (e.g. school-system logos referenced by
+# SchoolSystems[].LogoUrl). Kept in git so UseStaticFiles has a web root.
