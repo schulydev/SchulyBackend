@@ -1,4 +1,5 @@
 using Mediator;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Schuly.Application.Commands.User;
 using Schuly.Application.Dtos;
@@ -8,6 +9,7 @@ using Schuly.Plugin.Abstractions;
 namespace Schuly.API.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class AuthController(IMediator mediator, IEnumerable<IPluginLogin> logins) : ControllerBase
     {
