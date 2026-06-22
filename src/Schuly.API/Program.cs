@@ -47,6 +47,10 @@ await app.SeedSchoolSystemsAsync();
 
 app.UseExceptionHandler();
 
+// Serve static assets (e.g. school-system logos under wwwroot/schoolsystems)
+// anonymously, before auth, so the app's catalog picker can load them.
+app.UseStaticFiles();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseHttpLogging();

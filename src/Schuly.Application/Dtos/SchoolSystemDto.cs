@@ -8,6 +8,7 @@ namespace Schuly.Application.Dtos
         public string? LogoUrl { get; set; }
         public string? SchulwareApiBaseUrl { get; set; }
         public string? StatelessBasePath { get; set; }
+        public string? PluginBasePath { get; set; }
         public required string LoginMethod { get; set; }
         public bool Enabled { get; set; }
         public int SortOrder { get; set; }
