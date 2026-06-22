@@ -18,6 +18,7 @@ namespace Schuly.Application.Commands.SchoolSystem
         string? LogoUrl = null,
         string? SchulwareApiBaseUrl = null,
         string? StatelessBasePath = null,
+        string? PluginBasePath = null,
         bool Enabled = true,
         int SortOrder = 0,
         List<SchoolSystemLoginFieldDto>? LoginFields = null) : ICommand<Result>;
@@ -43,6 +44,7 @@ namespace Schuly.Application.Commands.SchoolSystem
             system.LogoUrl = command.LogoUrl;
             system.SchulwareApiBaseUrl = command.SchulwareApiBaseUrl;
             system.StatelessBasePath = command.StatelessBasePath;
+            system.PluginBasePath = command.PluginBasePath;
             system.Enabled = command.Enabled;
             system.SortOrder = command.SortOrder;
             system.LoginFields = (command.LoginFields ?? []).Select(f => f.ToEntity()).ToList();
