@@ -73,7 +73,7 @@ dotnet user-secrets set "S3:UsePathStyle" "true"
 
 ## Document storage (SeaweedFS)
 
-Student documents (Schulnetz "Dokumente") are stored in a self-hosted
+Student documents are stored in a self-hosted
 **SeaweedFS** instance — S3-compatible, Apache 2.0 licensed, single binary.
 The default `compose.dev.yml` runs it locally on `:8333` with the credentials
 from the section above.
@@ -88,6 +88,42 @@ and never connect to SeaweedFS directly. Upload: `POST /api/students/{id}/docume
 
 For production, swap the `S3:*` user-secrets to point at AWS S3, Cloudflare R2,
 or a hardened SeaweedFS deployment — no code change.
+
+## School systems catalog
+
+The CRM is provider-agnostic: which login systems the app offers is **operator
+configuration**, not baked into the code. On a fresh database the backend
+seeds the catalog from a `SchoolSystems` config section (seed-if-missing by
+`Key`; anything an admin edits afterwards is left untouched). Supply it via
+`appsettings.Production.json`, environment variables, or user-secrets — the
+shipped `appsettings.json` contains none.
+
+Each entry is generic catalog data the app renders dynamically. `PrivateAuthStrategy`
+tells the app how private mode fetches data: `"token"` (a headless login mints a
+bearer token + refreshable session) or `"scrape"` (credentials replayed per fetch).
+
+```jsonc
+{
+  "SchoolSystems": [
+    {
+      "Key": "myschool",
+      "DisplayName": "My School",
+      "LoginMethod": "credentials",        // or "oauth-webview"
+      "LogoUrl": "https://cdn.example.org/myschool.webp",
+      "PrivateAuthStrategy": "token",      // "token" | "scrape"
+      "StatelessBasePath": "/api/plugins/<plugin>/stateless",
+      "PluginBasePath": "/api/plugins/<plugin>",
+      "Enabled": true,
+      "SortOrder": 0,
+      "LoginFields": [
+        { "Key": "baseUrl",  "Label": "Server URL", "Type": "url",      "Required": true },
+        { "Key": "email",    "Label": "Email",      "Type": "text",     "Required": true },
+        { "Key": "password", "Label": "Password",   "Type": "password", "Required": true }
+      ]
+    }
+  ]
+}
+```
 
 ## Migrations
 

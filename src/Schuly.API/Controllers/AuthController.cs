@@ -36,7 +36,7 @@ namespace Schuly.API.Controllers
         /// <see cref="IPluginLogin"/> whose <c>SystemKey</c> matches and forwards
         /// the catalog-collected <c>fields</c> to it. The plugin authenticates its
         /// provider, stores the account, and returns its id. One endpoint for every
-        /// system (Schulnetz email+password, OdAOrg username+password, …).
+        /// system, whatever credentials it collects.
         /// </summary>
         [HttpPost("login")]
         [ProducesResponseType(StatusCodes.Status200OK)]
