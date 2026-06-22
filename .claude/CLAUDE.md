@@ -25,7 +25,7 @@ API reference (Scalar): <http://localhost:5033/scalar> — OpenAPI 3.0 doc gener
 | `Schuly.Infrastructure` | `SchulyDbContext`, OIDC services, repositories, plugin runtime (`PluginBackgroundTaskHost`). |
 | `Schuly.Tests` | TUnit. |
 
-`Schuly.Plugin.Abstractions` is a **NuGet `PackageReference`**, not a project ref — see the abstractions repo. Plugin projects (Example, Schulware) live in a separate repo entirely.
+`Schuly.Plugin.Abstractions` is a **NuGet `PackageReference`**, not a project ref — see the abstractions repo. Plugin projects live in a separate repo entirely.
 
 ## Adding an entity + endpoint
 
