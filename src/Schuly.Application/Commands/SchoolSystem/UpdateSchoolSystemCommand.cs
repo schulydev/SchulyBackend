@@ -16,7 +16,7 @@ namespace Schuly.Application.Commands.SchoolSystem
         string DisplayName,
         string LoginMethod,
         string? LogoUrl = null,
-        string? SchulwareApiBaseUrl = null,
+        string? PrivateAuthStrategy = null,
         string? StatelessBasePath = null,
         string? PluginBasePath = null,
         bool Enabled = true,
@@ -42,7 +42,7 @@ namespace Schuly.Application.Commands.SchoolSystem
             system.DisplayName = command.DisplayName;
             system.LoginMethod = command.LoginMethod;
             system.LogoUrl = command.LogoUrl;
-            system.SchulwareApiBaseUrl = command.SchulwareApiBaseUrl;
+            system.PrivateAuthStrategy = command.PrivateAuthStrategy;
             system.StatelessBasePath = command.StatelessBasePath;
             system.PluginBasePath = command.PluginBasePath;
             system.Enabled = command.Enabled;
