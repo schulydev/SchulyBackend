@@ -57,7 +57,7 @@ namespace Schuly.API.Extensions
 
         /// <summary>
         /// Per-plugin config lives at <c>{configDir}/{PluginAssemblyName}.yml</c>
-        /// (e.g. <c>plugins-config/Schuly.Plugin.Schulware.yml</c>). Keeps deployment-
+        /// (e.g. <c>plugins-config/Schuly.Plugin.Example.yml</c>). Keeps deployment-
         /// specific config out of the plugin drop folder so DLLs can be replaced
         /// without touching config — and so a single config dir can be mounted as a
         /// volume / ConfigMap.

@@ -77,7 +77,7 @@ namespace Schuly.Infrastructure
                 entity.Property(s => s.Key).HasMaxLength(50).IsRequired();
                 entity.Property(s => s.DisplayName).HasMaxLength(200).IsRequired();
                 entity.Property(s => s.LogoUrl).HasMaxLength(2000);
-                entity.Property(s => s.SchulwareApiBaseUrl).HasMaxLength(2000);
+                entity.Property(s => s.PrivateAuthStrategy).HasMaxLength(50);
                 entity.Property(s => s.LoginMethod).HasMaxLength(50).IsRequired();
 
                 // Field descriptors are a small, always-loaded-together list — store

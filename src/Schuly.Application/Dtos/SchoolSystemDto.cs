@@ -6,7 +6,7 @@ namespace Schuly.Application.Dtos
         public required string Key { get; set; }
         public required string DisplayName { get; set; }
         public string? LogoUrl { get; set; }
-        public string? SchulwareApiBaseUrl { get; set; }
+        public string? PrivateAuthStrategy { get; set; }
         public string? StatelessBasePath { get; set; }
         public string? PluginBasePath { get; set; }
         public required string LoginMethod { get; set; }

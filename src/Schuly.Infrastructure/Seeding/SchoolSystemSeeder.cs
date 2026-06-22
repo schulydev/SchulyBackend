@@ -32,7 +32,7 @@ namespace Schuly.Infrastructure.Seeding
                     DisplayName = s.DisplayName,
                     LoginMethod = s.LoginMethod,
                     LogoUrl = s.LogoUrl,
-                    SchulwareApiBaseUrl = s.SchulwareApiBaseUrl,
+                    PrivateAuthStrategy = s.PrivateAuthStrategy,
                     StatelessBasePath = s.StatelessBasePath,
                     PluginBasePath = s.PluginBasePath,
                     Enabled = s.Enabled,
@@ -63,7 +63,7 @@ namespace Schuly.Infrastructure.Seeding
         public string DisplayName { get; set; } = string.Empty;
         public string LoginMethod { get; set; } = string.Empty;
         public string? LogoUrl { get; set; }
-        public string? SchulwareApiBaseUrl { get; set; }
+        public string? PrivateAuthStrategy { get; set; }
         public string? StatelessBasePath { get; set; }
         public string? PluginBasePath { get; set; }
         public bool Enabled { get; set; } = true;
