@@ -4,6 +4,7 @@ using Schuly.Application.Dtos;
 using Schuly.Application.Mappers;
 using Schuly.Application.Models;
 using Schuly.Infrastructure;
+using Schuly.Infrastructure.Services;
 using Schuly.Application.Authorization;
 
 namespace Schuly.Application.Queries.School
@@ -11,7 +12,7 @@ namespace Schuly.Application.Queries.School
     [AllowAuthenticated]
     public record GetSchoolQuery(Guid SchoolId) : IQuery<Result<SchoolDto>>;
 
-    public class GetSchoolQueryHandler(SchulyDbContext dbContext) : IQueryHandler<GetSchoolQuery, Result<SchoolDto>>
+    public class GetSchoolQueryHandler(SchulyDbContext dbContext, IUserService userService) : IQueryHandler<GetSchoolQuery, Result<SchoolDto>>
     {
         public async ValueTask<Result<SchoolDto>> Handle(GetSchoolQuery query, CancellationToken cancellationToken)
         {
@@ -21,6 +22,18 @@ namespace Schuly.Application.Queries.School
 
             if (school == null)
                 return Result<SchoolDto>.Failure($"School with ID '{query.SchoolId}' not found");
+
+            // A user may only read a school they belong to; admins may read any.
+            // A non-member gets the same "not found" so the id isn't leaked.
+            if (!userService.IsCurrentUserAdmin())
+            {
+                var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
+                var belongs = await dbContext.SchoolUsers
+                    .AsNoTracking()
+                    .AnyAsync(su => su.ApplicationUserId == userId && su.SchoolId == query.SchoolId, cancellationToken);
+                if (!belongs)
+                    return Result<SchoolDto>.Failure($"School with ID '{query.SchoolId}' not found");
+            }
 
             return Result<SchoolDto>.Success(school.ToDto());
         }
