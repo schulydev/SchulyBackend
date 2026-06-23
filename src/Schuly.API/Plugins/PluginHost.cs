@@ -180,7 +180,6 @@ namespace Schuly.API.Plugins
             services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
             services.AddSingleton(rootProvider.GetRequiredService<IHttpClientFactory>());
             services.AddSingleton(rootProvider.GetRequiredService<IHttpContextAccessor>());
-            services.AddSingleton<IConfiguration>(configuration);
             services.AddSingleton(rootProvider.GetRequiredService<IPluginVaultFactory>());
 
             // The current request's user context (scoped in the root): resolve it from
@@ -203,7 +202,17 @@ namespace Schuly.API.Plugins
             services.AddScoped(sp => sp.GetRequiredService<HostServiceScope>().Services.GetRequiredService<SchulyDbContext>());
             services.AddScoped(sp => sp.GetRequiredService<HostServiceScope>().Services.GetRequiredService<IDocumentStorage>());
 
-            var context = new PluginServiceContext(PluginConnectionString(plugin.Name), LoadPluginConfig(plugin));
+            // Plugin services that inject IConfiguration see the host config with the
+            // plugin's own plugins-config (yml + SCHULY_PLUGIN_* env) overlaid on top, so
+            // a value in plugins-config/<assembly>.yml reaches the services that use it —
+            // not just the load-time check that reads PluginServiceContext.Configuration.
+            var pluginConfig = new ConfigurationBuilder()
+                .AddConfiguration(configuration)
+                .AddConfiguration(LoadPluginConfig(plugin))
+                .Build();
+            services.AddSingleton<IConfiguration>(pluginConfig);
+
+            var context = new PluginServiceContext(PluginConnectionString(plugin.Name), pluginConfig);
             plugin.ConfigureServices(services, context);
 
             return services.BuildServiceProvider();
