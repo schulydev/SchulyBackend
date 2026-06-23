@@ -42,26 +42,33 @@ namespace Schuly.API.Plugins
             return File.Exists(candidate) ? LoadFromAssemblyPath(candidate) : null;
         }
 
-        private static bool IsSharedWithHost(string simpleName)
+        private bool IsSharedWithHost(string simpleName)
         {
-            if (simpleName.StartsWith("Schuly.Plugin.Abstractions", StringComparison.OrdinalIgnoreCase) ||
-                simpleName.StartsWith("System.", StringComparison.OrdinalIgnoreCase) ||
-                simpleName.StartsWith("Microsoft.", StringComparison.OrdinalIgnoreCase) ||
-                simpleName.StartsWith("Mediator", StringComparison.OrdinalIgnoreCase) ||
-                simpleName is "netstandard" or "mscorlib")
-            {
+            // The plugin contract is always the host's type.
+            if (simpleName.StartsWith("Schuly.Plugin.Abstractions", StringComparison.OrdinalIgnoreCase))
                 return true;
-            }
 
-            // Defer to Default for anything the host has already loaded, so plugins that
-            // reference a library the backend also uses share the one instance.
+            // Anything the host has already loaded is shared, so a plugin referencing a
+            // library the backend also uses sees the one Type instance (Schuly.Domain,
+            // Mediator, the shared framework, …).
             foreach (var loaded in Default.Assemblies)
             {
                 if (string.Equals(loaded.GetName().Name, simpleName, StringComparison.OrdinalIgnoreCase))
                     return true;
             }
 
-            return false;
+            // A dependency the plugin ships next to itself (e.g. Microsoft.Kiota.*,
+            // AngleSharp, System.ClientModel) that the host doesn't use is plugin-private
+            // — load it from the plugin folder even though its name is Microsoft.*/System.*.
+            if (File.Exists(Path.Combine(_pluginDirectory, simpleName + ".dll")))
+                return false;
+
+            // Core framework assemblies the host hasn't touched yet aren't shipped with
+            // the plugin — let the default context resolve them from the shared framework.
+            return simpleName.StartsWith("System.", StringComparison.OrdinalIgnoreCase) ||
+                   simpleName.StartsWith("Microsoft.", StringComparison.OrdinalIgnoreCase) ||
+                   simpleName.StartsWith("Mediator", StringComparison.OrdinalIgnoreCase) ||
+                   simpleName is "netstandard" or "mscorlib";
         }
     }
 }

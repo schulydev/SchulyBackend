@@ -11,17 +11,24 @@ EXPOSE 8081
 # This stage is used to build the service project
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
+# Assembly version for the build. The Docker context is ./src, so the repo-root
+# application.properties that Directory.Build.props normally reads is NOT present
+# here — without this the assemblies would default to 1.0.0.0, and runtime-loaded
+# plugins (which reference Schuly.Domain/Infrastructure by a real version) would
+# fail to bind against a lower host version. The release workflow passes the tag.
+ARG VERSION=1.0.0
 WORKDIR /src
 COPY ["Schuly.API/Schuly.API.csproj", "Schuly.API/"]
 RUN dotnet restore "./Schuly.API/Schuly.API.csproj"
 COPY . .
 WORKDIR "/src/Schuly.API"
-RUN dotnet build "./Schuly.API.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "./Schuly.API.csproj" -c $BUILD_CONFIGURATION -o /app/build -p:Version=$VERSION
 
 # This stage is used to publish the service project to be copied to the final stage
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./Schuly.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+ARG VERSION=1.0.0
+RUN dotnet publish "./Schuly.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false -p:Version=$VERSION
 
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
