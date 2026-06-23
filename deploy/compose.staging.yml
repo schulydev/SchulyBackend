@@ -1,0 +1,120 @@
+# Schuly full staging stack — pulls published GHCR images and fronts the public
+# surfaces (API + Keycloak) with Caddy (automatic HTTPS).
+#
+#   cp .env.example .env   # then fill it in
+#   docker compose -f compose.staging.yml up -d
+#
+# Only Caddy publishes ports (80/443). Everything else talks over the internal
+# network. Point DNS for ${API_HOST} and ${AUTH_HOST} at this host first, or
+# Let's Encrypt can't issue certificates.
+services:
+  postgres:
+    image: postgres:18.1
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: schuly
+    # Creates the extra `keycloak` database on first init (the backend's plugin
+    # databases are created automatically by EF migrations).
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./config/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d schuly"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    restart: unless-stopped
+    command: >
+      server -dir=/data
+      -s3 -s3.config=/etc/seaweedfs/s3-config.json -s3.port=8333
+      -master.volumeSizeLimitMB=1024
+    volumes:
+      - seaweedfs-data:/data
+      - ./config/seaweedfs/s3-config.json:/etc/seaweedfs/s3-config.json:ro
+
+  keycloak:
+    image: ghcr.io/schulydev/schulykeycloak:latest
+    restart: unless-stopped
+    # The image is an optimized build with the `schuly` realm baked in.
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_HOSTNAME: https://${AUTH_HOST}
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USER}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  schulware:
+    image: ghcr.io/pianonic/schulwareapi:latest
+    restart: unless-stopped
+    init: true        # reap zombie processes
+    ipc: host         # shared memory headroom for the scraper
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SCHULNETZ_CLIENT_ID: ${SCHULNETZ_CLIENT_ID}
+      SCHULNETZ_WEB_BASE_URL: ${SCHULNETZ_WEB_BASE_URL}
+
+  backend:
+    image: ghcr.io/schulydev/schuly:latest
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__SchulyDatabase: "Host=postgres;Port=5432;Database=schuly;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      # OIDC: validate tokens against the Keycloak `schuly` realm. The issuer must
+      # match what the app logs in against, so use the public auth URL.
+      Oidc__Authority: "https://${AUTH_HOST}/realms/schuly"
+      Oidc__ClientId: "schuly-app"
+      Oidc__RequireHttpsMetadata: "true"
+      # Document storage (SeaweedFS S3).
+      S3__Endpoint: "http://seaweedfs:8333"
+      S3__Bucket: "schuly"
+      S3__AccessKey: ${S3_ACCESS_KEY}
+      S3__SecretKey: ${S3_SECRET_KEY}
+      S3__UsePathStyle: "true"
+      # Plugins: declared in plugins.yml, downloaded + loaded on startup.
+      Plugins__Directory: "/app/plugins"
+      Plugins__ConfigDirectory: "/app/plugins-config"
+      Plugins__File: "/app/plugins.yml"
+    volumes:
+      - backend-plugins:/app/plugins                       # downloaded plugin DLLs (persisted)
+      - ./config/plugins.yml:/app/plugins.yml              # desired plugin set (writable: endpoints rewrite it)
+      - ./config/plugins-config:/app/plugins-config:ro     # per-plugin config
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_HOST: ${API_HOST}
+      AUTH_HOST: ${AUTH_HOST}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - backend
+      - keycloak
+
+volumes:
+  postgres-data:
+  seaweedfs-data:
+  backend-plugins:
+  caddy-data:
+  caddy-config:

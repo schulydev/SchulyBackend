@@ -1,0 +1,11 @@
+{
+  "identities": [
+    {
+      "name": "schuly-backend",
+      "credentials": [
+        { "accessKey": "schuly-staging-access", "secretKey": "change-me-s3-secret" }
+      ],
+      "actions": ["Admin", "Read", "Write", "List"]
+    }
+  ]
+}
