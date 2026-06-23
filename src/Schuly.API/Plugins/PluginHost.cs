@@ -6,6 +6,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Schuly.API.Services;
+using Schuly.Infrastructure;
+using Schuly.Infrastructure.Storage;
 using Schuly.Infrastructure.Vault;
 using Schuly.Plugin.Abstractions;
 
@@ -43,6 +45,35 @@ namespace Schuly.API.Plugins
             _loaded.Values.Select(p => p.Instance).ToList();
 
         public bool IsLoaded(string name) => _loaded.ContainsKey(name);
+
+        /// <summary>
+        /// Resolves the <see cref="IPluginLogin"/> across loaded plugins whose
+        /// <see cref="IPluginLogin.SystemKey"/> matches <paramref name="systemKey"/> and
+        /// runs its connect inside that plugin's own DI scope — so the login's scoped
+        /// services (DbContext, vault, the request's user context) resolve correctly.
+        /// Returns null when no loaded plugin handles the system. The host controller
+        /// can't inject these directly: plugin logins live in each plugin's child
+        /// provider, not the frozen root container, so this bridge is the only path.
+        /// </summary>
+        public async Task<PluginLoginResult?> ConnectAsync(
+            string systemKey,
+            IReadOnlyDictionary<string, string> fields,
+            string? displayName,
+            CancellationToken ct = default)
+        {
+            foreach (var loaded in _loaded.Values)
+            {
+                using var scope = loaded.Provider.CreateScope();
+                var login = scope.ServiceProvider.GetServices<IPluginLogin>()
+                    .FirstOrDefault(l => string.Equals(l.SystemKey, systemKey, StringComparison.OrdinalIgnoreCase));
+                if (login is null)
+                    continue;
+
+                return await login.ConnectAsync(fields, displayName, ct);
+            }
+
+            return null;
+        }
 
         public async Task LoadAsync(PluginManifest manifest, string pluginDirectory, CancellationToken ct = default)
         {
@@ -163,6 +194,15 @@ namespace Schuly.API.Plugins
             services.AddKeyedSingleton<IPluginVault>(plugin.Name, (sp, _) =>
                 sp.GetRequiredService<IPluginVaultFactory>().GetVault($"plugin:{plugin.Name}"));
 
+            // Host-owned scoped services plugin code writes against — the main database
+            // and blob storage. They're scoped, so they can't be forwarded as singletons:
+            // each plugin scope gets its own host scope to resolve them from, disposed
+            // with the plugin scope. Unlike the HttpContext bridge above this works in
+            // both request (unified login) and background-task (sync) scopes.
+            services.AddScoped(_ => new HostServiceScope(rootProvider));
+            services.AddScoped(sp => sp.GetRequiredService<HostServiceScope>().Services.GetRequiredService<SchulyDbContext>());
+            services.AddScoped(sp => sp.GetRequiredService<HostServiceScope>().Services.GetRequiredService<IDocumentStorage>());
+
             var context = new PluginServiceContext(PluginConnectionString(plugin.Name), LoadPluginConfig(plugin));
             plugin.ConfigureServices(services, context);
 
@@ -241,6 +281,18 @@ namespace Schuly.API.Plugins
 
         private static long ElapsedMs(long start) =>
             (long)System.Diagnostics.Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+
+        /// <summary>
+        /// A host DI scope owned by a plugin scope, so plugin-scoped services can pull
+        /// scoped host services (the main DB, blob storage) from it. Disposed when the
+        /// plugin scope is disposed.
+        /// </summary>
+        private sealed class HostServiceScope(IServiceProvider root) : IDisposable
+        {
+            private readonly IServiceScope _scope = root.CreateScope();
+            public IServiceProvider Services => _scope.ServiceProvider;
+            public void Dispose() => _scope.Dispose();
+        }
 
         private sealed class LoadedPlugin
         {
