@@ -4,6 +4,7 @@ using Schuly.API.Services;
 using Schuly.Application.Behaviors;
 using Schuly.Infrastructure.Services;
 using Schuly.Infrastructure.Storage;
+using Schuly.Infrastructure.Vault;
 using Schuly.Plugin.Abstractions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,6 +30,7 @@ builder.Services.AddSingleton<IAvatarUrlSigner, AvatarUrlSigner>();
 builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
 builder.Services.AddSchulyDocumentStorage(builder.Configuration);
 
+builder.Services.AddSchulyVault();
 builder.Services.AddPlugins(builder.Configuration, mvcBuilder);
 builder.Services.AddSingleton<PluginSchedulerRegistry>();
 builder.Services.AddHostedService<PluginBackgroundTaskHost>();
