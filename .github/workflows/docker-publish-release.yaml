@@ -130,5 +130,6 @@ jobs:
             type=registry,ref=ghcr.io/schulydev/schuly:buildcache,mode=max
           build-args: |
             BUILDKIT_INLINE_CACHE=1
+            VERSION=${{ steps.meta.outputs.version }}
           provenance: false
           sbom: false
