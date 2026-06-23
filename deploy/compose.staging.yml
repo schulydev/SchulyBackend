@@ -62,8 +62,11 @@ services:
     ipc: host         # shared memory headroom for the scraper
     environment:
       PYTHONUNBUFFERED: "1"
-      SCHULNETZ_CLIENT_ID: ${SCHULNETZ_CLIENT_ID}
-      SCHULNETZ_WEB_BASE_URL: ${SCHULNETZ_WEB_BASE_URL}
+      # Public Schulnetz mobile client id + PWA host — not secrets, same across
+      # instances (the per-school API base URL is supplied per-request), so they're
+      # fixed here rather than pulled from .env.
+      SCHULNETZ_CLIENT_ID: ppyybShnMerHdtBQ
+      SCHULNETZ_WEB_BASE_URL: https://schulnetz.web.app
 
   backend:
     image: ghcr.io/schulydev/schuly:latest
