@@ -17,6 +17,12 @@ namespace Schuly.Infrastructure.Services
             return Enum.TryParse<Roles>(roleClaim, out var role) && role == Roles.Administrator;
         }
 
+        public bool IsCurrentUserTeacher()
+        {
+            var roleClaim = httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.Role)?.Value;
+            return Enum.TryParse<Roles>(roleClaim, out var role) && role == Roles.Teacher;
+        }
+
 
         public async Task<bool> ExistsAsync(string externalId, CancellationToken cancellationToken = default)
         {
