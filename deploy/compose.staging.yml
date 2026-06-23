@@ -61,12 +61,9 @@ services:
     init: true        # reap zombie processes
     ipc: host         # shared memory headroom for the scraper
     environment:
+      # Schulnetz client id + PWA host are baked into the SchulwareAPI image as
+      # defaults, so no Schulnetz config is needed here.
       PYTHONUNBUFFERED: "1"
-      # Public Schulnetz mobile client id + PWA host — not secrets, same across
-      # instances (the per-school API base URL is supplied per-request), so they're
-      # fixed here rather than pulled from .env.
-      SCHULNETZ_CLIENT_ID: ppyybShnMerHdtBQ
-      SCHULNETZ_WEB_BASE_URL: https://schulnetz.web.app
 
   backend:
     image: ghcr.io/schulydev/schuly:latest
