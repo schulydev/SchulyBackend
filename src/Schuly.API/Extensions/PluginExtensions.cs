@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Schuly.Infrastructure.Vault;
 using Schuly.Plugin.Abstractions;
 using System.Reflection;
 
@@ -31,6 +32,13 @@ namespace Schuly.API.Extensions
                 var pluginConnectionString = ReplaceDatabase(mainConnectionString, pluginDbName);
                 var pluginConfig = LoadPluginConfig(plugin, pluginsConfigDir);
                 var context = new PluginServiceContext(pluginConnectionString, pluginConfig);
+
+                // Each plugin gets its own cryptographically-isolated vault, keyed by
+                // its name so the plugin (or backend code acting for it) resolves only
+                // its own secrets — never another plugin's.
+                var pluginName = plugin.Name;
+                services.AddKeyedSingleton<IPluginVault>(pluginName, (sp, _) =>
+                    sp.GetRequiredService<IPluginVaultFactory>().GetVault($"plugin:{pluginName}"));
 
                 plugin.ConfigureServices(services, context);
                 mvcBuilder.AddApplicationPart(plugin.GetType().Assembly);
