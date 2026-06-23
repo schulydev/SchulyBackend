@@ -13,7 +13,7 @@ namespace Schuly.Application.Queries.SchoolUser
     [AuthorizedRoles(Roles.Teacher)]
     public record GetSchoolUsersQuery(Guid? ApplicationUserId = null) : IQuery<Result<List<SchoolUserDto>>>;
 
-    public class GetSchoolUsersQueryHandler(SchulyDbContext dbContext, IAvatarUrlSigner avatarSigner) : IQueryHandler<GetSchoolUsersQuery, Result<List<SchoolUserDto>>>
+    public class GetSchoolUsersQueryHandler(SchulyDbContext dbContext, IUserService userService, IAvatarUrlSigner avatarSigner) : IQueryHandler<GetSchoolUsersQuery, Result<List<SchoolUserDto>>>
     {
         public async ValueTask<Result<List<SchoolUserDto>>> Handle(GetSchoolUsersQuery query, CancellationToken cancellationToken)
         {
@@ -24,6 +24,20 @@ namespace Schuly.Application.Queries.SchoolUser
                 .Include(su => su.Grades)
                 .Include(su => su.Classes)
                 .AsQueryable();
+
+            // A teacher only sees users at the school(s) they themselves belong to,
+            // not every school in the system; admins see all.
+            if (!userService.IsCurrentUserAdmin())
+            {
+                var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
+                var mySchoolIds = await dbContext.SchoolUsers
+                    .AsNoTracking()
+                    .Where(su => su.ApplicationUserId == userId)
+                    .Select(su => su.SchoolId)
+                    .Distinct()
+                    .ToListAsync(cancellationToken);
+                dbQuery = dbQuery.Where(su => mySchoolIds.Contains(su.SchoolId));
+            }
 
             if (query.ApplicationUserId.HasValue)
                 dbQuery = dbQuery.Where(su => su.ApplicationUserId == query.ApplicationUserId.Value);
