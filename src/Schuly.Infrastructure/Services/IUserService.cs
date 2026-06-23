@@ -23,5 +23,6 @@ namespace Schuly.Infrastructure.Services
         Task<bool> CanManageClassAsync(Guid classId, CancellationToken cancellationToken = default);
 
         bool IsCurrentUserAdmin();
+        bool IsCurrentUserTeacher();
     }
 }

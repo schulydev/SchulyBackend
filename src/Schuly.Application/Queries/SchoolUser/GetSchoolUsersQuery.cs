@@ -10,7 +10,11 @@ using Schuly.Infrastructure.Services;
 
 namespace Schuly.Application.Queries.SchoolUser
 {
-    [AuthorizedRoles(Roles.Teacher)]
+    // Any authenticated user may call this; the handler scopes the result by role:
+    // admins see all, teachers see users at their own school(s), and everyone else
+    // (students) sees only their own SchoolUsers — so the app can load a student's
+    // own profile without needing the Teacher role.
+    [AllowAuthenticated]
     public record GetSchoolUsersQuery(Guid? ApplicationUserId = null) : IQuery<Result<List<SchoolUserDto>>>;
 
     public class GetSchoolUsersQueryHandler(SchulyDbContext dbContext, IUserService userService, IAvatarUrlSigner avatarSigner) : IQueryHandler<GetSchoolUsersQuery, Result<List<SchoolUserDto>>>
@@ -25,10 +29,15 @@ namespace Schuly.Application.Queries.SchoolUser
                 .Include(su => su.Classes)
                 .AsQueryable();
 
-            // A teacher only sees users at the school(s) they themselves belong to,
-            // not every school in the system; admins see all.
-            if (!userService.IsCurrentUserAdmin())
+            if (userService.IsCurrentUserAdmin())
             {
+                // Admins see everything; honour the optional filter.
+                if (query.ApplicationUserId.HasValue)
+                    dbQuery = dbQuery.Where(su => su.ApplicationUserId == query.ApplicationUserId.Value);
+            }
+            else if (userService.IsCurrentUserTeacher())
+            {
+                // A teacher only sees users at the school(s) they belong to.
                 var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
                 var mySchoolIds = await dbContext.SchoolUsers
                     .AsNoTracking()
@@ -37,10 +46,16 @@ namespace Schuly.Application.Queries.SchoolUser
                     .Distinct()
                     .ToListAsync(cancellationToken);
                 dbQuery = dbQuery.Where(su => mySchoolIds.Contains(su.SchoolId));
+                if (query.ApplicationUserId.HasValue)
+                    dbQuery = dbQuery.Where(su => su.ApplicationUserId == query.ApplicationUserId.Value);
             }
-
-            if (query.ApplicationUserId.HasValue)
-                dbQuery = dbQuery.Where(su => su.ApplicationUserId == query.ApplicationUserId.Value);
+            else
+            {
+                // Everyone else (students) only ever sees their own SchoolUsers,
+                // regardless of the requested filter — no cross-user access.
+                var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
+                dbQuery = dbQuery.Where(su => su.ApplicationUserId == userId);
+            }
 
             var schoolUsers = await dbQuery.ToListAsync(cancellationToken);
             var dtos = schoolUsers.ToDto();
