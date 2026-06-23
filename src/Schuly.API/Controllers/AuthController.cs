@@ -4,14 +4,14 @@ using Microsoft.AspNetCore.Mvc;
 using Schuly.Application.Commands.User;
 using Schuly.Application.Dtos;
 using Schuly.Application.Queries.User;
-using Schuly.Plugin.Abstractions;
+using Schuly.API.Plugins;
 
 namespace Schuly.API.Controllers
 {
     [ApiController]
     [Authorize]
     [Route("api/[controller]")]
-    public class AuthController(IMediator mediator, IEnumerable<IPluginLogin> logins) : ControllerBase
+    public class AuthController(IMediator mediator, PluginHost pluginHost) : ControllerBase
     {
         [HttpGet("me")]
         [ProducesResponseType(typeof(ApplicationUserDto), StatusCodes.Status200OK)]
@@ -44,13 +44,10 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> Login(
             [FromBody] UnifiedLoginRequest request, CancellationToken cancellationToken)
         {
-            var login = logins.FirstOrDefault(
-                l => string.Equals(l.SystemKey, request.SystemKey, StringComparison.OrdinalIgnoreCase));
-            if (login is null)
+            var result = await pluginHost.ConnectAsync(
+                request.SystemKey, request.Fields ?? new Dictionary<string, string>(), request.DisplayName, cancellationToken);
+            if (result is null)
                 return BadRequest(new { message = $"No plugin handles system '{request.SystemKey}'." });
-
-            var result = await login.ConnectAsync(
-                request.Fields ?? new Dictionary<string, string>(), request.DisplayName, cancellationToken);
 
             return result.Success
                 ? Ok(new { accountId = result.AccountId, message = result.Message })
