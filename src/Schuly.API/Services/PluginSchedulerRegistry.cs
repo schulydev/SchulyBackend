@@ -21,9 +21,9 @@ namespace Schuly.API.Services
         int ConsecutiveFailures);
 
     /// <summary>
-    /// In-memory registry of plugin background-task runs, updated by
-    /// <see cref="PluginBackgroundTaskHost"/>. Resets on restart — it reflects
-    /// live scheduler health, not durable history.
+    /// In-memory registry of plugin background-task runs, updated by the task loops
+    /// the <see cref="Schuly.API.Plugins.PluginHost"/> runs per loaded plugin. Resets on
+    /// restart — it reflects live scheduler health, not durable history.
     /// </summary>
     public class PluginSchedulerRegistry
     {

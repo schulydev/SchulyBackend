@@ -1,0 +1,8 @@
+# Declarative plugin set. Copy to the path given by Plugins:File (default:
+# <app>/plugins.yml) — or mount it in a container. Reconciled on startup, and
+# rewritten by the /api/plugins admin endpoints. version: a pinned semver or 'latest'.
+plugins:
+  - name: Schuly.Plugin.Schulware
+    version: latest
+  # - name: Schuly.Plugin.OdaOrg
+  #   version: 1.4.0

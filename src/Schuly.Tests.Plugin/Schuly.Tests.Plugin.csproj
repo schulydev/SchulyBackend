@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <!-- Compile against the abstractions but don't ship them: the host shares the
+         one copy from its default load context (same pattern as real plugins). -->
+    <PackageReference Include="Schuly.Plugin.Abstractions" Version="0.2.*"
+                      GeneratePathProperty="true" ExcludeAssets="compile;runtime" />
+    <Reference Include="Schuly.Plugin.Abstractions">
+      <HintPath>$(PkgSchuly_Plugin_Abstractions)\lib\net10.0\Schuly.Plugin.Abstractions.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

@@ -1,5 +1,6 @@
 using Mediator;
 using Schuly.API.Extensions;
+using Schuly.API.Plugins;
 using Schuly.API.Services;
 using Schuly.Application.Behaviors;
 using Schuly.Infrastructure.Services;
@@ -31,9 +32,8 @@ builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
 builder.Services.AddSchulyDocumentStorage(builder.Configuration);
 
 builder.Services.AddSchulyVault();
-builder.Services.AddPlugins(builder.Configuration, mvcBuilder);
 builder.Services.AddSingleton<PluginSchedulerRegistry>();
-builder.Services.AddHostedService<PluginBackgroundTaskHost>();
+builder.Services.AddSchulyPlugins(builder.Configuration, mvcBuilder);
 
 builder.Services.AddSchulyAuthentication(builder.Configuration);
 builder.Services.AddSchulyAuthorization();
@@ -61,7 +61,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+// Run plugin requests inside the owning plugin's service scope (after auth, before
+// the endpoint executes).
+app.UseMiddleware<PluginScopeMiddleware>();
 app.MapControllers();
-await app.UsePluginsAsync();
+await app.UseSchulyPluginsAsync();
 
 app.Run();

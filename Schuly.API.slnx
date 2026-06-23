@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Schuly.Tests.Plugin/Schuly.Tests.Plugin.csproj" />
+  </Folder>
   <Project Path="src/Schuly.API/Schuly.API.csproj" />
   <Project Path="src/Schuly.Application/Schuly.Application.csproj" />
   <Project Path="src/Schuly.Domain/Schuly.Domain.csproj" />
