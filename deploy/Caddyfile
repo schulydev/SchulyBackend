@@ -1,0 +1,9 @@
+# Automatic HTTPS for the two public surfaces. Caddy obtains Let's Encrypt
+# certificates on first start (needs public DNS + ports 80/443 reachable).
+{$API_HOST} {
+	reverse_proxy backend:8080
+}
+
+{$AUTH_HOST} {
+	reverse_proxy keycloak:8080
+}

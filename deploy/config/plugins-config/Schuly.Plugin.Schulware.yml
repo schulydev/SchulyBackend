@@ -1,0 +1,5 @@
+# Config for the Schulware plugin. Points at the SchulwareAPI service in this stack.
+SchulwareApi:
+  BaseUrl: http://schulware:8000
+Schulware:
+  DefaultApiBaseUrl: http://schulware:8000
