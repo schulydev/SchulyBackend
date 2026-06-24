@@ -1,6 +1,6 @@
 # Plugin management
 
-Plugins are loaded into the backend at runtime from a registry — no rebuilds, no
+Plugins are loaded into the backend at runtime from a registry - no rebuilds, no
 manual DLL drops, no restart.
 
 ## How it works
@@ -13,7 +13,7 @@ manual DLL drops, no restart.
   out-of-date plugins, removes ones no longer listed, then loads them.
 - **Hot-swap**: each plugin runs in its own collectible `AssemblyLoadContext` with its
   own child service container. Its controllers, minimal-API endpoints, and background
-  tasks are wired in on load and torn down on unload — the running process never
+  tasks are wired in on load and torn down on unload - the running process never
   restarts. Plugin requests execute inside the plugin's own DI scope (falling back to
   the host's services).
 
@@ -32,7 +32,7 @@ manual DLL drops, no restart.
 |---|---|---|
 | `GET` | `/api/plugins` | Loaded plugins. |
 | `GET` | `/api/plugins/registry` | Plugins available in the registry. |
-| `POST` | `/api/plugins/install` | `{ "name": "...", "version": "latest" }` — download + load. |
+| `POST` | `/api/plugins/install` | `{ "name": "...", "version": "latest" }` - download + load. |
 | `POST` | `/api/plugins/{name}/update` | Update to the registry's latest. |
 | `DELETE` | `/api/plugins/{name}` | Unload + delete. |
 
