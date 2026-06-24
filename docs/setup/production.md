@@ -40,4 +40,3 @@ The container applies EF Core migrations automatically at startup
 school-systems catalog. No separate migration step is required when deploying; ensure
 the database is reachable via the `SchulyDatabase` connection string. See
 [Migrations](../migrations.md) and [Configuration](configuration.md).
-</content>

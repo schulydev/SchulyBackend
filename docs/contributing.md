@@ -43,4 +43,3 @@ from the release tag automatically when a release is published — see
   reference `Schuly.Infrastructure`.
 - Controllers stay thin and delegate to Mediator; handlers hold the logic.
 - Add tests in `Schuly.Tests` where it makes sense.
-</content>
