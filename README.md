@@ -15,11 +15,11 @@ Clean-architecture C# API serving the Schuly mobile app. Built on ASP.NET Core w
 
 ## What's in this repo
 
-- `src/Schuly.API` — ASP.NET Core entry point + controllers
-- `src/Schuly.Application` — CQRS commands/queries + handlers
-- `src/Schuly.Domain` — entities (`School`, `Class`, `Exam`, `Grade`, `Absence`, `AgendaEntry`, ...)
-- `src/Schuly.Infrastructure` — EF Core, OIDC, plugin host
-- `src/Schuly.Tests` — unit + integration tests
+- `src/Schuly.API` - ASP.NET Core entry point + controllers
+- `src/Schuly.Application` - CQRS commands/queries + handlers
+- `src/Schuly.Domain` - entities (`School`, `Class`, `Exam`, `Grade`, `Absence`, `AgendaEntry`, ...)
+- `src/Schuly.Infrastructure` - EF Core, OIDC, plugin host
+- `src/Schuly.Tests` - unit + integration tests
 
 ## The Schuly ecosystem
 
@@ -61,7 +61,7 @@ dotnet user-secrets set "Oidc:ClientId" "your-client-id"
 dotnet user-secrets set "ConnectionStrings:SchulyDatabase" \
     "Host=localhost;Port=2406;Database=schuly-dev;Username=postgres;Password=…"
 
-# S3 / SeaweedFS (document storage) — matches compose.dev.yml defaults
+# S3 / SeaweedFS (document storage) - matches compose.dev.yml defaults
 dotnet user-secrets set "S3:Endpoint"     "http://localhost:8333"
 dotnet user-secrets set "S3:Bucket"       "schuly-documents"
 dotnet user-secrets set "S3:AccessKey"    "schuly-dev-access"
@@ -74,7 +74,7 @@ dotnet user-secrets set "S3:UsePathStyle" "true"
 ## Document storage (SeaweedFS)
 
 Student documents are stored in a self-hosted
-**SeaweedFS** instance — S3-compatible, Apache 2.0 licensed, single binary.
+**SeaweedFS** instance - S3-compatible, Apache 2.0 licensed, single binary.
 The default `compose.dev.yml` runs it locally on `:8333` with the credentials
 from the section above.
 
@@ -82,12 +82,12 @@ Static dev credentials live in `scripts/seaweedfs/s3-config.json`; blob data
 is bind-mounted to `./data/seaweedfs/` on the host (gitignored) so it
 persists across container rebuilds.
 
-The backend **proxies all bytes** through itself — clients never see S3 URLs
+The backend **proxies all bytes** through itself - clients never see S3 URLs
 and never connect to SeaweedFS directly. Upload: `POST /api/students/{id}/documents`
 (multipart). Download: `GET /api/documents/{id}` (file response).
 
 For production, swap the `S3:*` user-secrets to point at AWS S3, Cloudflare R2,
-or a hardened SeaweedFS deployment — no code change.
+or a hardened SeaweedFS deployment - no code change.
 
 ## School systems catalog
 
@@ -96,7 +96,7 @@ the loaded plugins**, not baked into the backend. Each plugin describes the syst
 it serves via its `IPluginLogin.SchoolSystem` descriptor; on load the backend
 collects these and seeds the catalog (seed-if-missing by `Key`, so anything an
 admin edits afterwards is left untouched). Install a plugin and its system appears
-in the picker — no operator config required.
+in the picker - no operator config required.
 
 A descriptor carries everything the app needs to render the system and its login
 form. `PrivateAuthStrategy` tells the app how private mode fetches data: `"token"`
