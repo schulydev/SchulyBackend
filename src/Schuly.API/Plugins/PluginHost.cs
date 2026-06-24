@@ -361,24 +361,35 @@ namespace Schuly.API.Plugins
         }
 
         /// <summary>
-        /// Bridges plugin code to the request's <see cref="IPluginUserContext"/> lazily.
+        /// Bridges plugin code to the host's <see cref="IPluginUserContext"/> lazily.
         /// Constructing it touches no HttpContext, so plugin services that depend on the
         /// user context can be built outside a request (e.g. reading a plugin's catalog
-        /// descriptor at load time); each call resolves the real per-request context.
+        /// descriptor at load time); each call resolves the host implementation.
+        /// <para>
+        /// It resolves from a fresh <b>root</b> scope, never from
+        /// <c>HttpContext.RequestServices</c>: for a plugin endpoint the request services
+        /// are swapped to the plugin's own provider (see <see cref="PluginScopeMiddleware"/>),
+        /// where this very type is registered as <see cref="IPluginUserContext"/> — resolving
+        /// from there would re-enter this wrapper and recurse forever (stack overflow). The
+        /// host's user service reads the caller's identity from the ambient
+        /// <see cref="IHttpContextAccessor"/>, so a root scope still sees the real request user.
+        /// </para>
         /// </summary>
         private sealed class DeferredPluginUserContext(IServiceProvider root) : IPluginUserContext
         {
-            private IPluginUserContext Current =>
-                (root.GetRequiredService<IHttpContextAccessor>().HttpContext
-                    ?? throw new InvalidOperationException(
-                        "IPluginUserContext is only available during a request."))
-                    .RequestServices.GetRequiredService<IPluginUserContext>();
+            public async Task<Guid> GetCurrentUserIdAsync(CancellationToken cancellationToken = default)
+            {
+                using var scope = root.CreateScope();
+                return await scope.ServiceProvider.GetRequiredService<IPluginUserContext>()
+                    .GetCurrentUserIdAsync(cancellationToken);
+            }
 
-            public Task<Guid> GetCurrentUserIdAsync(CancellationToken cancellationToken = default) =>
-                Current.GetCurrentUserIdAsync(cancellationToken);
-
-            public Task<Guid?> GetCurrentSchoolUserIdAsync(CancellationToken cancellationToken = default) =>
-                Current.GetCurrentSchoolUserIdAsync(cancellationToken);
+            public async Task<Guid?> GetCurrentSchoolUserIdAsync(CancellationToken cancellationToken = default)
+            {
+                using var scope = root.CreateScope();
+                return await scope.ServiceProvider.GetRequiredService<IPluginUserContext>()
+                    .GetCurrentSchoolUserIdAsync(cancellationToken);
+            }
         }
 
         private sealed class LoadedPlugin
