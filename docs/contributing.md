@@ -9,7 +9,7 @@ A short, enforced workflow keeps history clean and releasable.
 2. **Branch off `main`**: `feature/<issue#>_PascalCase` or `fix/<issue#>_PascalCase`.
    Never commit directly to `main`.
 3. **Open a PR** (also labeled) targeting `main`. The PR body is **Summary** plus
-   `Closes #<issue>` — nothing else (no test plans).
+   `Closes #<issue>` - nothing else (no test plans).
 4. **Squash-merge** and delete the branch.
 
 ## Commit messages
@@ -34,7 +34,7 @@ Use a label consistent with the org taxonomy:
 ## Versioning
 
 `application.properties` is the single source of truth for the version and is synced
-from the release tag automatically when a release is published — see
+from the release tag automatically when a release is published - see
 [Production](setup/production.md). Don't bump it by hand in feature PRs.
 
 ## Code expectations

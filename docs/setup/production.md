@@ -23,14 +23,14 @@ reads it via `XmlPeek`.
 
 Publishing a GitHub Release triggers `docker-publish-release.yaml`:
 
-1. **`sync-version`** — compares the release tag (`v` stripped) against
+1. **`sync-version`** - compares the release tag (`v` stripped) against
    `application.properties`. If they differ, it opens a `release-sync/<version>`
    branch updating the file and auto-merges (squash) the PR into `main`.
-2. **`build-and-push-multiarch`** — builds `linux/amd64` + `linux/arm64` from `./src`
+2. **`build-and-push-multiarch`** - builds `linux/amd64` + `linux/arm64` from `./src`
    and pushes tags:
    - `ghcr.io/schulydev/schuly:<semver>` plus `:<major>`, `:<major>.<minor>`, and
      `:latest` (latest only for non-prereleases).
-   - `<DOCKERHUB_USERNAME>/schuly:<semver>` (Docker Hub, **best-effort** — the login
+   - `<DOCKERHUB_USERNAME>/schuly:<semver>` (Docker Hub, **best-effort** - the login
      step is `continue-on-error`).
 
 ## Migrations on startup

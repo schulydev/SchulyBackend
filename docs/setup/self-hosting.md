@@ -24,12 +24,12 @@ flowchart TB
 
 | Service | Image | Exposed |
 |---|---|---|
-| `caddy` | `caddy:2` | **80 / 443** — the only public ports |
+| `caddy` | `caddy:2` | **80 / 443** - the only public ports |
 | `backend` | `ghcr.io/schulydev/schuly` | via Caddy → `https://${API_HOST}` |
 | `keycloak` | `ghcr.io/schulydev/schulykeycloak` | via Caddy → `https://${AUTH_HOST}` |
 | `postgres` | `postgres:18.1` | internal (databases `schuly` and `keycloak`) |
-| `seaweedfs` | `chrislusf/seaweedfs` | internal — S3 document storage |
-| `schulware` | `ghcr.io/pianonic/schulwareapi` | internal — Schulnetz bridge for the Schulware plugin |
+| `seaweedfs` | `chrislusf/seaweedfs` | internal - S3 document storage |
+| `schulware` | `ghcr.io/pianonic/schulwareapi` | internal - Schulnetz bridge for the Schulware plugin |
 
 The backend validates OIDC tokens against the Keycloak `schuly` realm, applies its EF
 Core migrations automatically on startup, and downloads the plugins declared in
@@ -39,7 +39,7 @@ Core migrations automatically on startup, and downloads the plugins declared in
 
 - A Linux server with **Docker** and the **Compose plugin** (`docker compose`).
 - Ports **80** and **443** open to the internet.
-- Two DNS records pointing at the server — one for the API, one for Keycloak
+- Two DNS records pointing at the server - one for the API, one for Keycloak
   (e.g. `api.schuly.example` and `auth.schuly.example`). Caddy needs them resolvable
   before first start so Let's Encrypt can issue certificates.
 
@@ -79,15 +79,15 @@ cp .env.example .env
 | `S3_SECRET_KEY` | SeaweedFS S3 secret key. |
 | `AVATAR_SIGNING_KEY` | HMAC key for signing avatar URLs (required). Generate with `openssl rand -hex 32`. |
 
-> The S3 credentials **must match** `config/seaweedfs/s3-config.json` — update both
+> The S3 credentials **must match** `config/seaweedfs/s3-config.json` - update both
 > the `.env` and that file to the same values, or document storage won't authenticate.
 
 ## 4. (Optional) Review the plugins
 
 `config/plugins.yml` lists the plugins the backend loads on startup (the Schulware
 plugin by default), and `config/plugins-config/` holds each plugin's configuration.
-Each plugin also **provides its own school-system catalog entry** — the system the
-app shows in its picker (Schulware contributes `schulnetz`, OdaOrg `odaorg`) — so
+Each plugin also **provides its own school-system catalog entry** - the system the
+app shows in its picker (Schulware contributes `schulnetz`, OdaOrg `odaorg`) - so
 installing a plugin adds its system automatically, with no catalog config. The
 defaults work out of the box; adjust only if you need to.
 
@@ -125,17 +125,17 @@ reads as roles). Before real use:
 - Replace the starter realm with a proper export, and rotate every secret in `.env`.
 - Create a real Keycloak admin and remove the `KC_ADMIN_*` bootstrap variables (see
   the SchulyKeycloak project's self-hosting docs for the Keycloak-specific steps).
-- Keep the management/internal services unexposed — only Caddy should publish ports.
+- Keep the management/internal services unexposed - only Caddy should publish ports.
 
 ## Operations
 
-- **Persistence** — all state is **bind-mounted to host folders under `./data`** (no
+- **Persistence** - all state is **bind-mounted to host folders under `./data`** (no
   named volumes): `data/postgres`, `data/seaweedfs`, `data/plugins`, `data/caddy*`.
-  This is the recommended setup — your data stays visible and easy to back up on the
+  This is the recommended setup - your data stays visible and easy to back up on the
   host. The folders are created on first `up`, and a one-shot `init-perms` service
   makes `data/plugins` writable by the backend's user automatically, so it just works
   on first run. To wipe, stop the stack and delete `./data`.
-- **Upgrades** — pin image tags (e.g. `ghcr.io/schulydev/schuly:<semver>`) instead of
+- **Upgrades** - pin image tags (e.g. `ghcr.io/schulydev/schuly:<semver>`) instead of
   `latest` for reproducible deploys, then `up -d` to roll forward. Migrations run
   automatically on the new container; back up `data/postgres` before major jumps.
 - **Plugin changes** made through the API are persisted back to `config/plugins.yml`.
@@ -143,8 +143,8 @@ reads as roles). Before real use:
 ## Reference: the full `compose.staging.yml`
 
 For convenience, the complete stack this guide runs (the same file lives in the
-repo's `deploy/` folder). All state is bind-mounted under `./data` — no named
-volumes — and a one-shot `init-perms` service makes the plugins folder writable by
+repo's `deploy/` folder). All state is bind-mounted under `./data` - no named
+volumes - and a one-shot `init-perms` service makes the plugins folder writable by
 the backend on first start, so a plain `docker compose up` just works.
 
 ```yaml

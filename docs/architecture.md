@@ -28,15 +28,15 @@ repositories.
 - **`Schuly.Application` must not reference `Schuly.Infrastructure`.** Handlers depend
   on abstractions; the API project composes the concrete infrastructure services into
   the DI container at startup (`Program.cs`).
-- `Schuly.Domain` has no project dependencies — entities stay pure.
+- `Schuly.Domain` has no project dependencies - entities stay pure.
 
 ## Request pipeline
 
 Controllers are thin and delegate to Mediator. Two pipeline behaviors are registered
 explicitly in `Program.cs` and run in registration order:
 
-1. `AuthorizationBehavior` — enforces role gates before the handler runs.
-2. `PluginEventBehavior` — dispatches backend commands to plugin event handlers.
+1. `AuthorizationBehavior` - enforces role gates before the handler runs.
+2. `PluginEventBehavior` - dispatches backend commands to plugin event handlers.
 
 Mediator handlers are registered automatically via source generation, so a new
 command/query and its handler are wired up just by adding the classes.
@@ -45,11 +45,11 @@ command/query and its handler are wired up just by adding the classes.
 
 1. **Entity** in `Schuly.Domain` (inherits `Base`).
 2. **DbSet + configuration** in `Schuly.Infrastructure/SchulyDbContext.cs`.
-3. **Migration** — see [Migrations](migrations.md).
+3. **Migration** - see [Migrations](migrations.md).
 4. **Command/Query** in `Schuly.Application/Commands/<Entity>/` or
    `Queries/<Entity>/`.
 5. **Handler** alongside the command/query (auto-registered via Mediator source-gen).
-6. **Controller** in `Schuly.API/Controllers/` — thin, delegates to Mediator.
+6. **Controller** in `Schuly.API/Controllers/` - thin, delegates to Mediator.
 
 ## Plugin host
 

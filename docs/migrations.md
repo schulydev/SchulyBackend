@@ -20,8 +20,8 @@ src/Schuly.API`.
 
 ## Windows
 
-- `scripts/migration.ps1` / `scripts/migration.bat` — PowerShell / batch equivalents.
-- `scripts/DbScript.ps1` — wraps DB lifecycle helpers (start/stop/recreate the dev
+- `scripts/migration.ps1` / `scripts/migration.bat` - PowerShell / batch equivalents.
+- `scripts/DbScript.ps1` - wraps DB lifecycle helpers (start/stop/recreate the dev
   database, add migration, delete migrations, full reset). Run with `-help` for the
   command list.
 
