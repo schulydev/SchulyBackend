@@ -49,4 +49,3 @@ The OpenAPI doc is produced by the built-in `Microsoft.AspNetCore.OpenApi`.
 ```sh
 dotnet test
 ```
-</content>

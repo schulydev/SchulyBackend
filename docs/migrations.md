@@ -38,4 +38,3 @@ production.
 - A running Postgres reachable via the `SchulyDatabase` connection string (see
   [Configuration](setup/configuration.md)). For local work, start it with
   `docker compose -f compose.dev.yml up -d`.
-</content>

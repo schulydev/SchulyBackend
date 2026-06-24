@@ -61,4 +61,3 @@ recurring background tasks (run by `PluginBackgroundTaskHost`). Plugin requests
 execute inside the owning plugin's DI scope via `PluginScopeMiddleware`. See
 [Plugin management](plugin-management.md) for the registry, hot-swap, and admin
 endpoints.
-</content>

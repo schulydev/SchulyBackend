@@ -62,4 +62,3 @@ described in [Plugin management](../plugin-management.md).
 
 Log levels are set under `Logging:LogLevel` in `appsettings.json`. The Development
 override raises HTTP logging to `Information` for request tracing.
-</content>
