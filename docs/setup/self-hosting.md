@@ -109,6 +109,8 @@ for both hostnames.
   `KC_ADMIN_USER` / `KC_ADMIN_PASSWORD`; the `schuly` realm should already exist.
 - `https://${API_HOST}/api/app/school-systems` → the anonymous catalog endpoint,
   proving the API is up (`/api/app` is the only unauthenticated route).
+- `https://${API_HOST}/api/app` → the app config (also anonymous); its `version` field
+  reports the running backend version - handy for confirming a deploy or upgrade.
 - `https://${API_HOST}/api/plugins` → loaded plugins (requires an `Administrator`
   login). Manage at runtime with `POST /api/plugins/install` and
   `DELETE /api/plugins/{name}`.
