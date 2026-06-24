@@ -239,11 +239,11 @@ namespace Schuly.API.Plugins
             services.AddSingleton(rootProvider.GetRequiredService<IHttpContextAccessor>());
             services.AddSingleton(rootProvider.GetRequiredService<IPluginVaultFactory>());
 
-            // The current request's user context (scoped in the root): resolve it from
-            // the active request scope so plugin code sees the real caller.
-            services.AddScoped<IPluginUserContext>(_ =>
-                rootProvider.GetRequiredService<IHttpContextAccessor>().HttpContext!
-                    .RequestServices.GetRequiredService<IPluginUserContext>());
+            // The current request's user context, resolved lazily from the active
+            // request scope so plugin code sees the real caller. Deferred (not resolved
+            // at construction) so plugin services can also be built outside a request —
+            // e.g. when the host reads a plugin's catalog descriptor at load time.
+            services.AddScoped<IPluginUserContext>(_ => new DeferredPluginUserContext(rootProvider));
 
             // The plugin's own isolated vault, keyed by its name (matches how plugins
             // resolve it: [FromKeyedServices(PluginName)] IPluginVault).
@@ -358,6 +358,27 @@ namespace Schuly.API.Plugins
             private readonly IServiceScope _scope = root.CreateScope();
             public IServiceProvider Services => _scope.ServiceProvider;
             public void Dispose() => _scope.Dispose();
+        }
+
+        /// <summary>
+        /// Bridges plugin code to the request's <see cref="IPluginUserContext"/> lazily.
+        /// Constructing it touches no HttpContext, so plugin services that depend on the
+        /// user context can be built outside a request (e.g. reading a plugin's catalog
+        /// descriptor at load time); each call resolves the real per-request context.
+        /// </summary>
+        private sealed class DeferredPluginUserContext(IServiceProvider root) : IPluginUserContext
+        {
+            private IPluginUserContext Current =>
+                (root.GetRequiredService<IHttpContextAccessor>().HttpContext
+                    ?? throw new InvalidOperationException(
+                        "IPluginUserContext is only available during a request."))
+                    .RequestServices.GetRequiredService<IPluginUserContext>();
+
+            public Task<Guid> GetCurrentUserIdAsync(CancellationToken cancellationToken = default) =>
+                Current.GetCurrentUserIdAsync(cancellationToken);
+
+            public Task<Guid?> GetCurrentSchoolUserIdAsync(CancellationToken cancellationToken = default) =>
+                Current.GetCurrentSchoolUserIdAsync(cancellationToken);
         }
 
         private sealed class LoadedPlugin
