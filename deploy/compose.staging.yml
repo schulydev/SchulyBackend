@@ -96,6 +96,8 @@ services:
       # (already registered on the schuly-app Keycloak client).
       Oidc__RedirectUri: "schulytest://callback"
       Oidc__PostLogoutRedirectUri: "schulytest://callback"
+      # HMAC key for signing avatar URLs — required. Set it in .env.
+      Avatar__SigningKey: ${AVATAR_SIGNING_KEY}
       # Document storage (SeaweedFS S3).
       S3__Endpoint: "http://seaweedfs:8333"
       S3__Bucket: "schuly"

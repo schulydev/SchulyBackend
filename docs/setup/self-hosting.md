@@ -77,6 +77,7 @@ cp .env.example .env
 | `KC_ADMIN_PASSWORD` | Keycloak bootstrap admin password. |
 | `S3_ACCESS_KEY` | SeaweedFS S3 access key. |
 | `S3_SECRET_KEY` | SeaweedFS S3 secret key. |
+| `AVATAR_SIGNING_KEY` | HMAC key for signing avatar URLs (required). Generate with `openssl rand -hex 32`. |
 
 > The S3 credentials **must match** `config/seaweedfs/s3-config.json` — update both
 > the `.env` and that file to the same values, or document storage won't authenticate.
@@ -223,6 +224,7 @@ services:
       # Mobile app deep link (the in-code default is the web localhost:4200 callback).
       Oidc__RedirectUri: "schulytest://callback"
       Oidc__PostLogoutRedirectUri: "schulytest://callback"
+      Avatar__SigningKey: ${AVATAR_SIGNING_KEY}
       S3__Endpoint: "http://seaweedfs:8333"
       S3__Bucket: "schuly"
       S3__AccessKey: ${S3_ACCESS_KEY}
