@@ -138,4 +138,124 @@ reads as roles). Before real use:
   `latest` for reproducible deploys, then `up -d` to roll forward. Migrations run
   automatically on the new container; back up `data/postgres` before major jumps.
 - **Plugin changes** made through the API are persisted back to `config/plugins.yml`.
-</content>
+
+## Reference: the full `compose.staging.yml`
+
+For convenience, the complete stack this guide runs (the same file lives in the
+repo's `deploy/` folder). All state is bind-mounted under `./data` — no named
+volumes — and a one-shot `init-perms` service makes the plugins folder writable by
+the backend on first start, so a plain `docker compose up` just works.
+
+```yaml
+services:
+  # One-shot: make the bind-mounted plugins folder writable by the backend's
+  # non-root user (uid 1654) before it starts, so a plain `up` works first run.
+  init-perms:
+    image: busybox:1.37
+    command: sh -c "mkdir -p /data/plugins && chown -R 1654:1654 /data/plugins"
+    volumes:
+      - ./data:/data
+    restart: "no"
+
+  postgres:
+    image: postgres:18.1
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: schuly
+    volumes:
+      # postgres:18 stores data in a versioned subdir, so mount at /var/lib/postgresql.
+      - ./data/postgres:/var/lib/postgresql
+      - ./config/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d schuly"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    restart: unless-stopped
+    command: >
+      server -dir=/data
+      -s3 -s3.config=/etc/seaweedfs/s3-config.json -s3.port=8333
+      -master.volumeSizeLimitMB=1024
+    volumes:
+      - ./data/seaweedfs:/data
+      - ./config/seaweedfs/s3-config.json:/etc/seaweedfs/s3-config.json:ro
+
+  keycloak:
+    image: ghcr.io/schulydev/schulykeycloak:latest
+    restart: unless-stopped
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_HOSTNAME: https://${AUTH_HOST}
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USER}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  schulware:
+    image: ghcr.io/pianonic/schulwareapi:latest
+    restart: unless-stopped
+    init: true
+    ipc: host
+    environment:
+      PYTHONUNBUFFERED: "1"
+
+  backend:
+    image: ghcr.io/schulydev/schuly:latest
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__SchulyDatabase: "Host=postgres;Port=5432;Database=schuly;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Oidc__Authority: "https://${AUTH_HOST}/realms/schuly"
+      Oidc__ClientId: "schuly-app"
+      Oidc__RequireHttpsMetadata: "true"
+      # Mobile app deep link (the in-code default is the web localhost:4200 callback).
+      Oidc__RedirectUri: "schulytest://callback"
+      Oidc__PostLogoutRedirectUri: "schulytest://callback"
+      S3__Endpoint: "http://seaweedfs:8333"
+      S3__Bucket: "schuly"
+      S3__AccessKey: ${S3_ACCESS_KEY}
+      S3__SecretKey: ${S3_SECRET_KEY}
+      S3__UsePathStyle: "true"
+      Plugins__Directory: "/app/plugins"
+      Plugins__ConfigDirectory: "/app/plugins-config"
+      Plugins__File: "/app/plugins.yml"
+    volumes:
+      - ./data/plugins:/app/plugins
+      - ./config/plugins.yml:/app/plugins.yml
+      - ./config/plugins-config:/app/plugins-config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      init-perms:
+        condition: service_completed_successfully
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_HOST: ${API_HOST}
+      AUTH_HOST: ${AUTH_HOST}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy:/data
+      - ./data/caddy-config:/config
+    depends_on:
+      - backend
+      - keycloak
+```
+
