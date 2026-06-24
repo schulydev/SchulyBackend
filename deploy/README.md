@@ -50,5 +50,8 @@ from the registry — no DLL baked into the image).
   Student/Teacher/Administrator groups (mapped to the `groups` claim the backend
   reads). Replace it with a real export for production use.
 - Plugin changes made via the API are persisted back to `config/plugins.yml`.
-- Postgres data, downloaded plugins, SeaweedFS blobs, and Caddy certs live in named
-  volumes, so they survive `down`/`up` (use `down -v` to wipe).
+- All state is **bind-mounted to host folders under `./data`** (recommended over
+  named volumes — visible and easy to back up): `data/postgres`, `data/seaweedfs`,
+  `data/plugins`, `data/caddy*`. They're created on first `up`; the one-shot
+  `init-perms` service makes `data/plugins` writable by the backend automatically, so
+  it works first run with no manual `chown`. To wipe, stop the stack and delete `./data`.

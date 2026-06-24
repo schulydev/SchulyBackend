@@ -4,10 +4,22 @@
 #   cp .env.example .env   # then fill it in
 #   docker compose -f compose.staging.yml up -d
 #
-# Only Caddy publishes ports (80/443). Everything else talks over the internal
-# network. Point DNS for ${API_HOST} and ${AUTH_HOST} at this host first, or
-# Let's Encrypt can't issue certificates.
+# All state is bind-mounted under ./data (host folders, not named volumes) so it
+# is visible and easy to back up on the host. Only Caddy publishes ports
+# (80/443); everything else talks over the internal network. Point DNS for
+# ${API_HOST} and ${AUTH_HOST} at this host first, or Let's Encrypt can't issue
+# certificates.
 services:
+  # One-shot: make the bind-mounted plugins folder writable by the backend's
+  # non-root user (uid 1654) before it starts, so a plain `up` works on the very
+  # first run with no manual chown. Runs once and exits.
+  init-perms:
+    image: busybox:1.37
+    command: sh -c "mkdir -p /data/plugins && chown -R 1654:1654 /data/plugins"
+    volumes:
+      - ./data:/data
+    restart: "no"
+
   postgres:
     image: postgres:18.1
     restart: unless-stopped
@@ -18,9 +30,9 @@ services:
     # Creates the extra `keycloak` database on first init (the backend's plugin
     # databases are created automatically by EF migrations).
     volumes:
-      # postgres:18 stores data in a versioned subdir, so the volume mounts at
+      # postgres:18 stores data in a versioned subdir, so the data mounts at
       # /var/lib/postgresql (not /var/lib/postgresql/data, which it now rejects).
-      - postgres-data:/var/lib/postgresql
+      - ./data/postgres:/var/lib/postgresql
       - ./config/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d schuly"]
@@ -36,7 +48,7 @@ services:
       -s3 -s3.config=/etc/seaweedfs/s3-config.json -s3.port=8333
       -master.volumeSizeLimitMB=1024
     volumes:
-      - seaweedfs-data:/data
+      - ./data/seaweedfs:/data
       - ./config/seaweedfs/s3-config.json:/etc/seaweedfs/s3-config.json:ro
 
   keycloak:
@@ -95,12 +107,14 @@ services:
       Plugins__ConfigDirectory: "/app/plugins-config"
       Plugins__File: "/app/plugins.yml"
     volumes:
-      - backend-plugins:/app/plugins                       # downloaded plugin DLLs (persisted)
+      - ./data/plugins:/app/plugins                        # downloaded plugin DLLs (host folder)
       - ./config/plugins.yml:/app/plugins.yml              # desired plugin set (writable: endpoints rewrite it)
       - ./config/plugins-config:/app/plugins-config:ro     # per-plugin config
     depends_on:
       postgres:
         condition: service_healthy
+      init-perms:
+        condition: service_completed_successfully
 
   caddy:
     image: caddy:2
@@ -113,15 +127,8 @@ services:
       AUTH_HOST: ${AUTH_HOST}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
+      - ./data/caddy:/data
+      - ./data/caddy-config:/config
     depends_on:
       - backend
       - keycloak
-
-volumes:
-  postgres-data:
-  seaweedfs-data:
-  backend-plugins:
-  caddy-data:
-  caddy-config:

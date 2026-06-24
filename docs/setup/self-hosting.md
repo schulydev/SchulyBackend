@@ -128,11 +128,14 @@ reads as roles). Before real use:
 
 ## Operations
 
-- **Persistence** — Postgres data, downloaded plugins, SeaweedFS blobs, and Caddy
-  certs live in named volumes, so they survive `down`/`up`. `docker compose -f
-  compose.staging.yml down -v` wipes them.
+- **Persistence** — all state is **bind-mounted to host folders under `./data`** (no
+  named volumes): `data/postgres`, `data/seaweedfs`, `data/plugins`, `data/caddy*`.
+  This is the recommended setup — your data stays visible and easy to back up on the
+  host. The folders are created on first `up`, and a one-shot `init-perms` service
+  makes `data/plugins` writable by the backend's user automatically, so it just works
+  on first run. To wipe, stop the stack and delete `./data`.
 - **Upgrades** — pin image tags (e.g. `ghcr.io/schulydev/schuly:<semver>`) instead of
   `latest` for reproducible deploys, then `up -d` to roll forward. Migrations run
-  automatically on the new container; back up the Postgres volume before major jumps.
+  automatically on the new container; back up `data/postgres` before major jumps.
 - **Plugin changes** made through the API are persisted back to `config/plugins.yml`.
 </content>
