@@ -18,7 +18,9 @@ services:
     # Creates the extra `keycloak` database on first init (the backend's plugin
     # databases are created automatically by EF migrations).
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # postgres:18 stores data in a versioned subdir, so the volume mounts at
+      # /var/lib/postgresql (not /var/lib/postgresql/data, which it now rejects).
+      - postgres-data:/var/lib/postgresql
       - ./config/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d schuly"]
@@ -77,6 +79,11 @@ services:
       Oidc__Authority: "https://${AUTH_HOST}/realms/schuly"
       Oidc__ClientId: "schuly-app"
       Oidc__RequireHttpsMetadata: "true"
+      # The in-code default redirect URIs are the web (localhost:4200) callbacks.
+      # The mobile app uses the schulytest:// deep link, so advertise that here
+      # (already registered on the schuly-app Keycloak client).
+      Oidc__RedirectUri: "schulytest://callback"
+      Oidc__PostLogoutRedirectUri: "schulytest://callback"
       # Document storage (SeaweedFS S3).
       S3__Endpoint: "http://seaweedfs:8333"
       S3__Bucket: "schuly"
@@ -91,6 +98,7 @@ services:
       - backend-plugins:/app/plugins                       # downloaded plugin DLLs (persisted)
       - ./config/plugins.yml:/app/plugins.yml              # desired plugin set (writable: endpoints rewrite it)
       - ./config/plugins-config:/app/plugins-config:ro     # per-plugin config
+      - ./config/appsettings.Production.json:/app/appsettings.Production.json:ro  # school-systems catalog seed
     depends_on:
       postgres:
         condition: service_healthy
