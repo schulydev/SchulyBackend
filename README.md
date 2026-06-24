@@ -53,7 +53,7 @@ machine:
 ```sh
 cd src/Schuly.API
 
-# OIDC (Pocket ID etc.)
+# OIDC (Keycloak etc.)
 dotnet user-secrets set "Oidc:Authority" "https://your-oidc-provider"
 dotnet user-secrets set "Oidc:ClientId" "your-client-id"
 

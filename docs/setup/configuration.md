@@ -24,7 +24,7 @@ JWT bearer authentication validates tokens against the configured OIDC authority
 
 | Key | Purpose |
 |---|---|
-| `Oidc:Authority` | OIDC authority (Pocket ID) used to validate bearer tokens. |
+| `Oidc:Authority` | OIDC authority (Keycloak) used to validate bearer tokens. |
 | `Oidc:RequireHttpsMetadata` | Whether HTTPS metadata is required (default `true`). |
 
 Token claim mapping:
