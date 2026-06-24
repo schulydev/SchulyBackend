@@ -17,13 +17,13 @@ with a real domain.
 
 The backend validates OIDC tokens against the Keycloak `schuly` realm, and loads
 the **Schulware plugin** declared in `config/plugins.yml` on startup (downloaded
-from the registry — no DLL baked into the image).
+from the registry - no DLL baked into the image).
 
 ## Setup
 
-1. **DNS** — point `API_HOST` and `AUTH_HOST` at this server (Caddy needs them to
+1. **DNS** - point `API_HOST` and `AUTH_HOST` at this server (Caddy needs them to
    issue Let's Encrypt certs).
-2. **Secrets** — `cp .env.example .env` and fill it in. Set `S3_SECRET_KEY` to the
+2. **Secrets** - `cp .env.example .env` and fill it in. Set `S3_SECRET_KEY` to the
    same value in `config/seaweedfs/s3-config.json` (`S3_ACCESS_KEY` too).
 3. **Run**:
    ```sh
@@ -51,7 +51,7 @@ from the registry — no DLL baked into the image).
   reads). Replace it with a real export for production use.
 - Plugin changes made via the API are persisted back to `config/plugins.yml`.
 - All state is **bind-mounted to host folders under `./data`** (recommended over
-  named volumes — visible and easy to back up): `data/postgres`, `data/seaweedfs`,
+  named volumes - visible and easy to back up): `data/postgres`, `data/seaweedfs`,
   `data/plugins`, `data/caddy*`. They're created on first `up`; the one-shot
   `init-perms` service makes `data/plugins` writable by the backend automatically, so
   it works first run with no manual `chown`. To wipe, stop the stack and delete `./data`.
