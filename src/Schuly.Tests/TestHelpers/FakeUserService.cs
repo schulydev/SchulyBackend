@@ -14,6 +14,8 @@ namespace Schuly.Tests.TestHelpers
 
         public bool IsCurrentUserAdmin() => isAdmin;
 
+        public bool IsCurrentUserTeacher() => false;
+
         public Task<IReadOnlyList<Guid>> GetCurrentUserSchoolUserIdsAsync(CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<Guid>>(schoolUserIds);
 
