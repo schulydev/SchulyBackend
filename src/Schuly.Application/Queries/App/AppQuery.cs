@@ -18,7 +18,7 @@ namespace Schuly.Application.Queries.App
                 configuration["Oidc:ClientId"] ?? string.Empty,
                 configuration["Oidc:RedirectUri"] ?? "http://localhost:4200/callback",
                 configuration["Oidc:PostLogoutRedirectUri"] ?? "http://localhost:4200/",
-                configuration["Oidc:Scope"] ?? "openid profile email groups picture",
+                configuration["Oidc:Scope"] ?? "openid profile email groups picture offline_access",
                 "1.0.0"
             ));
         }
