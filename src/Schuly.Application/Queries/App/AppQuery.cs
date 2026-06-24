@@ -1,3 +1,4 @@
+using System.Reflection;
 using Mediator;
 using Microsoft.Extensions.Configuration;
 using Schuly.Application.Dtos;
@@ -11,6 +12,16 @@ namespace Schuly.Application.Queries.App
 
     public class AppQueryHandler(IConfiguration configuration) : IQueryHandler<AppQuery, Result<AppDto>>
     {
+        // Assembly informational version, stamped from application.properties via
+        // Directory.Build.props (and -p:Version in the Docker build). The "+meta"
+        // suffix SourceLink may append is stripped.
+        private static readonly string Version =
+            (Assembly.GetEntryAssembly() ?? typeof(AppQueryHandler).Assembly)
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion
+                ?.Split('+')[0]
+            ?? "0.0.0";
+
         public async ValueTask<Result<AppDto>> Handle(AppQuery query, CancellationToken cancellationToken)
         {
             return Result<AppDto>.Success(new AppDto(
@@ -19,7 +30,7 @@ namespace Schuly.Application.Queries.App
                 configuration["Oidc:RedirectUri"] ?? "http://localhost:4200/callback",
                 configuration["Oidc:PostLogoutRedirectUri"] ?? "http://localhost:4200/",
                 configuration["Oidc:Scope"] ?? "openid profile email groups picture offline_access",
-                "1.0.0"
+                Version
             ));
         }
     }
