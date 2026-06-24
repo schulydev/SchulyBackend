@@ -2,10 +2,12 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Schuly.API.Services;
+using Schuly.Domain;
 using Schuly.Infrastructure;
 using Schuly.Infrastructure.Storage;
 using Schuly.Infrastructure.Vault;
@@ -75,6 +77,60 @@ namespace Schuly.API.Plugins
             return null;
         }
 
+        /// <summary>
+        /// Seeds the school-systems catalog from a freshly-loaded plugin's
+        /// <see cref="IPluginLogin.SchoolSystem"/> descriptors (seed-if-missing by
+        /// <see cref="SchoolSystem.Key"/>), so the catalog is plugin-provided instead of
+        /// operator config. Anything an admin edits afterwards is left untouched.
+        /// </summary>
+        private async Task SyncSchoolSystemsAsync(LoadedPlugin loaded, CancellationToken ct)
+        {
+            using var pluginScope = loaded.Provider.CreateScope();
+            var descriptors = pluginScope.ServiceProvider.GetServices<IPluginLogin>()
+                .Select(l => l.SchoolSystem)
+                .Where(d => d is not null && !string.IsNullOrWhiteSpace(d.Key))
+                .DistinctBy(d => d.Key, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (descriptors.Count == 0)
+                return;
+
+            using var hostScope = rootProvider.CreateScope();
+            var db = hostScope.ServiceProvider.GetRequiredService<SchulyDbContext>();
+            var existingKeys = await db.SchoolSystems.Select(s => s.Key).ToListAsync(ct);
+
+            var missing = descriptors
+                .Where(d => !existingKeys.Contains(d.Key))
+                .Select(d => new SchoolSystem
+                {
+                    Key = d.Key,
+                    DisplayName = d.DisplayName,
+                    LoginMethod = d.LoginMethod,
+                    LogoUrl = d.LogoUrl,
+                    PrivateAuthStrategy = d.PrivateAuthStrategy,
+                    StatelessBasePath = d.StatelessBasePath,
+                    PluginBasePath = d.PluginBasePath,
+                    Enabled = d.Enabled,
+                    SortOrder = d.SortOrder,
+                    LoginFields = d.LoginFields.Select(f => new SchoolSystemLoginField
+                    {
+                        Key = f.Key,
+                        Label = f.Label,
+                        Type = f.Type,
+                        Placeholder = f.Placeholder,
+                        DefaultValue = f.DefaultValue,
+                        Required = f.Required,
+                    }).ToList(),
+                })
+                .ToList();
+
+            if (missing.Count == 0)
+                return;
+
+            await db.SchoolSystems.AddRangeAsync(missing, ct);
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Seeded {Count} school system(s) from plugin {Name}", missing.Count, loaded.Name);
+        }
+
         public async Task LoadAsync(PluginManifest manifest, string pluginDirectory, CancellationToken ct = default)
         {
             await _gate.WaitAsync(ct);
@@ -121,6 +177,7 @@ namespace Schuly.API.Plugins
                 RefreshEndpoints();
                 PluginActionDescriptorChangeProvider.Instance.NotifyChanged();
                 StartBackgroundTasks(loaded);
+                await SyncSchoolSystemsAsync(loaded, ct);
 
                 logger.LogInformation("Loaded plugin {Name} v{Version}", plugin.Name, plugin.Version);
             }

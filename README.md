@@ -91,39 +91,42 @@ or a hardened SeaweedFS deployment — no code change.
 
 ## School systems catalog
 
-The CRM is provider-agnostic: which login systems the app offers is **operator
-configuration**, not baked into the code. On a fresh database the backend
-seeds the catalog from a `SchoolSystems` config section (seed-if-missing by
-`Key`; anything an admin edits afterwards is left untouched). Supply it via
-`appsettings.Production.json`, environment variables, or user-secrets — the
-shipped `appsettings.json` contains none.
+The CRM is provider-agnostic: which login systems the app offers is **supplied by
+the loaded plugins**, not baked into the backend. Each plugin describes the system
+it serves via its `IPluginLogin.SchoolSystem` descriptor; on load the backend
+collects these and seeds the catalog (seed-if-missing by `Key`, so anything an
+admin edits afterwards is left untouched). Install a plugin and its system appears
+in the picker — no operator config required.
 
-Each entry is generic catalog data the app renders dynamically. `PrivateAuthStrategy`
-tells the app how private mode fetches data: `"token"` (a headless login mints a
-bearer token + refreshable session) or `"scrape"` (credentials replayed per fetch).
+A descriptor carries everything the app needs to render the system and its login
+form. `PrivateAuthStrategy` tells the app how private mode fetches data: `"token"`
+(a headless login mints a bearer token + refreshable session) or `"scrape"`
+(credentials replayed per fetch).
 
-```jsonc
+```csharp
+// in the plugin's IPluginLogin implementation
+public SchoolSystemDescriptor SchoolSystem => new()
 {
-  "SchoolSystems": [
-    {
-      "Key": "myschool",
-      "DisplayName": "My School",
-      "LoginMethod": "credentials",        // or "oauth-webview"
-      "LogoUrl": "https://cdn.example.org/myschool.webp",
-      "PrivateAuthStrategy": "token",      // "token" | "scrape"
-      "StatelessBasePath": "/api/plugins/<plugin>/stateless",
-      "PluginBasePath": "/api/plugins/<plugin>",
-      "Enabled": true,
-      "SortOrder": 0,
-      "LoginFields": [
-        { "Key": "baseUrl",  "Label": "Server URL", "Type": "url",      "Required": true },
-        { "Key": "email",    "Label": "Email",      "Type": "text",     "Required": true },
-        { "Key": "password", "Label": "Password",   "Type": "password", "Required": true }
-      ]
-    }
-  ]
-}
+    Key = "schulnetz",                  // must match SystemKey
+    DisplayName = "Schulnetz",
+    LoginMethod = "credentials",        // or "oauth-webview"
+    PrivateAuthStrategy = "token",      // "token" | "scrape"
+    StatelessBasePath = "/api/plugins/schulware/stateless",
+    PluginBasePath = "/api/plugins/schulware",
+    SortOrder = 0,
+    LoginFields =
+    [
+        new() { Key = "baseUrl",  Label = "Schulnetz URL", Type = "url",      Required = true },
+        new() { Key = "email",    Label = "Email",         Type = "text",     Required = true },
+        new() { Key = "password", Label = "Password",      Type = "password", Required = true },
+    ],
+};
 ```
+
+An operator can still add or override **custom** (non-plugin) systems via a
+`SchoolSystems` config section (`appsettings.Production.json`, environment
+variables, or user-secrets). It seeds first, so a config entry with the same `Key`
+wins over a plugin's default; the shipped `appsettings.json` contains none.
 
 ## Migrations
 
