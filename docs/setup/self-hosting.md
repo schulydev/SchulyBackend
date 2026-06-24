@@ -85,7 +85,10 @@ cp .env.example .env
 
 `config/plugins.yml` lists the plugins the backend loads on startup (the Schulware
 plugin by default), and `config/plugins-config/` holds each plugin's configuration.
-The defaults work out of the box; adjust only if you need to.
+Each plugin also **provides its own school-system catalog entry** — the system the
+app shows in its picker (Schulware contributes `schulnetz`, OdaOrg `odaorg`) — so
+installing a plugin adds its system automatically, with no catalog config. The
+defaults work out of the box; adjust only if you need to.
 
 ## 5. Start the stack
 
@@ -96,7 +99,8 @@ docker compose -f compose.staging.yml logs -f backend
 
 On first start: Postgres creates the `schuly` and `keycloak` databases, Keycloak
 imports the `schuly` realm, the backend applies its migrations and seeds the
-school-systems catalog, and Caddy obtains TLS certificates for both hostnames.
+school-systems catalog from the loaded plugins, and Caddy obtains TLS certificates
+for both hostnames.
 
 ## 6. Verify end-to-end
 

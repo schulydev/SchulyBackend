@@ -98,7 +98,6 @@ services:
       - backend-plugins:/app/plugins                       # downloaded plugin DLLs (persisted)
       - ./config/plugins.yml:/app/plugins.yml              # desired plugin set (writable: endpoints rewrite it)
       - ./config/plugins-config:/app/plugins-config:ro     # per-plugin config
-      - ./config/appsettings.Production.json:/app/appsettings.Production.json:ro  # school-systems catalog seed
     depends_on:
       postgres:
         condition: service_healthy
