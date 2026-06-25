@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Schuly.Infrastructure.Services;
 using System.Security.Claims;
@@ -12,12 +13,18 @@ namespace Schuly.API.Extensions
         // JWT bearer auth against the configured OIDC authority, plus user-sync on
         // first valid token. In Development, an opt-in fake-OIDC path validates
         // locally minted tokens instead (see DevAuthDefaults / DevAuthController).
-        public static IServiceCollection AddSchulyAuthentication(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddSchulyAuthentication(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
         {
+            // DevAuth trusts locally minted tokens; it must never be reachable in a
+            // non-Development deployment, even if the flag is set by mistake.
+            if (configuration.GetValue($"{DevAuthDefaults.Section}:Enabled", false) && !environment.IsDevelopment())
+                throw new InvalidOperationException(
+                    "DevAuth:Enabled must never be set outside the Development environment.");
+
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
-                    if (DevAuthDefaults.IsEnabled(configuration))
+                    if (DevAuthDefaults.IsEnabled(configuration, environment))
                     {
                         // Local testing only: trust tokens minted by /api/dev/token,
                         // signed with a symmetric key. No external IdP is contacted.

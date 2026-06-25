@@ -35,7 +35,7 @@ builder.Services.AddSchulyVault();
 builder.Services.AddSingleton<PluginSchedulerRegistry>();
 builder.Services.AddSchulyPlugins(builder.Configuration, mvcBuilder);
 
-builder.Services.AddSchulyAuthentication(builder.Configuration);
+builder.Services.AddSchulyAuthentication(builder.Configuration, builder.Environment);
 builder.Services.AddSchulyAuthorization();
 builder.Services.AddSchulyExceptionHandling();
 

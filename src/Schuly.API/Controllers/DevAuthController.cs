@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Hosting;
 using Schuly.API.Extensions;
 using System.Security.Claims;
 
@@ -15,7 +16,7 @@ namespace Schuly.API.Controllers
     [ApiController]
     [Route("api/dev")]
     [AllowAnonymous]
-    public class DevAuthController(IConfiguration configuration) : ControllerBase
+    public class DevAuthController(IConfiguration configuration, IWebHostEnvironment environment) : ControllerBase
     {
         public record DevTokenRequest(string? Role = "Administrator", string? Sub = "dev-admin", string? Name = "Dev Admin", string? Email = null);
 
@@ -26,7 +27,7 @@ namespace Schuly.API.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public IActionResult Token([FromBody] DevTokenRequest? request)
         {
-            if (!DevAuthDefaults.IsEnabled(configuration))
+            if (!DevAuthDefaults.IsEnabled(configuration, environment))
                 return NotFound();
 
             var role = string.IsNullOrWhiteSpace(request?.Role) ? "Administrator" : request!.Role!;
