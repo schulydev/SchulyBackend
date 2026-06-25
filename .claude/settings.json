@@ -2,5 +2,24 @@
   "attribution": {
     "commit": "",
     "pr": ""
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); if echo \"$input\" | grep -Eq 'git[[:space:]]+([^[:space:]]+[[:space:]]+)*commit([[:space:]\"]|$)'; then branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$branch\" = \"main\" ] || [ \"$branch\" = \"master\" ]; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked: direct commits to main/master are not allowed (CLAUDE.md workflow rule). Create a feature/<issue#>_PascalCase or fix/<issue#>_PascalCase branch first, then commit there.\"}}'; fi; fi",
+            "statusMessage": "Checking branch before commit"
+          },
+          {
+            "type": "command",
+            "command": "input=$(cat); if echo \"$input\" | grep -Eq 'git[[:space:]]+([^[:space:]]+[[:space:]]+)*commit([[:space:]\"]|$)' && echo \"$input\" | grep -Eiq 'co-authored-by:[^\"]*(claude|anthropic)|generated with claude|noreply@anthropic\\.com|🤖'; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked: AI/Claude attribution in commit messages is not allowed (CLAUDE.md). Remove Co-Authored-By / Generated-with-Claude / anthropic trailers and recommit.\"}}'; fi",
+            "statusMessage": "Checking commit message for attribution"
+          }
+        ]
+      }
+    ]
   }
 }
