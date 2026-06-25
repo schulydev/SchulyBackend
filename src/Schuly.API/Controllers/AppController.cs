@@ -31,12 +31,5 @@ namespace Schuly.API.Controllers
             var result = await mediator.Send(new GetSchoolSystemsQuery(), cancellationToken);
             return result.ToActionResult();
         }
-
-        [HttpGet("test", Name = "TestEndpointWithAuth")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult Test()
-        {
-            return Ok();
-        }
     }
 }

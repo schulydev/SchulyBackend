@@ -21,13 +21,8 @@ namespace Schuly.Application.Queries.Exam
             var isAdmin = userService.IsCurrentUserAdmin();
             IReadOnlyList<Guid> myIds = isAdmin ? [] : await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
 
-            IQueryable<Domain.Exam> dbQuery = dbContext.Exams.AsNoTracking().Include(e => e.Class);
-
-            if (!isAdmin)
-                dbQuery = dbQuery.Where(e => e.Class!.Students.Any(su => myIds.Contains(su.Id)));
-
-            var exam = await dbQuery
-                .Include(e => e.Grades.Where(g => isAdmin || myIds.Contains(g.SchoolUserId)))
+            var exam = await dbContext.Exams
+                .ApplyVisibility(isAdmin, myIds)
                 .SingleOrDefaultAsync(e => e.Id == query.ExamId, cancellationToken);
 
             if (exam == null)

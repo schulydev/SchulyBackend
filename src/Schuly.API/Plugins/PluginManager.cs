@@ -96,20 +96,7 @@ namespace Schuly.API.Plugins
         private static RegistryPlugin? Resolve(IReadOnlyList<RegistryPlugin> index, string name, string? version)
         {
             var entry = index.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-            if (entry is null) return null;
-
-            if (!string.IsNullOrWhiteSpace(version) &&
-                !version.Equals("latest", StringComparison.OrdinalIgnoreCase) &&
-                !version.Equals(entry.Version, StringComparison.OrdinalIgnoreCase))
-            {
-                return entry with
-                {
-                    Version = version,
-                    Dll = $"{entry.Name}-v{version}.dll",
-                    Deps = $"{entry.Name}-v{version}-deps.zip",
-                };
-            }
-            return entry;
+            return entry?.WithPinnedVersion(version);
         }
     }
 }
