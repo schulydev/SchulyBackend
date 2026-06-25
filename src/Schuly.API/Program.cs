@@ -7,6 +7,7 @@ using Schuly.Infrastructure.Services;
 using Schuly.Infrastructure.Storage;
 using Schuly.Infrastructure.Vault;
 using Schuly.Plugin.Abstractions;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +40,17 @@ builder.Services.AddSchulyAuthentication(builder.Configuration, builder.Environm
 builder.Services.AddSchulyAuthorization();
 builder.Services.AddSchulyExceptionHandling();
 
+// Per-IP backstop against abuse of the anonymous credential-handling proxy
+// endpoints (private-mode login/refresh/data) and brute force in general.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 600, Window = TimeSpan.FromMinutes(1) }));
+});
+
 if (builder.Environment.IsDevelopment())
     builder.Services.AddSchulyRequestLogging();
 
@@ -59,6 +71,7 @@ if (app.Environment.IsDevelopment())
     app.MapSchulyApiReference();
 }
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 // Run plugin requests inside the owning plugin's service scope (after auth, before
