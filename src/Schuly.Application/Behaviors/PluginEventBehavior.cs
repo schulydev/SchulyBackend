@@ -8,10 +8,7 @@ namespace Schuly.Application.Behaviors
     public class PluginEventBehavior<TRequest, TResponse>(IServiceProvider serviceProvider, ILogger<PluginEventBehavior<TRequest, TResponse>> logger) : IPipelineBehavior<TRequest, TResponse>
         where TRequest : notnull, IMessage
     {
-        public async ValueTask<TResponse> Handle(
-            TRequest request,
-            MessageHandlerDelegate<TRequest, TResponse> next,
-            CancellationToken cancellationToken)
+        public async ValueTask<TResponse> Handle(TRequest request, MessageHandlerDelegate<TRequest, TResponse> next, CancellationToken cancellationToken)
         {
             var response = await next(request, cancellationToken);
 

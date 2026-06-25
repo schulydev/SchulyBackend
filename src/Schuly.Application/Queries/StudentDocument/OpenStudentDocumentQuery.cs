@@ -18,10 +18,7 @@ namespace Schuly.Application.Queries.StudentDocument
     [AllowAuthenticated]
     public record OpenStudentDocumentQuery(Guid DocumentId) : IQuery<Result<DocumentDownload>>;
 
-    public class OpenStudentDocumentQueryHandler(
-        SchulyDbContext db,
-        IDocumentStorage storage,
-        IUserService userService) : IQueryHandler<OpenStudentDocumentQuery, Result<DocumentDownload>>
+    public class OpenStudentDocumentQueryHandler(SchulyDbContext db, IDocumentStorage storage, IUserService userService) : IQueryHandler<OpenStudentDocumentQuery, Result<DocumentDownload>>
     {
         public async ValueTask<Result<DocumentDownload>> Handle(OpenStudentDocumentQuery query, CancellationToken ct)
         {

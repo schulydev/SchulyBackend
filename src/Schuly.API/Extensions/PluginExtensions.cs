@@ -17,8 +17,7 @@ namespace Schuly.API.Extensions
     {
         private const string DefaultRegistry = "https://raw.githubusercontent.com/schulydev/SchulyPlugins/repo/";
 
-        public static IServiceCollection AddSchulyPlugins(
-            this IServiceCollection services, IConfiguration configuration, IMvcBuilder mvc)
+        public static IServiceCollection AddSchulyPlugins(this IServiceCollection services, IConfiguration configuration, IMvcBuilder mvc)
         {
             services.AddSingleton<PluginAssemblyMap>();
             services.AddSingleton<PluginEndpointDataSource>();

@@ -24,14 +24,7 @@ namespace Schuly.API.Plugins
     /// its controllers (MVC ApplicationParts), minimal-API endpoints, and background
     /// tasks are wired in on load and torn down on unload — no process restart.
     /// </summary>
-    public sealed class PluginHost(
-        IServiceProvider rootProvider,
-        IConfiguration configuration,
-        ApplicationPartManager partManager,
-        PluginEndpointDataSource endpointSource,
-        PluginAssemblyMap assemblyMap,
-        PluginSchedulerRegistry scheduler,
-        ILogger<PluginHost> logger)
+    public sealed class PluginHost(IServiceProvider rootProvider, IConfiguration configuration, ApplicationPartManager partManager, PluginEndpointDataSource endpointSource, PluginAssemblyMap assemblyMap, PluginSchedulerRegistry scheduler, ILogger<PluginHost> logger)
     {
         private readonly ConcurrentDictionary<string, LoadedPlugin> _loaded = new(StringComparer.OrdinalIgnoreCase);
         private readonly SemaphoreSlim _gate = new(1, 1);
@@ -57,11 +50,7 @@ namespace Schuly.API.Plugins
         /// can't inject these directly: plugin logins live in each plugin's child
         /// provider, not the frozen root container, so this bridge is the only path.
         /// </summary>
-        public async Task<PluginLoginResult?> ConnectAsync(
-            string systemKey,
-            IReadOnlyDictionary<string, string> fields,
-            string? displayName,
-            CancellationToken ct = default)
+        public async Task<PluginLoginResult?> ConnectAsync(string systemKey, IReadOnlyDictionary<string, string> fields, string? displayName, CancellationToken ct = default)
         {
             foreach (var loaded in _loaded.Values)
             {

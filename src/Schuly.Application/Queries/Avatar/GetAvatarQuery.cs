@@ -18,9 +18,7 @@ namespace Schuly.Application.Queries.Avatar
     [AllowAuthenticated]
     public record GetAvatarQuery(Guid SchoolUserId) : IQuery<Result<AvatarDownload>>;
 
-    public class GetAvatarQueryHandler(
-        SchulyDbContext db,
-        IDocumentStorage storage) : IQueryHandler<GetAvatarQuery, Result<AvatarDownload>>
+    public class GetAvatarQueryHandler(SchulyDbContext db, IDocumentStorage storage) : IQueryHandler<GetAvatarQuery, Result<AvatarDownload>>
     {
         public async ValueTask<Result<AvatarDownload>> Handle(GetAvatarQuery query, CancellationToken ct)
         {

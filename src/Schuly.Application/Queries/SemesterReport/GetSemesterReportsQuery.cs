@@ -16,9 +16,7 @@ namespace Schuly.Application.Queries.SemesterReport
     [AllowAuthenticated]
     public record GetSemesterReportsQuery(Guid? SchoolUserId = null) : IQuery<Result<List<SemesterReportDto>>>;
 
-    public class GetSemesterReportsQueryHandler(
-        SchulyDbContext dbContext,
-        IUserService userService) : IQueryHandler<GetSemesterReportsQuery, Result<List<SemesterReportDto>>>
+    public class GetSemesterReportsQueryHandler(SchulyDbContext dbContext, IUserService userService) : IQueryHandler<GetSemesterReportsQuery, Result<List<SemesterReportDto>>>
     {
         public async ValueTask<Result<List<SemesterReportDto>>> Handle(GetSemesterReportsQuery query, CancellationToken cancellationToken)
         {

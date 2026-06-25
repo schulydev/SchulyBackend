@@ -50,8 +50,7 @@ namespace Schuly.API.Plugins
         /// returns its endpoints re-stamped with <see cref="PluginOwner"/> metadata so
         /// the scope middleware can route each request into the plugin's scope.
         /// </summary>
-        public static IReadOnlyList<Endpoint> Build(
-            string pluginName, IServiceProvider rootProvider, Action<IEndpointRouteBuilder> configure)
+        public static IReadOnlyList<Endpoint> Build(string pluginName, IServiceProvider rootProvider, Action<IEndpointRouteBuilder> configure)
         {
             var builder = new CapturingEndpointRouteBuilder(rootProvider);
             configure(builder);

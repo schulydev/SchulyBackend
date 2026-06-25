@@ -12,10 +12,7 @@ namespace Schuly.Application.Queries.SchoolUser
     [AllowAuthenticated]
     public record GetSchoolUserQuery(Guid SchoolUserId) : IQuery<Result<SchoolUserDto>>;
 
-    public class GetSchoolUserQueryHandler(
-        SchulyDbContext dbContext,
-        IUserService userService,
-        IAvatarUrlSigner avatarSigner) : IQueryHandler<GetSchoolUserQuery, Result<SchoolUserDto>>
+    public class GetSchoolUserQueryHandler(SchulyDbContext dbContext, IUserService userService, IAvatarUrlSigner avatarSigner) : IQueryHandler<GetSchoolUserQuery, Result<SchoolUserDto>>
     {
         public async ValueTask<Result<SchoolUserDto>> Handle(GetSchoolUserQuery query, CancellationToken cancellationToken)
         {

@@ -8,8 +8,7 @@ namespace Schuly.Infrastructure.Storage
     {
         private readonly S3Options _opts = options.Value;
 
-        public async Task<UploadedBlob> UploadAsync(
-            Stream content, string fileName, string? contentType, CancellationToken ct)
+        public async Task<UploadedBlob> UploadAsync(Stream content, string fileName, string? contentType, CancellationToken ct)
         {
             // Random prefix keeps keys unpredictable and avoids collisions when
             // two students happen to upload files with the same name.

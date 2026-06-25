@@ -61,8 +61,7 @@ namespace Schuly.API.Plugins
         /// plugins directory, replacing any previous install of the same plugin.
         /// Returns the written manifest.
         /// </summary>
-        public async Task<PluginManifest> InstallAsync(
-            RegistryPlugin entry, PluginRegistryClient registry, CancellationToken ct = default)
+        public async Task<PluginManifest> InstallAsync(RegistryPlugin entry, PluginRegistryClient registry, CancellationToken ct = default)
         {
             // Clean any previous version's files first so a downgrade/upgrade leaves no
             // stale -v<old>.dll behind that would be discovered alongside the new one.

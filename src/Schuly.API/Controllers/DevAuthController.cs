@@ -17,11 +17,7 @@ namespace Schuly.API.Controllers
     [AllowAnonymous]
     public class DevAuthController(IConfiguration configuration) : ControllerBase
     {
-        public record DevTokenRequest(
-            string? Role = "Administrator",
-            string? Sub = "dev-admin",
-            string? Name = "Dev Admin",
-            string? Email = null);
+        public record DevTokenRequest(string? Role = "Administrator", string? Sub = "dev-admin", string? Name = "Dev Admin", string? Email = null);
 
         public record DevTokenResponse(string AccessToken, string TokenType, int ExpiresIn, string Role);
 

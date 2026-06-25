@@ -15,8 +15,7 @@ namespace Schuly.Infrastructure.Storage
     /// </summary>
     public interface IDocumentStorage
     {
-        Task<UploadedBlob> UploadAsync(
-            Stream content, string fileName, string? contentType, CancellationToken ct);
+        Task<UploadedBlob> UploadAsync(Stream content, string fileName, string? contentType, CancellationToken ct);
 
         Task<DocumentStream> OpenReadAsync(string key, CancellationToken ct);
 

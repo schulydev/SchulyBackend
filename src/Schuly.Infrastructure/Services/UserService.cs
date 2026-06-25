@@ -6,10 +6,7 @@ using System.Security.Claims;
 
 namespace Schuly.Infrastructure.Services
 {
-    public class UserService(
-        IOidcService oidcService,
-        SchulyDbContext dbContext,
-        IHttpContextAccessor httpContextAccessor) : IUserService
+    public class UserService(IOidcService oidcService, SchulyDbContext dbContext, IHttpContextAccessor httpContextAccessor) : IUserService
     {
         public bool IsCurrentUserAdmin()
         {

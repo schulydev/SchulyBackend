@@ -17,9 +17,7 @@ namespace Schuly.Application.Queries.StudentDocument
     [AllowAuthenticated]
     public record GetStudentDocumentsQuery(Guid? SchoolUserId = null) : IQuery<Result<List<StudentDocumentDto>>>;
 
-    public class GetStudentDocumentsQueryHandler(
-        SchulyDbContext dbContext,
-        IUserService userService) : IQueryHandler<GetStudentDocumentsQuery, Result<List<StudentDocumentDto>>>
+    public class GetStudentDocumentsQueryHandler(SchulyDbContext dbContext, IUserService userService) : IQueryHandler<GetStudentDocumentsQuery, Result<List<StudentDocumentDto>>>
     {
         public async ValueTask<Result<List<StudentDocumentDto>>> Handle(GetStudentDocumentsQuery query, CancellationToken cancellationToken)
         {

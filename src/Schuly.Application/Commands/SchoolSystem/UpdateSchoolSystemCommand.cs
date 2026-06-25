@@ -10,18 +10,7 @@ using Schuly.Infrastructure;
 namespace Schuly.Application.Commands.SchoolSystem
 {
     [AuthorizedRoles(Roles.Administrator)]
-    public record UpdateSchoolSystemCommand(
-        Guid Id,
-        string Key,
-        string DisplayName,
-        string LoginMethod,
-        string? LogoUrl = null,
-        string? PrivateAuthStrategy = null,
-        string? StatelessBasePath = null,
-        string? PluginBasePath = null,
-        bool Enabled = true,
-        int SortOrder = 0,
-        List<SchoolSystemLoginFieldDto>? LoginFields = null) : ICommand<Result>;
+    public record UpdateSchoolSystemCommand(Guid Id, string Key, string DisplayName, string LoginMethod, string? LogoUrl = null, string? PrivateAuthStrategy = null, string? StatelessBasePath = null, string? PluginBasePath = null, bool Enabled = true, int SortOrder = 0, List<SchoolSystemLoginFieldDto>? LoginFields = null) : ICommand<Result>;
 
     public class UpdateSchoolSystemCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateSchoolSystemCommand, Result>
     {
