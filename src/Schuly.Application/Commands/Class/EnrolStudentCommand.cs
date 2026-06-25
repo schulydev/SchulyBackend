@@ -26,6 +26,9 @@ namespace Schuly.Application.Commands.Class
             if (!await userService.CanManageClassAsync(command.ClassId, cancellationToken))
                 return Result.Forbidden();
 
+            if (schoolUser.SchoolId != @class.SchoolId)
+                return Result.Failure("Student and class belong to different schools");
+
             @class.Students.Add(schoolUser);
             await dbContext.SaveChangesAsync(cancellationToken);
 
