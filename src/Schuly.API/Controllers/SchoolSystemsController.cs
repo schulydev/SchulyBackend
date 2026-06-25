@@ -9,7 +9,7 @@ namespace Schuly.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    [Authorize(Roles = "Administrator")]
     public class SchoolSystemsController(IMediator mediator) : ControllerBase
     {
         [HttpGet]

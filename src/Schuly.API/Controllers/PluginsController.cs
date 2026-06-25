@@ -10,6 +10,7 @@ namespace Schuly.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "Administrator")]
     public class PluginsController(IMediator mediator, PluginSchedulerRegistry scheduler, PluginManager plugins) : ControllerBase
     {
         [HttpGet]
