@@ -7,18 +7,8 @@ namespace Schuly.API.Services
     /// whole sync loop); per-account detail lives on each plugin's own sync
     /// endpoint.
     /// </summary>
-    public record PluginTaskStatus(
-        string Name,
-        double IntervalSeconds,
-        string LastStatus,           // Pending | Running | Success | Failed
-        DateTime? LastStartedAt,
-        DateTime? LastFinishedAt,
-        long? LastDurationMs,
-        string? LastError,
-        DateTime? NextRunAt,
-        int TotalRuns,
-        int TotalFailures,
-        int ConsecutiveFailures);
+    // LastStatus is one of: Pending | Running | Success | Failed
+    public record PluginTaskStatus(string Name, double IntervalSeconds, string LastStatus, DateTime? LastStartedAt, DateTime? LastFinishedAt, long? LastDurationMs, string? LastError, DateTime? NextRunAt, int TotalRuns, int TotalFailures, int ConsecutiveFailures);
 
     /// <summary>
     /// In-memory registry of plugin background-task runs, updated by the task loops

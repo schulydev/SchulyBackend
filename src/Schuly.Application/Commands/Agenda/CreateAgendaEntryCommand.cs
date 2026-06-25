@@ -9,15 +9,7 @@ using Schuly.Application.Authorization;
 namespace Schuly.Application.Commands.Agenda
 {
     [AllowAuthenticated]
-    public record CreateAgendaEntryCommand(
-        AgendaEntryType EntryType,
-        string Title,
-        string? Description,
-        string? Place,
-        DateTime Date,
-        Guid? ClassId,
-        Guid? SchoolId,
-        Guid? SchoolUserId) : ICommand<Result>;
+    public record CreateAgendaEntryCommand(AgendaEntryType EntryType, string Title, string? Description, string? Place, DateTime Date, Guid? ClassId, Guid? SchoolId, Guid? SchoolUserId) : ICommand<Result>;
 
     public class CreateAgendaEntryCommandHandler(SchulyDbContext dbContext, IUserService userService) : ICommandHandler<CreateAgendaEntryCommand, Result>
     {

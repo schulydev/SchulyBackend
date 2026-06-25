@@ -17,8 +17,7 @@ namespace Schuly.API.Controllers
         /// </summary>
         [HttpGet("{schoolUserId:guid}")]
         [AllowAnonymous]
-        public async Task<IActionResult> Get(
-            Guid schoolUserId, [FromQuery] long exp, [FromQuery] string? sig, CancellationToken ct)
+        public async Task<IActionResult> Get(Guid schoolUserId, [FromQuery] long exp, [FromQuery] string? sig, CancellationToken ct)
         {
             if (string.IsNullOrEmpty(sig) || !signer.Verify(schoolUserId, exp, sig))
                 return NotFound();

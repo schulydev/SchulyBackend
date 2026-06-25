@@ -13,22 +13,9 @@ namespace Schuly.Application.Commands.StudentDocument
     /// first; only on success do we write the metadata row.
     /// </summary>
     [AllowAuthenticated]
-    public record UploadStudentDocumentCommand(
-        Guid SchoolUserId,
-        Stream Content,
-        string FileName,
-        string? ContentType,
-        string Title,
-        string? Comment,
-        string? Category,
-        string? EnteredBy,
-        string? FollowUpAction,
-        DateOnly? FollowUpDate) : ICommand<Result<Guid>>;
+    public record UploadStudentDocumentCommand(Guid SchoolUserId, Stream Content, string FileName, string? ContentType, string Title, string? Comment, string? Category, string? EnteredBy, string? FollowUpAction, DateOnly? FollowUpDate) : ICommand<Result<Guid>>;
 
-    public class UploadStudentDocumentCommandHandler(
-        SchulyDbContext db,
-        IDocumentStorage storage,
-        IUserService userService) : ICommandHandler<UploadStudentDocumentCommand, Result<Guid>>
+    public class UploadStudentDocumentCommandHandler(SchulyDbContext db, IDocumentStorage storage, IUserService userService) : ICommandHandler<UploadStudentDocumentCommand, Result<Guid>>
     {
         public async ValueTask<Result<Guid>> Handle(UploadStudentDocumentCommand command, CancellationToken ct)
         {

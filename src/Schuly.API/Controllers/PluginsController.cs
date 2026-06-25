@@ -10,8 +10,7 @@ namespace Schuly.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class PluginsController(
-        IMediator mediator, PluginSchedulerRegistry scheduler, PluginManager plugins) : ControllerBase
+    public class PluginsController(IMediator mediator, PluginSchedulerRegistry scheduler, PluginManager plugins) : ControllerBase
     {
         [HttpGet]
         [ProducesResponseType(typeof(List<PluginDto>), StatusCodes.Status200OK)]

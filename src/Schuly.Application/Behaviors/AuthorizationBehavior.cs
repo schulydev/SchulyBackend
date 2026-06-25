@@ -10,10 +10,7 @@ namespace Schuly.Application.Behaviors
     public class AuthorizationBehavior<TRequest, TResponse>(IHttpContextAccessor httpContextAccessor) : IPipelineBehavior<TRequest, TResponse>
         where TRequest : notnull, IMessage
     {
-        public async ValueTask<TResponse> Handle(
-            TRequest request,
-            MessageHandlerDelegate<TRequest, TResponse> next,
-            CancellationToken cancellationToken)
+        public async ValueTask<TResponse> Handle(TRequest request, MessageHandlerDelegate<TRequest, TResponse> next, CancellationToken cancellationToken)
         {
             var type = request.GetType();
             var rolesAttribute = type.GetCustomAttribute<AuthorizedRolesAttribute>();

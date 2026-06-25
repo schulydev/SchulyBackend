@@ -8,12 +8,7 @@ using Schuly.Infrastructure;
 namespace Schuly.Application.Commands.Teacher
 {
     [AuthorizedRoles(Roles.Administrator)]
-    public record UpdateTeacherCommand(
-        Guid TeacherId,
-        string? FirstName,
-        string? LastName,
-        string? Code,
-        string? Email) : ICommand<Result>;
+    public record UpdateTeacherCommand(Guid TeacherId, string? FirstName, string? LastName, string? Code, string? Email) : ICommand<Result>;
 
     public class UpdateTeacherCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateTeacherCommand, Result>
     {

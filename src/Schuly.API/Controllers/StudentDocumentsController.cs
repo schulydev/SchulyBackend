@@ -28,16 +28,7 @@ namespace Schuly.API.Controllers
         [HttpPost("api/students/{schoolUserId:guid}/documents")]
         [Consumes("multipart/form-data")]
         [RequestSizeLimit(50_000_000)]   // 50 MB hard cap; tune later if needed.
-        public async Task<IActionResult> Upload(
-            Guid schoolUserId,
-            IFormFile file,
-            [FromForm] string title,
-            [FromForm] string? comment,
-            [FromForm] string? category,
-            [FromForm] string? enteredBy,
-            [FromForm] string? followUpAction,
-            [FromForm] DateOnly? followUpDate,
-            CancellationToken ct)
+        public async Task<IActionResult> Upload(Guid schoolUserId, IFormFile file, [FromForm] string title, [FromForm] string? comment, [FromForm] string? category, [FromForm] string? enteredBy, [FromForm] string? followUpAction, [FromForm] DateOnly? followUpDate, CancellationToken ct)
         {
             if (file is null || file.Length == 0)
                 return BadRequest("Missing file");

@@ -8,13 +8,7 @@ using Schuly.Infrastructure;
 namespace Schuly.Application.Commands.Teacher
 {
     [AuthorizedRoles(Roles.Administrator)]
-    public record CreateTeacherCommand(
-        Guid SchoolId,
-        string FirstName,
-        string LastName,
-        string Code,
-        string? Email,
-        Guid? ApplicationUserId = null) : ICommand<Result<Guid>>;
+    public record CreateTeacherCommand(Guid SchoolId, string FirstName, string LastName, string Code, string? Email, Guid? ApplicationUserId = null) : ICommand<Result<Guid>>;
 
     public class CreateTeacherCommandHandler(SchulyDbContext dbContext) : ICommandHandler<CreateTeacherCommand, Result<Guid>>
     {

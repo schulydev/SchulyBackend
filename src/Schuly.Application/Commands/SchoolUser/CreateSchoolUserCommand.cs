@@ -7,21 +7,7 @@ using Schuly.Infrastructure;
 namespace Schuly.Application.Commands.SchoolUser
 {
     [AuthorizedRoles(Roles.Administrator)]
-    public record CreateSchoolUserCommand(
-        Guid ApplicationUserId,
-        Guid SchoolId,
-        string FirstName,
-        string LastName,
-        string Email,
-        string? PrivateEmail,
-        string? PhoneNumber,
-        string? Street,
-        string? City,
-        string? Zip,
-        DateOnly Birthday,
-        DateOnly EntryDate,
-        Roles Role,
-        string? ProfilePictureUrl = null) : ICommand<Result<Guid>>;
+    public record CreateSchoolUserCommand(Guid ApplicationUserId, Guid SchoolId, string FirstName, string LastName, string Email, string? PrivateEmail, string? PhoneNumber, string? Street, string? City, string? Zip, DateOnly Birthday, DateOnly EntryDate, Roles Role, string? ProfilePictureUrl = null) : ICommand<Result<Guid>>;
 
     public class CreateSchoolUserCommandHandler(SchulyDbContext dbContext) : ICommandHandler<CreateSchoolUserCommand, Result<Guid>>
     {

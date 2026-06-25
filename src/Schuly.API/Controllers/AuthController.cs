@@ -41,8 +41,7 @@ namespace Schuly.API.Controllers
         [HttpPost("login")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Login(
-            [FromBody] UnifiedLoginRequest request, CancellationToken cancellationToken)
+        public async Task<IActionResult> Login([FromBody] UnifiedLoginRequest request, CancellationToken cancellationToken)
         {
             var result = await pluginHost.ConnectAsync(
                 request.SystemKey, request.Fields ?? new Dictionary<string, string>(), request.DisplayName, cancellationToken);
@@ -56,8 +55,5 @@ namespace Schuly.API.Controllers
     }
 
     /// <summary>Body for the unified plugin login endpoint.</summary>
-    public record UnifiedLoginRequest(
-        string SystemKey,
-        Dictionary<string, string>? Fields,
-        string? DisplayName);
+    public record UnifiedLoginRequest(string SystemKey, Dictionary<string, string>? Fields, string? DisplayName);
 }

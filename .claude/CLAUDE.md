@@ -14,6 +14,24 @@ ASP.NET Core 10 API. Clean architecture + CQRS via [Mediator](https://github.com
 - Commit subject: short imperative.
 - PR labels: `bug`, `enhancement`, `feature`, `refactor`, `CI/CD`, `dependencies`, `documentation`.
 
+## Code formatting
+
+Declaration signatures go on **one line** - never wrap the parameter list of a `record`, a primary-constructor `class`/`struct`, a method, or a constructor across multiple lines, however long it gets:
+
+```csharp
+// Yes
+public record CreateAgendaEntryCommand(AgendaEntryType EntryType, string Title, string? Description, Guid? SchoolUserId) : ICommand<Result>;
+public class GetSemesterReportsQueryHandler(SchulyDbContext dbContext, IUserService userService) : IQueryHandler<GetSemesterReportsQuery, Result<List<SemesterReportDto>>> { ... }
+
+// No - parameter list wrapped across lines
+public record CreateAgendaEntryCommand(
+    AgendaEntryType EntryType,
+    string Title,
+    Guid? SchoolUserId) : ICommand<Result>;
+```
+
+**Keep wrapped as-is** (do *not* collapse): fluent / method-call chains (`.Where(...).Select(...)`), LINQ query expressions, and multi-line `if` / `while` / `for` / `switch` conditions and boolean expressions.
+
 ## Run
 
 ```sh

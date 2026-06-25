@@ -6,12 +6,7 @@ namespace Schuly.API.Plugins
     /// remove operations. Every change is applied in-process via <see cref="PluginHost"/>
     /// (no restart) and persisted to <c>plugins.yml</c> so it survives one.
     /// </summary>
-    public sealed class PluginManager(
-        PluginHost host,
-        PluginStore store,
-        PluginSet set,
-        PluginRegistryClient registry,
-        ILogger<PluginManager> logger)
+    public sealed class PluginManager(PluginHost host, PluginStore store, PluginSet set, PluginRegistryClient registry, ILogger<PluginManager> logger)
     {
         public Task<IReadOnlyList<RegistryPlugin>> GetRegistryAsync(CancellationToken ct = default) =>
             registry.FetchIndexAsync(ct);

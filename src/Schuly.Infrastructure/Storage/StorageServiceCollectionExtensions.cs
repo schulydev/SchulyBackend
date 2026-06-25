@@ -8,8 +8,7 @@ namespace Schuly.Infrastructure.Storage
 {
     public static class StorageServiceCollectionExtensions
     {
-        public static IServiceCollection AddSchulyDocumentStorage(
-            this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddSchulyDocumentStorage(this IServiceCollection services, IConfiguration configuration)
         {
             services.Configure<S3Options>(configuration.GetSection(S3Options.SectionName));
 

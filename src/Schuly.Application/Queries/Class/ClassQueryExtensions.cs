@@ -9,8 +9,7 @@ namespace Schuly.Application.Queries.Class
         /// exams + grades), filtering each student's grades and absences to the
         /// caller's own rows. Admins (<paramref name="isAdmin"/> = true) see all.
         /// </summary>
-        public static IQueryable<Domain.Class> IncludeRoster(
-            this IQueryable<Domain.Class> query, bool isAdmin, IReadOnlyList<Guid> mySchoolUserIds) =>
+        public static IQueryable<Domain.Class> IncludeRoster(this IQueryable<Domain.Class> query, bool isAdmin, IReadOnlyList<Guid> mySchoolUserIds) =>
             query
                 .Include(c => c.Students)
                     .ThenInclude(s => s.Absences.Where(a => isAdmin || mySchoolUserIds.Contains(a.SchoolUserId)))

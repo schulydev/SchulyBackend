@@ -9,16 +9,7 @@ using Schuly.Application.Authorization;
 namespace Schuly.Application.Commands.Agenda
 {
     [AllowAuthenticated]
-    public record UpdateAgendaEntryCommand(
-        Guid AgendaEntryId,
-        AgendaEntryType EntryType,
-        string Title,
-        string? Description,
-        string? Place,
-        DateTime Date,
-        Guid? ClassId,
-        Guid? SchoolId,
-        Guid? SchoolUserId) : ICommand<Result>;
+    public record UpdateAgendaEntryCommand(Guid AgendaEntryId, AgendaEntryType EntryType, string Title, string? Description, string? Place, DateTime Date, Guid? ClassId, Guid? SchoolId, Guid? SchoolUserId) : ICommand<Result>;
 
     public class UpdateAgendaEntryCommandHandler(SchulyDbContext dbContext, IUserService userService) : ICommandHandler<UpdateAgendaEntryCommand, Result>
     {

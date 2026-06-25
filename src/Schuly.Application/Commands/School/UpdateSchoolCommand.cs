@@ -7,19 +7,7 @@ using Schuly.Infrastructure;
 namespace Schuly.Application.Commands.School
 {
     [AuthorizedRoles(Roles.Administrator)]
-    public record UpdateSchoolCommand(
-        Guid Id,
-        string Name,
-        string? Description,
-        string? Email,
-        string? PhoneNumber,
-        string? Website,
-        string? Street,
-        string? City,
-        string? State,
-        string? Zip,
-        string? Country,
-        string? LogoUrl = null) : ICommand<Result>;
+    public record UpdateSchoolCommand(Guid Id, string Name, string? Description, string? Email, string? PhoneNumber, string? Website, string? Street, string? City, string? State, string? Zip, string? Country, string? LogoUrl = null) : ICommand<Result>;
 
     public class UpdateSchoolCommandHandler(SchulyDbContext dbContext) : ICommandHandler<UpdateSchoolCommand, Result>
     {
