@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Schuly.Application.Authorization;
 using Schuly.Application.Behaviors;
 using Schuly.Domain.Enums;
+using System.Linq;
 using System.Security.Claims;
 
 namespace Schuly.Tests
@@ -23,6 +24,20 @@ namespace Schuly.Tests
             if (role is not null)
                 ctx.User = new ClaimsPrincipal(
                     new ClaimsIdentity([new Claim(ClaimTypes.Role, role)], "test"));
+            return new HttpContextAccessor { HttpContext = ctx };
+        }
+
+        // Production shape: Keycloak emits roles in a "groups" claim and the JWT
+        // handler is configured with RoleClaimType="groups" - NOT ClaimTypes.Role.
+        private static IHttpContextAccessor AccessorWithGroups(params string[] groups)
+        {
+            var ctx = new DefaultHttpContext();
+            var identity = new ClaimsIdentity(
+                groups.Select(g => new Claim("groups", g)),
+                authenticationType: "test",
+                nameType: "name",
+                roleType: "groups");
+            ctx.User = new ClaimsPrincipal(identity);
             return new HttpContextAccessor { HttpContext = ctx };
         }
 
@@ -87,6 +102,36 @@ namespace Schuly.Tests
             await Assert.That(async () =>
                     await behavior.Handle(new NoAttributeMessage(), Next, CancellationToken.None))
                 .Throws<InvalidOperationException>();
+        }
+
+        [Test]
+        public async Task Teacher_via_production_groups_claim_is_allowed()
+        {
+            var behavior = new AuthorizationBehavior<TeacherOnlyMessage, string>(AccessorWithGroups("Teacher"));
+
+            var result = await behavior.Handle(new TeacherOnlyMessage(), Next, CancellationToken.None);
+
+            await Assert.That(result).IsEqualTo("ok");
+        }
+
+        [Test]
+        public async Task Student_via_production_groups_claim_is_denied()
+        {
+            var behavior = new AuthorizationBehavior<TeacherOnlyMessage, string>(AccessorWithGroups("Student"));
+
+            await Assert.That(async () =>
+                    await behavior.Handle(new TeacherOnlyMessage(), Next, CancellationToken.None))
+                .Throws<UnauthorizedAccessException>();
+        }
+
+        [Test]
+        public async Task Administrator_via_production_groups_claim_bypasses_the_role_gate()
+        {
+            var behavior = new AuthorizationBehavior<TeacherOnlyMessage, string>(AccessorWithGroups("Administrator"));
+
+            var result = await behavior.Handle(new TeacherOnlyMessage(), Next, CancellationToken.None);
+
+            await Assert.That(result).IsEqualTo("ok");
         }
     }
 }

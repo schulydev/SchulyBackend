@@ -1,9 +1,9 @@
 using Mediator;
 using Microsoft.AspNetCore.Http;
 using Schuly.Application.Authorization;
+using Schuly.Domain;
 using Schuly.Domain.Enums;
 using System.Reflection;
-using System.Security.Claims;
 
 namespace Schuly.Application.Behaviors
 {
@@ -31,13 +31,7 @@ namespace Schuly.Application.Behaviors
             return await next(request, cancellationToken);
         }
 
-        private Roles GetCurrentUserRole()
-        {
-            var roleClaim = httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.Role)?.Value;
-            if (roleClaim != null && Enum.TryParse<Roles>(roleClaim, out var role))
-                return role;
-
-            return Roles.Student;
-        }
+        private Roles GetCurrentUserRole() =>
+            httpContextAccessor.HttpContext?.User.GetPrimaryRole() ?? Roles.Student;
     }
 }
