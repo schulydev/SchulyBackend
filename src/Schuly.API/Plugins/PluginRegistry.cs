@@ -13,6 +13,23 @@ namespace Schuly.API.Plugins
         [JsonPropertyName("version")] public string Version { get; init; } = "";
         [JsonPropertyName("description")] public string? Description { get; init; }
         [JsonPropertyName("authors")] public string? Authors { get; init; }
+
+        // A pinned version that differs from the index's current one: the registry
+        // keeps every build under dll/<name>-v<ver>.dll, so synthesize the filenames.
+        public RegistryPlugin WithPinnedVersion(string? version)
+        {
+            if (string.IsNullOrWhiteSpace(version) ||
+                version.Equals("latest", StringComparison.OrdinalIgnoreCase) ||
+                version.Equals(Version, StringComparison.OrdinalIgnoreCase))
+                return this;
+
+            return this with
+            {
+                Version = version,
+                Dll = $"{Name}-v{version}.dll",
+                Deps = $"{Name}-v{version}-deps.zip",
+            };
+        }
     }
 
     /// <summary>
@@ -39,24 +56,7 @@ namespace Schuly.API.Plugins
         {
             var index = await FetchIndexAsync(ct);
             var entry = index.FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-            if (entry is null)
-                return null;
-
-            // A pinned version that differs from the index's current one: the registry
-            // keeps every build under dll/<name>-v<ver>.dll, so synthesize the filenames.
-            if (!string.IsNullOrWhiteSpace(version) &&
-                !version.Equals("latest", StringComparison.OrdinalIgnoreCase) &&
-                !version.Equals(entry.Version, StringComparison.OrdinalIgnoreCase))
-            {
-                return entry with
-                {
-                    Version = version,
-                    Dll = $"{entry.Name}-v{version}.dll",
-                    Deps = $"{entry.Name}-v{version}-deps.zip",
-                };
-            }
-
-            return entry;
+            return entry?.WithPinnedVersion(version);
         }
 
         public Task<byte[]> DownloadArtifactAsync(string file, CancellationToken ct = default) =>
