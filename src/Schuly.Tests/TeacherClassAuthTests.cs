@@ -69,12 +69,13 @@ namespace Schuly.Tests
         }
 
         [Test]
-        public async Task Unlinked_teacher_falls_back_to_allowed()
+        public async Task Unlinked_teacher_cannot_manage_any_class()
         {
-            using var ctx = TestDb.NewContext(nameof(Unlinked_teacher_falls_back_to_allowed));
+            using var ctx = TestDb.NewContext(nameof(Unlinked_teacher_cannot_manage_any_class));
             var (_, other) = Seed(ctx, linkTeacher: false);
 
-            await Assert.That(await NewService(ctx, "Teacher").CanManageClassAsync(other)).IsTrue();
+            // Fail closed: a teacher with no linked Teacher record manages nothing.
+            await Assert.That(await NewService(ctx, "Teacher").CanManageClassAsync(other)).IsFalse();
         }
 
         [Test]

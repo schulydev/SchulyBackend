@@ -24,6 +24,11 @@ namespace Schuly.Application.Commands.Exam
             if (!await userService.CanManageClassAsync(exam.ClassId, cancellationToken))
                 return Result.Forbidden();
 
+            var enrolled = await dbContext.Classes
+                .AnyAsync(c => c.Id == exam.ClassId && c.Students.Any(s => s.Id == command.StudentId), cancellationToken);
+            if (!enrolled)
+                return Result.Failure($"Student '{command.StudentId}' is not enrolled in this exam's class");
+
             exam.Grades.Add(new Domain.Grade
             {
                 ExamId = command.ExamId,

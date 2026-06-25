@@ -52,9 +52,10 @@ namespace Schuly.Infrastructure.Services
                 .Select(t => t.Id)
                 .ToListAsync(cancellationToken);
 
-            // Unlinked teacher: keep the pre-link, role-only behaviour.
+            // Unlinked teacher manages nothing - fail closed rather than granting
+            // control over every class in every school.
             if (teacherIds.Count == 0)
-                return true;
+                return false;
 
             return await dbContext.Classes
                 .AnyAsync(c => c.Id == classId && c.Teachers.Any(t => teacherIds.Contains(t.Id)), cancellationToken);
