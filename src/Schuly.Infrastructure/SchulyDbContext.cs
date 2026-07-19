@@ -88,8 +88,10 @@ namespace Schuly.Infrastructure
             modelBuilder.Entity<SchoolUser>(entity =>
             {
                 entity.HasKey(su => su.Id);
-                // Email unique per school — same person at two schools is fine.
-                entity.HasIndex(su => new { su.SchoolId, su.Email }).IsUnique();
+                // One SchoolUser per (Schuly account, school, email). The Schuly user
+                // scopes uniqueness so the same student can be connected from more than
+                // one Schuly account; each account provisions its own SchoolUser.
+                entity.HasIndex(su => new { su.ApplicationUserId, su.SchoolId, su.Email }).IsUnique();
                 entity.Property(su => su.Email).HasMaxLength(255);
                 entity.Property(su => su.PrivateEmail).HasMaxLength(255);
                 entity.Property(su => su.PhoneNumber).HasMaxLength(50);
