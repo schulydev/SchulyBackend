@@ -14,8 +14,8 @@ namespace Schuly.Infrastructure.Vault
     /// </summary>
     internal sealed class InMemoryVault : IPluginVault, IDisposable
     {
-        private const int NonceSize = 12; // AES-GCM standard nonce
-        private const int TagSize = 16;   // 128-bit auth tag
+        private const int NonceSize = 12;
+        private const int TagSize = 16;
 
         private readonly byte[] _key;
         private readonly ConcurrentDictionary<string, byte[]> _store = new(StringComparer.Ordinal);

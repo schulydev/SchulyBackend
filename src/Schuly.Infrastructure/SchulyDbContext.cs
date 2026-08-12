@@ -312,7 +312,6 @@ namespace Schuly.Infrastructure
                     .HasForeignKey(sg => sg.SemesterReportId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                // One row per report × subject.
                 entity.HasIndex(sg => new { sg.SemesterReportId, sg.SubjectCode }).IsUnique();
             });
         }

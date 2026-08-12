@@ -43,7 +43,7 @@ namespace Schuly.API.Plugins
                     if (manifest is not null && !string.IsNullOrWhiteSpace(manifest.Name))
                         manifests.Add(manifest);
                 }
-                catch { /* skip malformed manifest */ }
+                catch { }
             }
             return manifests;
         }

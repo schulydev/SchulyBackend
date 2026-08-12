@@ -39,11 +39,11 @@ namespace Schuly.Tests
             var result = await handler.Handle(new CQ.GetClassesQuery(), CancellationToken.None);
 
             await Assert.That(result.IsSuccess).IsTrue();
-            await Assert.That(result.Value!.Count).IsEqualTo(1);                                 // classA only
+            await Assert.That(result.Value!.Count).IsEqualTo(1);
             var dto = result.Value!.Single();
-            await Assert.That(dto.Students.Sum(s => s.Grades.Count)).IsEqualTo(1);               // Alice's grade, not Bob's
-            await Assert.That(dto.Students.Sum(s => s.Absences.Count)).IsEqualTo(1);             // Alice's absence, not Bob's
-            await Assert.That(dto.Exams.Sum(e => e.Grades.Count)).IsEqualTo(1);                  // Alice's grade on the exam
+            await Assert.That(dto.Students.Sum(s => s.Grades.Count)).IsEqualTo(1);
+            await Assert.That(dto.Students.Sum(s => s.Absences.Count)).IsEqualTo(1);
+            await Assert.That(dto.Exams.Sum(e => e.Grades.Count)).IsEqualTo(1);
         }
 
         [Test]
@@ -69,7 +69,7 @@ namespace Schuly.Tests
 
             await Assert.That(result.Value!.Count).IsEqualTo(2);
             var classA = result.Value!.Single(c => c.Name == "A");
-            await Assert.That(classA.Students.Sum(s => s.Grades.Count)).IsEqualTo(2);            // both students' grades
+            await Assert.That(classA.Students.Sum(s => s.Grades.Count)).IsEqualTo(2);
         }
     }
 }
