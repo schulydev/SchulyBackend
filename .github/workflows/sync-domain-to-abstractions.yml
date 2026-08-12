@@ -32,9 +32,6 @@ jobs:
       - name: Compute source hash for Domain + Infrastructure
         id: hash
         run: |
-          # Stable hash over all .cs and .csproj content in the two projects.
-          # Compile timestamps embedded in DLLs make built-artifact diffing useless,
-          # so we diff sources directly.
           HASH=$(find backend/src/Schuly.Domain backend/src/Schuly.Infrastructure \
             -type f \( -name '*.cs' -o -name '*.csproj' \) \
             -not -path '*/bin/*' -not -path '*/obj/*' \
