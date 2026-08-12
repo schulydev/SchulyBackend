@@ -139,7 +139,25 @@ for both hostnames.
   `schuly-app` client; because the app and the backend both use `https://${AUTH_HOST}`
   as the OIDC authority, the token issuer matches and validation passes.
 
-## 7. Harden for production
+## 7. Create your first login
+
+The bootstrap admin (`KC_ADMIN_USER` / `KC_ADMIN_PASSWORD`) signs into Keycloak's
+**master realm** only - the admin console, not the Schuly app itself. To get a login
+that works in the app, create a user in the **schuly** realm:
+
+1. In the Keycloak admin console, switch the realm selector (top left) from `master`
+   to `schuly`.
+2. **Users → Add user.** Set a username (and email, if you configured SMTP).
+3. **Credentials tab → Set password.** Turn off "Temporary" unless you want to be
+   prompted to change it on first login.
+4. **Groups tab → Join group.** Add the user to `Student`, `Teacher`, or
+   `Administrator` - the backend reads the `groups` claim as the app role, and only
+   `Administrator` can manage plugins through the API.
+
+That user can now sign in from the Schuly app in Private mode - point it at
+`https://${API_HOST}` and it drives Keycloak from there.
+
+## 8. Harden for production
 
 The bundled `schuly` realm ships a **starter** `schuly-app` PKCE client and the
 Student / Teacher / Administrator groups (mapped to the `groups` claim the backend
@@ -149,6 +167,69 @@ reads as roles). Before real use:
 - Create a real Keycloak admin and remove the `KC_ADMIN_*` bootstrap variables (see
   the SchulyKeycloak project's self-hosting docs for the Keycloak-specific steps).
 - Keep the management/internal services unexposed - only Caddy should publish ports.
+
+## Running without a public domain (LAN / local testing)
+
+Everything above assumes a real domain with DNS you control, so Caddy can get you a
+Let's Encrypt certificate. If you just want to run the stack on your own network -
+testing against a phone over Wi-Fi, no domain, no TLS - a few things change.
+
+**Keycloak signs tokens with a fixed issuer URL (`KC_HOSTNAME`), and the backend
+validates incoming tokens by fetching metadata from that exact URL.** So whatever you
+put in `API_HOST`/`AUTH_HOST` has to resolve **identically** for the backend
+container and for whatever's running your app (phone, browser, emulator) - if they
+land on different addresses, the issuer won't match and every login fails.
+
+Two ways to get a stable hostname without a real domain:
+
+- **Your machine's LAN IP, used directly** - `API_HOST=AUTH_HOST=192.168.1.42`, no
+  hostname at all. Simplest, and reachable from a phone on the same Wi-Fi. Docker
+  Desktop reliably lets a container reach a port published on the host's own LAN IP
+  (a "hairpin" connection back out through the host and in again), so the backend can
+  still reach Keycloak this way with no extra network wiring - confirmed working in
+  practice. Downside: breaks if the IP changes (new DHCP lease), and it's only
+  reachable from that network.
+- **A wildcard-DNS hostname pointed at your LAN IP**, e.g. `<ip>.nip.io` or
+  `<ip>.sslip.io` - these publicly resolve straight back to the IP encoded in the
+  name. Nicer than a raw IP, but **many consumer routers block it**: DNS-rebind
+  protection (on by default on most FritzBox/AVM routers, among others) refuses to
+  resolve a public hostname that points at a private address, so the name won't
+  resolve for anyone on that network at all. If lookups mysteriously fail with no
+  useful error, this is almost always why - fall back to the raw IP instead.
+
+With either option, since `API_HOST` and `AUTH_HOST` are now the same address, Caddy
+can no longer tell the two services apart by hostname - use distinct ports instead:
+
+```
+# Caddyfile - plain HTTP, ports instead of hostnames/TLS
+http://{$API_HOST}:8080 {
+	reverse_proxy backend:8080
+}
+http://{$AUTH_HOST}:8081 {
+	reverse_proxy keycloak:8080
+}
+```
+
+```yaml
+# compose.staging.yml - caddy service
+ports:
+  - "8080:8080"
+  - "8081:8081"
+# drop the 443:443 mapping - there's no cert to serve
+```
+
+Then two settings need to allow plain HTTP:
+
+- `config/backend.env`: set `Oidc__RequireHttpsMetadata=false` - the backend refuses
+  to fetch OIDC metadata over HTTP otherwise.
+- `config/keycloak.env`: `KC_HTTP_ENABLED=true` is already in the template; that's
+  what lets Keycloak serve over HTTP at all.
+
+Everything else - realm import, plugin loading, the verify and first-login steps
+above - works exactly the same, just with `http://` and the port instead of
+`https://`. One more thing worth knowing: Windows Firewall may silently block a phone
+on the same Wi-Fi from reaching these ports the first time - allow Docker Desktop on
+the **Private network** if prompted, or add an inbound rule for the ports yourself.
 
 ## Operations
 
