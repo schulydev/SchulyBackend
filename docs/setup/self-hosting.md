@@ -71,6 +71,8 @@ cp .env.example .env
 |---|---|
 | `API_HOST` | Public hostname for the API, e.g. `api.schuly.example`. |
 | `AUTH_HOST` | Public hostname for Keycloak, e.g. `auth.schuly.example`. |
+| `SCHULY_VERSION` | Backend image tag. `latest` follows every release; pin a version like `1.3.3` to decide yourself when to move. |
+| `KEYCLOAK_VERSION` | Keycloak image tag, same idea. |
 | `POSTGRES_USER` | Database user (shared by the backend and Keycloak). |
 | `POSTGRES_PASSWORD` | A strong database password. |
 | `KC_ADMIN_USER` | Keycloak bootstrap admin username (master realm). |
@@ -87,6 +89,19 @@ cp .env.example .env
 > them later has no effect on an existing realm - edit **Realm settings → Email** in the
 > Keycloak admin console instead. Leaving them unset is fine; the realm then imports
 > with no working mail server.
+
+### Where the rest of the settings live
+
+`.env` holds what changes per deployment. The two applications' own settings sit next to
+the other config files, and read `${...}` values straight out of `.env`:
+
+| File | Holds |
+|---|---|
+| [`config/backend.env`](https://github.com/schulydev/SchulyBackend/blob/main/deploy/config/backend.env) | Backend settings - database connection, OIDC, S3, plugin paths. |
+| [`config/keycloak.env`](https://github.com/schulydev/SchulyBackend/blob/main/deploy/config/keycloak.env) | Keycloak settings - database, hostname, proxy headers, bootstrap admin, SMTP. |
+
+You normally don't touch either; they exist so `compose.staging.yml` stays readable as a
+picture of the stack rather than a wall of environment variables.
 
 ## 4. (Optional) Review the plugins
 
@@ -143,9 +158,10 @@ reads as roles). Before real use:
   host. The folders are created on first `up`, and a one-shot `init-perms` service
   makes `data/plugins` writable by the backend's user automatically, so it just works
   on first run. To wipe, stop the stack and delete `./data`.
-- **Upgrades** - pin image tags (e.g. `ghcr.io/schulydev/schuly:<semver>`) instead of
-  `latest` for reproducible deploys, then `up -d` to roll forward. Migrations run
-  automatically on the new container; back up `data/postgres` before major jumps.
+- **Upgrades** - set `SCHULY_VERSION` and `KEYCLOAK_VERSION` in `.env` to a fixed version
+  rather than `latest`, so a deploy repeats exactly and you choose when to move. Change
+  the version, then `up -d` to roll forward. Migrations run automatically on the new
+  container; back up `data/postgres` before major jumps.
 - **Plugin changes** made through the API are persisted back to `config/plugins.yml`.
 
 ## Reference: the full `compose.staging.yml`
@@ -203,28 +219,9 @@ services:
       - ./config/seaweedfs/s3-config.json:/etc/seaweedfs/s3-config.json:ro
 
   keycloak:
-    image: ghcr.io/schulydev/schulykeycloak:latest
+    image: ghcr.io/schulydev/schulykeycloak:${KEYCLOAK_VERSION:-latest}
     restart: unless-stopped
-    # The image is an optimized build with the `schuly` realm baked in.
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: ${POSTGRES_USER}
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
-      KC_HOSTNAME: https://${AUTH_HOST}
-      KC_HTTP_ENABLED: "true"
-      KC_PROXY_HEADERS: xforwarded
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USER}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
-      # Fills the realm's mail server on first import. Optional — leave the
-      # values empty and the realm imports without working mail.
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-}
-      SMTP_FROM: ${SMTP_FROM:-noreply@${API_HOST}}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_SSL: ${SMTP_SSL:-}
-      SMTP_STARTTLS: ${SMTP_STARTTLS:-}
+    env_file: [./config/keycloak.env]
     depends_on:
       postgres:
         condition: service_healthy
@@ -240,34 +237,9 @@ services:
       PYTHONUNBUFFERED: "1"
 
   backend:
-    image: ghcr.io/schulydev/schuly:latest
+    image: ghcr.io/schulydev/schuly:${SCHULY_VERSION:-latest}
     restart: unless-stopped
-    environment:
-      ASPNETCORE_ENVIRONMENT: Production
-      ASPNETCORE_HTTP_PORTS: "8080"
-      ConnectionStrings__SchulyDatabase: "Host=postgres;Port=5432;Database=schuly;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
-      # OIDC: validate tokens against the Keycloak `schuly` realm. The issuer must
-      # match what the app logs in against, so use the public auth URL.
-      Oidc__Authority: "https://${AUTH_HOST}/realms/schuly"
-      Oidc__ClientId: "schuly-app"
-      Oidc__RequireHttpsMetadata: "true"
-      # The in-code default redirect URIs are the web (localhost:4200) callbacks.
-      # The mobile app uses the schulytest:// deep link, so advertise that here
-      # (already registered on the schuly-app Keycloak client).
-      Oidc__RedirectUri: "schulytest://callback"
-      Oidc__PostLogoutRedirectUri: "schulytest://callback"
-      # HMAC key for signing avatar URLs — required. Set it in .env.
-      Avatar__SigningKey: ${AVATAR_SIGNING_KEY}
-      # Document storage (SeaweedFS S3).
-      S3__Endpoint: "http://seaweedfs:8333"
-      S3__Bucket: "schuly"
-      S3__AccessKey: ${S3_ACCESS_KEY}
-      S3__SecretKey: ${S3_SECRET_KEY}
-      S3__UsePathStyle: "true"
-      # Plugins: declared in plugins.yml, downloaded + loaded on startup.
-      Plugins__Directory: "/app/plugins"
-      Plugins__ConfigDirectory: "/app/plugins-config"
-      Plugins__File: "/app/plugins.yml"
+    env_file: [./config/backend.env]
     volumes:
       - ./data/plugins:/app/plugins                        # downloaded plugin DLLs (host folder)
       - ./config/plugins.yml:/app/plugins.yml              # desired plugin set (writable: endpoints rewrite it)

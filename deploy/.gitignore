@@ -1,3 +1,8 @@
 # Operator secrets and runtime state (bind-mounted, created on first start).
 .env
 data/
+
+# The two applications' settings are part of the stack, not secrets - they hold
+# ${...} references, never values. Without this the root *.env rule would drop
+# them and compose would start with no configuration at all.
+!config/*.env

@@ -4,6 +4,10 @@
 #   cp .env.example .env   # then fill it in
 #   docker compose -f compose.staging.yml up -d
 #
+# This file is the topology: which services run, how they reach each other, and
+# what they persist. The values you change per deployment live in .env, and the
+# two apps' settings live in config/backend.env and config/keycloak.env.
+#
 # All state is bind-mounted under ./data (host folders, not named volumes) so it
 # is visible and easy to back up on the host. Only Caddy publishes ports
 # (80/443); everything else talks over the internal network. Point DNS for
@@ -56,28 +60,9 @@ services:
       - ./config/seaweedfs/s3-config.json:/etc/seaweedfs/s3-config.json:ro
 
   keycloak:
-    image: ghcr.io/schulydev/schulykeycloak:latest
+    image: ghcr.io/schulydev/schulykeycloak:${KEYCLOAK_VERSION:-latest}
     restart: unless-stopped
-    # The image is an optimized build with the `schuly` realm baked in.
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: ${POSTGRES_USER}
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
-      KC_HOSTNAME: https://${AUTH_HOST}
-      KC_HTTP_ENABLED: "true"
-      KC_PROXY_HEADERS: xforwarded
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USER}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
-      # Fills the realm's mail server on first import. Optional — leave the
-      # values empty and the realm imports without working mail.
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-}
-      SMTP_FROM: ${SMTP_FROM:-noreply@${API_HOST}}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_SSL: ${SMTP_SSL:-}
-      SMTP_STARTTLS: ${SMTP_STARTTLS:-}
+    env_file: [./config/keycloak.env]
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,34 +78,9 @@ services:
       PYTHONUNBUFFERED: "1"
 
   backend:
-    image: ghcr.io/schulydev/schuly:latest
+    image: ghcr.io/schulydev/schuly:${SCHULY_VERSION:-latest}
     restart: unless-stopped
-    environment:
-      ASPNETCORE_ENVIRONMENT: Production
-      ASPNETCORE_HTTP_PORTS: "8080"
-      ConnectionStrings__SchulyDatabase: "Host=postgres;Port=5432;Database=schuly;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
-      # OIDC: validate tokens against the Keycloak `schuly` realm. The issuer must
-      # match what the app logs in against, so use the public auth URL.
-      Oidc__Authority: "https://${AUTH_HOST}/realms/schuly"
-      Oidc__ClientId: "schuly-app"
-      Oidc__RequireHttpsMetadata: "true"
-      # The in-code default redirect URIs are the web (localhost:4200) callbacks.
-      # The mobile app uses the schulytest:// deep link, so advertise that here
-      # (already registered on the schuly-app Keycloak client).
-      Oidc__RedirectUri: "schulytest://callback"
-      Oidc__PostLogoutRedirectUri: "schulytest://callback"
-      # HMAC key for signing avatar URLs — required. Set it in .env.
-      Avatar__SigningKey: ${AVATAR_SIGNING_KEY}
-      # Document storage (SeaweedFS S3).
-      S3__Endpoint: "http://seaweedfs:8333"
-      S3__Bucket: "schuly"
-      S3__AccessKey: ${S3_ACCESS_KEY}
-      S3__SecretKey: ${S3_SECRET_KEY}
-      S3__UsePathStyle: "true"
-      # Plugins: declared in plugins.yml, downloaded + loaded on startup.
-      Plugins__Directory: "/app/plugins"
-      Plugins__ConfigDirectory: "/app/plugins-config"
-      Plugins__File: "/app/plugins.yml"
+    env_file: [./config/backend.env]
     volumes:
       - ./data/plugins:/app/plugins                        # downloaded plugin DLLs (host folder)
       - ./config/plugins.yml:/app/plugins.yml              # desired plugin set (writable: endpoints rewrite it)
