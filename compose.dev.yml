@@ -11,8 +11,6 @@ services:
     volumes:
       - postgres-data-dev:/var/lib/postgresql
 
-  # Single-binary SeaweedFS with master + volume server + S3 API on :8333.
-  # S3 credentials are configured via the static config file mounted in.
   dev-s3:
     image: chrislusf/seaweedfs:latest
     container_name: schuly-s3-dev
@@ -27,26 +25,17 @@ services:
       - "9333:9333"  # master UI
       - "8888:8888"  # filer
     volumes:
-      # Bind mount: blobs live on the host disk at ./data/seaweedfs so they
-      # survive `docker compose down -v` and can be backed up / inspected.
       - ./data/seaweedfs:/data
       - ./scripts/seaweedfs/s3-config.json:/etc/seaweedfs/s3-config.json:ro
 
-  # SchulwareAPI (Schulnetz bridge the Schulware plugin talks to).
-  # Uses the latest GHCR image, which tracks main and carries the endpoint/refresh
-  # fixes the plugin depends on — unlike the public schlwr.pianonic.ch instance,
-  # which lags behind. Point the plugin's SchulwareApi.BaseUrl at http://localhost:8000.
   dev-schulware:
     image: ghcr.io/pianonic/schulwareapi:latest
     container_name: schuly-schulware-dev
     restart: unless-stopped
-    init: true   # reap zombie Chromium processes
-    ipc: host    # Chromium shared-memory; avoids OOM crashes
+    init: true
+    ipc: host
     environment:
       - PYTHONUNBUFFERED=1
-      # Required at import. Public Schulnetz mobile client id; the per-school
-      # base URL is supplied per-request (X-Schulnetz-Base-Url header), so this
-      # default works across instances.
       - SCHULNETZ_CLIENT_ID=ppyybShnMerHdtBQ
       - SCHULNETZ_WEB_BASE_URL=https://schulnetz.web.app
     ports:
