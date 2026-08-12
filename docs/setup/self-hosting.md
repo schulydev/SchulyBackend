@@ -158,7 +158,8 @@ the backend on first start, so a plain `docker compose up` just works.
 ```yaml
 services:
   # One-shot: make the bind-mounted plugins folder writable by the backend's
-  # non-root user (uid 1654) before it starts, so a plain `up` works first run.
+  # non-root user (uid 1654) before it starts, so a plain `up` works on the very
+  # first run with no manual chown. Runs once and exits.
   init-perms:
     image: busybox:1.37
     command: sh -c "mkdir -p /data/plugins && chown -R 1654:1654 /data/plugins"
@@ -173,8 +174,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: schuly
+    # Creates the extra `keycloak` database on first init (the backend's plugin
+    # databases are created automatically by EF migrations).
     volumes:
-      # postgres:18 stores data in a versioned subdir, so mount at /var/lib/postgresql.
+      # postgres:18 stores data in a versioned subdir, so the data mounts at
+      # /var/lib/postgresql (not /var/lib/postgresql/data, which it now rejects).
       - ./data/postgres:/var/lib/postgresql
       - ./config/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
@@ -201,6 +205,7 @@ services:
   keycloak:
     image: ghcr.io/schulydev/schulykeycloak:latest
     restart: unless-stopped
+    # The image is an optimized build with the `schuly` realm baked in.
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
@@ -227,9 +232,11 @@ services:
   schulware:
     image: ghcr.io/pianonic/schulwareapi:latest
     restart: unless-stopped
-    init: true
-    ipc: host
+    init: true        # reap zombie processes
+    ipc: host         # shared memory headroom for the scraper
     environment:
+      # Schulnetz client id + PWA host are baked into the SchulwareAPI image as
+      # defaults, so no Schulnetz config is needed here.
       PYTHONUNBUFFERED: "1"
 
   backend:
@@ -239,25 +246,32 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__SchulyDatabase: "Host=postgres;Port=5432;Database=schuly;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      # OIDC: validate tokens against the Keycloak `schuly` realm. The issuer must
+      # match what the app logs in against, so use the public auth URL.
       Oidc__Authority: "https://${AUTH_HOST}/realms/schuly"
       Oidc__ClientId: "schuly-app"
       Oidc__RequireHttpsMetadata: "true"
-      # Mobile app deep link (the in-code default is the web localhost:4200 callback).
+      # The in-code default redirect URIs are the web (localhost:4200) callbacks.
+      # The mobile app uses the schulytest:// deep link, so advertise that here
+      # (already registered on the schuly-app Keycloak client).
       Oidc__RedirectUri: "schulytest://callback"
       Oidc__PostLogoutRedirectUri: "schulytest://callback"
+      # HMAC key for signing avatar URLs — required. Set it in .env.
       Avatar__SigningKey: ${AVATAR_SIGNING_KEY}
+      # Document storage (SeaweedFS S3).
       S3__Endpoint: "http://seaweedfs:8333"
       S3__Bucket: "schuly"
       S3__AccessKey: ${S3_ACCESS_KEY}
       S3__SecretKey: ${S3_SECRET_KEY}
       S3__UsePathStyle: "true"
+      # Plugins: declared in plugins.yml, downloaded + loaded on startup.
       Plugins__Directory: "/app/plugins"
       Plugins__ConfigDirectory: "/app/plugins-config"
       Plugins__File: "/app/plugins.yml"
     volumes:
-      - ./data/plugins:/app/plugins
-      - ./config/plugins.yml:/app/plugins.yml
-      - ./config/plugins-config:/app/plugins-config:ro
+      - ./data/plugins:/app/plugins                        # downloaded plugin DLLs (host folder)
+      - ./config/plugins.yml:/app/plugins.yml              # desired plugin set (writable: endpoints rewrite it)
+      - ./config/plugins-config:/app/plugins-config:ro     # per-plugin config
     depends_on:
       postgres:
         condition: service_healthy
