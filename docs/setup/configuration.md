@@ -1,9 +1,15 @@
 # Configuration
 
 Configuration comes from `appsettings.json`, environment-specific overrides
-(`appsettings.Development.json`), and environment variables, in the standard ASP.NET
-Core precedence (env vars and `appsettings.{Environment}.json` override
-`appsettings.json`).
+(`appsettings.Development.json`), user secrets, and environment variables, in the
+standard ASP.NET Core precedence (env vars override user secrets, which override
+`appsettings.{Environment}.json`, which overrides `appsettings.json`).
+
+Secrets are deliberately **not** committed: the tracked `appsettings*.json` carry only
+logging levels and `DevAuth`. Locally that gap is filled with
+`dotnet user-secrets set` (see [Development setup](development.md)); in a container it
+is filled with environment variables, using `__` as the section separator
+(`ConnectionStrings__SchulyDatabase`).
 
 ## Database connection string
 
@@ -44,6 +50,38 @@ In Development you can enable a local fake-OIDC path instead of a real IdP. With
 minted by `/api/dev/token`, signed with a symmetric key, using `DevAuth:Issuer`
 (default `schuly-dev`). No external identity provider is contacted. **Do not enable
 DevAuth in production.**
+
+## OpenAPI document
+
+`Oidc:Authority` is also read when the OpenAPI document is generated, to advertise the
+OAuth2 authorization-code flow. It is required even when `DevAuth` replaces the real
+identity provider: without it `/openapi/v1.json` returns **500**
+(`Oidc:Authority not configured`) and the Scalar UI comes up empty, since it renders
+that document. `Oidc:ClientId` prefills the client id in the reference UI's
+authorization dialog.
+
+## Document storage (S3)
+
+Document and avatar blobs go to an S3-compatible bucket (SeaweedFS in the bundled
+stacks), configured under `S3:`:
+
+| Key | Purpose |
+|---|---|
+| `S3:Endpoint` | S3 endpoint, e.g. `http://localhost:8333`. |
+| `S3:Bucket` | Bucket name. |
+| `S3:AccessKey` / `S3:SecretKey` | Credentials. Must match the SeaweedFS `s3-config.json`. |
+| `S3:UsePathStyle` | `true` for SeaweedFS and most self-hosted S3 implementations. |
+
+## Avatar URL signing
+
+| Key | Purpose |
+|---|---|
+| `Avatar:SigningKey` | HMAC key for short-lived signed avatar URLs. Generate with `openssl rand -hex 32`. |
+
+The database stores only a bare blob key; a signed capability URL is minted per access.
+The key is read lazily, so a missing value surfaces as
+`Avatar:SigningKey is not configured.` the first time an avatar URL is signed rather
+than at startup.
 
 ## Authorization policy
 

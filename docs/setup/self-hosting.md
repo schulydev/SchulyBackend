@@ -78,9 +78,15 @@ cp .env.example .env
 | `S3_ACCESS_KEY` | SeaweedFS S3 access key. |
 | `S3_SECRET_KEY` | SeaweedFS S3 secret key. |
 | `AVATAR_SIGNING_KEY` | HMAC key for signing avatar URLs (required). Generate with `openssl rand -hex 32`. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SSL`, `SMTP_STARTTLS` | Optional. Mail server for the Keycloak realm - needed for verified emails and self-service password reset. |
 
 > The S3 credentials **must match** `config/seaweedfs/s3-config.json` - update both
 > the `.env` and that file to the same values, or document storage won't authenticate.
+
+> The `SMTP_*` values are baked into the realm when it is **first** imported. Changing
+> them later has no effect on an existing realm - edit **Realm settings → Email** in the
+> Keycloak admin console instead. Leaving them unset is fine; the realm then imports
+> with no working mail server.
 
 ## 4. (Optional) Review the plugins
 
@@ -172,7 +178,11 @@ services:
       - ./data/postgres:/var/lib/postgresql
       - ./config/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d schuly"]
+      # -h 127.0.0.1 forces a TCP check. While the entrypoint runs the init
+      # scripts it serves on the Unix socket only, so a socket-based check would
+      # report healthy mid-init and let dependents connect to a server that is
+      # about to restart.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d schuly -h 127.0.0.1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -201,6 +211,15 @@ services:
       KC_PROXY_HEADERS: xforwarded
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USER}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+      # Fills the realm's mail server on first import. Optional — leave the
+      # values empty and the realm imports without working mail.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@${API_HOST}}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SSL: ${SMTP_SSL:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-}
     depends_on:
       postgres:
         condition: service_healthy

@@ -24,7 +24,8 @@ from the registry - no DLL baked into the image).
 1. **DNS** - point `API_HOST` and `AUTH_HOST` at this server (Caddy needs them to
    issue Let's Encrypt certs).
 2. **Secrets** - `cp .env.example .env` and fill it in. Set `S3_SECRET_KEY` to the
-   same value in `config/seaweedfs/s3-config.json` (`S3_ACCESS_KEY` too).
+   same value in `config/seaweedfs/s3-config.json` (`S3_ACCESS_KEY` too). The
+   `SMTP_*` block is optional and applies only on the first realm import.
 3. **Run**:
    ```sh
    docker compose -f compose.staging.yml up -d
