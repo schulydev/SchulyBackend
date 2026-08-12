@@ -4,12 +4,6 @@ using Schuly.Domain;
 
 namespace Schuly.Infrastructure.Seeding
 {
-    /// <summary>
-    /// Seeds the school-systems catalog from configuration. Seed-if-missing by
-    /// <see cref="SchoolSystem.Key"/>: config supplies sensible defaults on a fresh
-    /// database and new entries get added over time, but anything an administrator
-    /// edits afterwards is left untouched.
-    /// </summary>
     public static class SchoolSystemSeeder
     {
         public const string ConfigSection = "SchoolSystems";

@@ -56,7 +56,6 @@ namespace Schuly.Tests
             await Assert.That(ReferenceEquals(a1, a2)).IsTrue();
 
             a1.Set("shared-key", "from-a");
-            // Same logical key in another namespace must not collide or leak.
             await Assert.That(b.Contains("shared-key")).IsFalse();
             await Assert.That(b.Get("shared-key")).IsNull();
             await Assert.That(a2.Get("shared-key")).IsEqualTo("from-a");

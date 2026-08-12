@@ -14,7 +14,6 @@ namespace Schuly.Application.Commands.Absence
     {
         public async ValueTask<Result> Handle(CreateAbsenceCommand command, CancellationToken cancellationToken)
         {
-            // Non-admins may only create absences for their own SchoolUser.
             if (!userService.IsCurrentUserAdmin())
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);

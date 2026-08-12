@@ -10,11 +10,6 @@ namespace Schuly.API.Services
     // LastStatus is one of: Pending | Running | Success | Failed
     public record PluginTaskStatus(string Name, double IntervalSeconds, string LastStatus, DateTime? LastStartedAt, DateTime? LastFinishedAt, long? LastDurationMs, string? LastError, DateTime? NextRunAt, int TotalRuns, int TotalFailures, int ConsecutiveFailures);
 
-    /// <summary>
-    /// In-memory registry of plugin background-task runs, updated by the task loops
-    /// the <see cref="Schuly.API.Plugins.PluginHost"/> runs per loaded plugin. Resets on
-    /// restart — it reflects live scheduler health, not durable history.
-    /// </summary>
     public class PluginSchedulerRegistry
     {
         private sealed class Entry

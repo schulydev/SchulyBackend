@@ -18,7 +18,6 @@ namespace Schuly.Application.Commands.Class
             if (!await dbContext.Schools.AnyAsync(s => s.Id == command.SchoolId, cancellationToken))
                 return Result.Failure($"School with ID '{command.SchoolId}' not found");
 
-            // Non-admins may only create classes in a school they teach at.
             if (!userService.IsCurrentUserAdmin())
             {
                 var currentUserId = await userService.GetCurrentUserIdAsync(cancellationToken);

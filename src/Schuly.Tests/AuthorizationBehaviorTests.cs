@@ -27,8 +27,6 @@ namespace Schuly.Tests
             return new HttpContextAccessor { HttpContext = ctx };
         }
 
-        // Production shape: Keycloak emits roles in a "groups" claim and the JWT
-        // handler is configured with RoleClaimType="groups" - NOT ClaimTypes.Role.
         private static IHttpContextAccessor AccessorWithGroups(params string[] groups)
         {
             var ctx = new DefaultHttpContext();

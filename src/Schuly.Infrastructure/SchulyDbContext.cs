@@ -113,7 +113,6 @@ namespace Schuly.Infrastructure
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasIndex(su => new { su.ApplicationUserId, su.SchoolId });
-                // Admin: list teachers / students of a school.
                 entity.HasIndex(su => new { su.SchoolId, su.Role });
             });
 
@@ -194,7 +193,6 @@ namespace Schuly.Infrastructure
 
                 // Kürzel uniquely identifies a teacher within a school.
                 entity.HasIndex(t => new { t.SchoolId, t.Code }).IsUnique();
-                // Resolve the current login's teacher records for per-class authz.
                 entity.HasIndex(t => t.ApplicationUserId);
             });
 

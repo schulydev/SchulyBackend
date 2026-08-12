@@ -37,29 +37,21 @@ namespace Schuly.API.Plugins
             if (IsSharedWithHost(name))
                 return null;
 
-            // Otherwise resolve plugin-private deps from the plugin folder.
             var candidate = Path.Combine(_pluginDirectory, name + ".dll");
             return File.Exists(candidate) ? LoadFromAssemblyPath(candidate) : null;
         }
 
         private bool IsSharedWithHost(string simpleName)
         {
-            // The plugin contract is always the host's type.
             if (simpleName.StartsWith("Schuly.Plugin.Abstractions", StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            // Anything the host has already loaded is shared, so a plugin referencing a
-            // library the backend also uses sees the one Type instance (Schuly.Domain,
-            // Mediator, the shared framework, …).
             foreach (var loaded in Default.Assemblies)
             {
                 if (string.Equals(loaded.GetName().Name, simpleName, StringComparison.OrdinalIgnoreCase))
                     return true;
             }
 
-            // A dependency the plugin ships next to itself (e.g. Microsoft.Kiota.*,
-            // AngleSharp, System.ClientModel) that the host doesn't use is plugin-private
-            // — load it from the plugin folder even though its name is Microsoft.*/System.*.
             if (File.Exists(Path.Combine(_pluginDirectory, simpleName + ".dll")))
                 return false;
 

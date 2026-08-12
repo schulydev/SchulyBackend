@@ -5,8 +5,6 @@ namespace Schuly.Domain
         public Guid SchoolId { get; set; }
         public School? School { get; set; }
 
-        // Optional link to the login that owns this teacher record. Null for
-        // teacher rows imported without a matching account.
         public Guid? ApplicationUserId { get; set; }
         public ApplicationUser? ApplicationUser { get; set; }
 

@@ -11,11 +11,6 @@ namespace Schuly.API.Controllers
     [Authorize]
     public class StudentDocumentsController(IMediator mediator) : ControllerBase
     {
-        /// <summary>
-        /// Lists document metadata (no bytes). Optionally filtered by student;
-        /// non-admins only ever see their own. Download content via
-        /// GET /api/documents/{id}.
-        /// </summary>
         [HttpGet("api/documents")]
         [ProducesResponseType(typeof(List<StudentDocumentDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

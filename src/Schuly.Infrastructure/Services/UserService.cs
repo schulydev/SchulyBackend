@@ -12,7 +12,6 @@ namespace Schuly.Infrastructure.Services
         public bool IsCurrentUserTeacher() =>
             httpContextAccessor.HttpContext?.User.IsTeacher() ?? false;
 
-
         public async Task<bool> ExistsAsync(string externalId, CancellationToken cancellationToken = default)
         {
             return await dbContext.ApplicationUsers.AnyAsync(u => u.ExternalId == externalId, cancellationToken);
@@ -52,8 +51,6 @@ namespace Schuly.Infrastructure.Services
                 .Select(t => t.Id)
                 .ToListAsync(cancellationToken);
 
-            // Unlinked teacher manages nothing - fail closed rather than granting
-            // control over every class in every school.
             if (teacherIds.Count == 0)
                 return false;
 

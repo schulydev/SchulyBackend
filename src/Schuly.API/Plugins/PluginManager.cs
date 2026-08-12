@@ -1,11 +1,5 @@
 namespace Schuly.API.Plugins
 {
-    /// <summary>
-    /// Orchestrates the plugin lifecycle: reconciles the declarative <c>plugins.yml</c>
-    /// against the registry + disk on startup, and serves the admin install / update /
-    /// remove operations. Every change is applied in-process via <see cref="PluginHost"/>
-    /// (no restart) and persisted to <c>plugins.yml</c> so it survives one.
-    /// </summary>
     public sealed class PluginManager(PluginHost host, PluginStore store, PluginSet set, PluginRegistryClient registry, ILogger<PluginManager> logger)
     {
         public Task<IReadOnlyList<RegistryPlugin>> GetRegistryAsync(CancellationToken ct = default) =>
@@ -13,11 +7,6 @@ namespace Schuly.API.Plugins
 
         public IReadOnlyList<LoadedPluginInfo> Loaded() => host.List();
 
-        /// <summary>
-        /// Brings disk + the running process in line with <c>plugins.yml</c>: downloads
-        /// missing/outdated plugins, removes ones no longer desired, then loads the set.
-        /// Called once at startup.
-        /// </summary>
         public async Task ReconcileAsync(CancellationToken ct = default)
         {
             var desired = set.Read();
@@ -28,7 +17,6 @@ namespace Schuly.API.Plugins
                 catch (Exception ex) { logger.LogWarning(ex, "Plugin registry unreachable; using installed plugins as-is"); }
             }
 
-            // Remove anything installed but no longer desired.
             foreach (var installed in store.List())
             {
                 if (!desired.Any(d => d.Name.Equals(installed.Name, StringComparison.OrdinalIgnoreCase)))
@@ -39,7 +27,6 @@ namespace Schuly.API.Plugins
                 }
             }
 
-            // Ensure each desired plugin is present at the right version.
             foreach (var d in desired)
             {
                 try
@@ -62,7 +49,6 @@ namespace Schuly.API.Plugins
                 }
             }
 
-            // Load everything now on disk that isn't already loaded.
             foreach (var manifest in store.List())
             {
                 if (!host.IsLoaded(manifest.Name))

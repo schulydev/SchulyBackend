@@ -10,11 +10,6 @@ namespace Schuly.API.Controllers
     [Route("api/avatars")]
     public class AvatarsController(IMediator mediator, IAvatarUrlSigner signer) : ControllerBase
     {
-        /// <summary>
-        /// Streams a SchoolUser avatar. Anonymous, but gated by a short-lived
-        /// HMAC signature (minted per-access when an authenticated caller reads
-        /// the user) — so plain &lt;img src&gt; works without auth headers.
-        /// </summary>
         [HttpGet("{schoolUserId:guid}")]
         [AllowAnonymous]
         public async Task<IActionResult> Get(Guid schoolUserId, [FromQuery] long exp, [FromQuery] string? sig, CancellationToken ct)

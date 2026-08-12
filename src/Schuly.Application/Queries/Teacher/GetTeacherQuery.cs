@@ -16,8 +16,6 @@ namespace Schuly.Application.Queries.Teacher
     {
         public async ValueTask<Result<TeacherDto>> Handle(GetTeacherQuery query, CancellationToken cancellationToken)
         {
-            // Scope to the caller's own teachers; admins may read any. A miss
-            // returns "not found" rather than leaking that the id exists.
             var isAdmin = userService.IsCurrentUserAdmin();
             var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
 

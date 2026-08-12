@@ -11,14 +11,8 @@ namespace Schuly.Infrastructure.Services
     /// </summary>
     public interface IAvatarUrlSigner
     {
-        /// <summary>
-        /// Turn a stored ProfilePictureUrl into a client-usable URL:
-        /// null → null; an external http(s) URL → returned unchanged; anything
-        /// else (a blob key) → a signed <c>/api/avatars/{id}?exp=&amp;sig=</c> URL.
-        /// </summary>
         string? ToPublicUrl(Guid schoolUserId, string? stored);
 
-        /// <summary>Validate a signature for the given id, rejecting expired or tampered URLs.</summary>
         bool Verify(Guid schoolUserId, long exp, string sig);
     }
 

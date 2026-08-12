@@ -1,6 +1,5 @@
 namespace Schuly.Application.Models
 {
-    /// <summary>How a <see cref="Result"/> should surface — maps to an HTTP status at the edge.</summary>
     public enum ResultStatus
     {
         Ok,

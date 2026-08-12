@@ -13,25 +13,18 @@ namespace Schuly.Infrastructure.Vault
     /// </summary>
     public interface IPluginVault
     {
-        /// <summary>Encrypts and stores <paramref name="value"/> under <paramref name="key"/>, replacing any existing value.</summary>
         void Set(string key, string value);
 
-        /// <summary>Decrypts and returns the value, or <c>null</c> if the key is absent.</summary>
         string? Get(string key);
 
-        /// <summary>Decrypts the value if present. Returns <c>false</c> (and a null value) when the key is absent.</summary>
         bool TryGet(string key, [NotNullWhen(true)] out string? value);
 
-        /// <summary>True if a value is stored under <paramref name="key"/>.</summary>
         bool Contains(string key);
 
-        /// <summary>Removes the value under <paramref name="key"/>. Returns whether anything was removed.</summary>
         bool Remove(string key);
 
-        /// <summary>Drops every value in this vault.</summary>
         void Clear();
 
-        /// <summary>Number of stored entries.</summary>
         int Count { get; }
     }
 }

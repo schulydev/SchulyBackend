@@ -16,8 +16,6 @@ namespace Schuly.Application.Queries.Class
     {
         public async ValueTask<Result<List<ClassDto>>> Handle(GetClassesQuery query, CancellationToken cancellationToken)
         {
-            // Students only see classes they're enrolled in, and only their own
-            // grades/absences within the roster — never a classmate's. Admins see all.
             var isAdmin = userService.IsCurrentUserAdmin();
             IReadOnlyList<Guid> myIds = isAdmin ? [] : await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
 

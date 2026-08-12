@@ -16,7 +16,6 @@ namespace Schuly.Application.Queries.Teacher
     {
         public async ValueTask<Result<List<TeacherDto>>> Handle(GetTeachersQuery query, CancellationToken cancellationToken)
         {
-            // A user only sees teachers synced under their own account; admins see all.
             var isAdmin = userService.IsCurrentUserAdmin();
             IQueryable<Domain.Teacher> dbQuery = dbContext.Teachers.AsNoTracking().Include(t => t.School);
 

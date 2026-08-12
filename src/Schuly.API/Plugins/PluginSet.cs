@@ -3,26 +3,12 @@ using Microsoft.Extensions.Configuration;
 
 namespace Schuly.API.Plugins
 {
-    /// <summary>One desired plugin in <c>plugins.yml</c>.</summary>
     public sealed record DesiredPlugin
     {
         public string Name { get; init; } = "";
-        /// <summary>A pinned semver, or <c>latest</c> to track the registry's current build.</summary>
         public string Version { get; init; } = "latest";
     }
 
-    /// <summary>
-    /// The declarative desired plugin set, persisted as <c>plugins.yml</c>:
-    /// <code>
-    /// plugins:
-    ///   - name: Schuly.Plugin.Schulware
-    ///     version: 2.4.2
-    ///   - name: Schuly.Plugin.OdaOrg
-    ///     version: latest
-    /// </code>
-    /// Read on startup to reconcile the plugins directory, and rewritten by the admin
-    /// install/update/remove endpoints so the running state survives a restart.
-    /// </summary>
     public sealed class PluginSet(string filePath)
     {
         public string FilePath { get; } = filePath;
@@ -57,7 +43,6 @@ namespace Schuly.API.Plugins
             File.WriteAllText(FilePath, sb.ToString());
         }
 
-        /// <summary>Adds or updates an entry, then persists.</summary>
         public void Upsert(string name, string version)
         {
             var set = Read().Where(p => !p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -65,7 +50,6 @@ namespace Schuly.API.Plugins
             Write(set);
         }
 
-        /// <summary>Removes an entry by name, then persists.</summary>
         public void RemoveEntry(string name)
         {
             var set = Read().Where(p => !p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();

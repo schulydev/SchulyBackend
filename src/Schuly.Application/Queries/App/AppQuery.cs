@@ -12,9 +12,6 @@ namespace Schuly.Application.Queries.App
 
     public class AppQueryHandler(IConfiguration configuration) : IQueryHandler<AppQuery, Result<AppDto>>
     {
-        // Assembly informational version, stamped from application.properties via
-        // Directory.Build.props (and -p:Version in the Docker build). The "+meta"
-        // suffix SourceLink may append is stripped.
         private static readonly string Version =
             (Assembly.GetEntryAssembly() ?? typeof(AppQueryHandler).Assembly)
                 .GetCustomAttribute<AssemblyInformationalVersionAttribute>()

@@ -21,8 +21,6 @@ namespace Schuly.Application.Commands.Agenda
             if (scopes != 1)
                 return Result.Failure("Exactly one of ClassId / SchoolId / SchoolUserId must be set");
 
-            // Non-admins may only create their own personal entry. Class- and
-            // school-wide entries are admin-only.
             if (!userService.IsCurrentUserAdmin())
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);

@@ -10,11 +10,6 @@ namespace Schuly.Application.Queries.StudentDocument
 {
     public record DocumentDownload(DocumentStream Stream, string FileName);
 
-    /// <summary>
-    /// Open a document for download. Authorization rule mirrors
-    /// GetSchoolUserQuery: owner-only, with an Administrator escape hatch.
-    /// The backend proxies the bytes — the client never talks to S3.
-    /// </summary>
     [AllowAuthenticated]
     public record OpenStudentDocumentQuery(Guid DocumentId) : IQuery<Result<DocumentDownload>>;
 

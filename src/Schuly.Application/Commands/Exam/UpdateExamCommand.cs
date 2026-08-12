@@ -21,7 +21,6 @@ namespace Schuly.Application.Commands.Exam
             if (exam == null)
                 return Result.Failure($"Exam with ID '{command.ExamId}' not found");
 
-            // Manage both the current class and the target class it's moving to.
             if (!await userService.CanManageClassAsync(exam.ClassId, cancellationToken) ||
                 !await userService.CanManageClassAsync(command.ClassId, cancellationToken))
                 return Result.Forbidden();

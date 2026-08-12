@@ -10,8 +10,6 @@ namespace Schuly.Infrastructure.Storage
 
         public async Task<UploadedBlob> UploadAsync(Stream content, string fileName, string? contentType, CancellationToken ct)
         {
-            // Random prefix keeps keys unpredictable and avoids collisions when
-            // two students happen to upload files with the same name.
             var key = $"{Guid.NewGuid():N}/{SanitizeFileName(fileName)}";
 
             var request = new PutObjectRequest
@@ -46,8 +44,6 @@ namespace Schuly.Infrastructure.Storage
 
         private static string SanitizeFileName(string name)
         {
-            // Strip path traversal + control chars; S3 itself tolerates most
-            // characters but keeping keys URL-safe avoids surprises.
             var safe = name.Replace('\\', '/').Split('/').Last();
             return new string(safe.Select(c => char.IsControl(c) ? '_' : c).ToArray());
         }

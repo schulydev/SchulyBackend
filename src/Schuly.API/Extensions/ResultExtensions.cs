@@ -4,13 +4,6 @@ using Schuly.Application.Models;
 
 namespace Schuly.API.Extensions
 {
-    /// <summary>
-    /// Maps a <see cref="Result"/> / <see cref="Result{T}"/> to the HTTP response
-    /// every controller action used to spell out by hand: success returns the
-    /// value (or 204 for a valueless result), a forbidden result returns 403, a
-    /// conflict returns 409, and any other failure returns 400 with the error.
-    /// One place owns that mapping.
-    /// </summary>
     public static class ResultExtensions
     {
         public static IActionResult ToActionResult<T>(this Result<T> result) =>

@@ -8,10 +8,6 @@ using Schuly.Infrastructure.Storage;
 
 namespace Schuly.Application.Commands.StudentDocument
 {
-    /// <summary>
-    /// Uploads a document for a student. The caller's bytes are streamed to S3
-    /// first; only on success do we write the metadata row.
-    /// </summary>
     [AllowAuthenticated]
     public record UploadStudentDocumentCommand(Guid SchoolUserId, Stream Content, string FileName, string? ContentType, string Title, string? Comment, string? Category, string? EnteredBy, string? FollowUpAction, DateOnly? FollowUpDate) : ICommand<Result<Guid>>;
 
@@ -19,8 +15,6 @@ namespace Schuly.Application.Commands.StudentDocument
     {
         public async ValueTask<Result<Guid>> Handle(UploadStudentDocumentCommand command, CancellationToken ct)
         {
-            // Authorization: a student can only upload to their own record; an
-            // administrator can upload for anyone.
             if (!userService.IsCurrentUserAdmin())
             {
                 var currentUserId = await userService.GetCurrentUserIdAsync(ct);

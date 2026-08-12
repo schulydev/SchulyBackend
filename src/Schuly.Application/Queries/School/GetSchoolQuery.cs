@@ -23,8 +23,6 @@ namespace Schuly.Application.Queries.School
             if (school == null)
                 return Result<SchoolDto>.Failure($"School with ID '{query.SchoolId}' not found");
 
-            // A user may only read a school they belong to; admins may read any.
-            // A non-member gets the same "not found" so the id isn't leaked.
             if (!userService.IsCurrentUserAdmin())
             {
                 var userId = await userService.GetCurrentUserIdAsync(cancellationToken);

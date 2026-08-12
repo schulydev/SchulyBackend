@@ -6,8 +6,6 @@ namespace Schuly.Tests
 {
     public class ClassAccessTests
     {
-        // classA has Alice + Bob (with grades on a shared exam and an absence each);
-        // classB has only Bob. Returns (aliceSchoolUserId, classAId, classBId).
         private static (Guid alice, Guid classA, Guid classB) Seed(string db)
         {
             var schoolId = Guid.NewGuid();

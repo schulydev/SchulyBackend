@@ -30,7 +30,6 @@ namespace Schuly.API.Plugins
             lock (_gate) return _changeToken;
         }
 
-        /// <summary>Atomically swaps the endpoint set and signals the change.</summary>
         public void Replace(IEnumerable<Endpoint> endpoints)
         {
             CancellationTokenSource old;
@@ -45,11 +44,6 @@ namespace Schuly.API.Plugins
             old.Dispose();
         }
 
-        /// <summary>
-        /// Runs a plugin's <c>ConfigureEndpoints</c> against a throwaway builder, then
-        /// returns its endpoints re-stamped with <see cref="PluginOwner"/> metadata so
-        /// the scope middleware can route each request into the plugin's scope.
-        /// </summary>
         public static IReadOnlyList<Endpoint> Build(string pluginName, IServiceProvider rootProvider, Action<IEndpointRouteBuilder> configure)
         {
             var builder = new CapturingEndpointRouteBuilder(rootProvider);

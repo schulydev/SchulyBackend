@@ -22,20 +22,10 @@ namespace Schuly.API.Controllers
             return result.ToActionResult();
         }
 
-        /// <summary>
-        /// Aggregated background-task scheduler health: last run, success/failure,
-        /// duration, error, and consecutive failures per plugin sync task. Live
-        /// runtime state (resets on restart). Per-account detail lives on each
-        /// plugin's own .../accounts/{id}/sync endpoint.
-        /// </summary>
         [HttpGet("scheduler")]
         [ProducesResponseType(typeof(IReadOnlyList<PluginTaskStatus>), StatusCodes.Status200OK)]
         public IActionResult Scheduler() => Ok(scheduler.Snapshot());
 
-        // --- Management (Administrator only). Changes are applied in-process via the
-        //     plugin host (no restart) and persisted to plugins.yml. ---
-
-        /// <summary>Plugins available in the configured registry.</summary>
         [HttpGet("registry")]
         [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> Registry(CancellationToken cancellationToken) =>
@@ -43,19 +33,16 @@ namespace Schuly.API.Controllers
 
         public record InstallPluginRequest(string Name, string? Version);
 
-        /// <summary>Download + load a plugin (optionally pinning a version).</summary>
         [HttpPost("install")]
         [Authorize(Roles = "Administrator")]
         public Task<IActionResult> Install([FromBody] InstallPluginRequest request, CancellationToken cancellationToken) =>
             ApplyAsync(() => plugins.InstallAsync(request.Name, request.Version, cancellationToken), request.Name);
 
-        /// <summary>Update an installed plugin to the registry's latest version.</summary>
         [HttpPost("{name}/update")]
         [Authorize(Roles = "Administrator")]
         public Task<IActionResult> Update(string name, CancellationToken cancellationToken) =>
             ApplyAsync(() => plugins.UpdateAsync(name, cancellationToken), name);
 
-        /// <summary>Unload + delete a plugin.</summary>
         [HttpDelete("{name}")]
         [Authorize(Roles = "Administrator")]
         public Task<IActionResult> Remove(string name, CancellationToken cancellationToken) =>

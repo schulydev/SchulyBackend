@@ -15,14 +15,12 @@ function Show-Help {
     exit 0
 }
 
-# Remove any leading dashes from the command
 $Command = $Command -replace '^-+', ''
 
 if (-not $Command -or $Command -eq "help") {
     Show-Help
 }
 
-# Set the correct paths relative to the script location
 $RootPath = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
 $MigrationsPath = Join-Path -Path $RootPath -ChildPath "src\DockiUp.Infrastructure"
 $DockerComposeFile = Join-Path -Path $RootPath -ChildPath "compose.dev.yml"

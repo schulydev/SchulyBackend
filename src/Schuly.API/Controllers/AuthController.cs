@@ -31,13 +31,6 @@ namespace Schuly.API.Controllers
             return result.ToActionResult();
         }
 
-        /// <summary>
-        /// Unified plugin login. The CRM is dumb: it resolves the
-        /// <see cref="IPluginLogin"/> whose <c>SystemKey</c> matches and forwards
-        /// the catalog-collected <c>fields</c> to it. The plugin authenticates its
-        /// provider, stores the account, and returns its id. One endpoint for every
-        /// system, whatever credentials it collects.
-        /// </summary>
         [HttpPost("login")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -54,6 +47,5 @@ namespace Schuly.API.Controllers
         }
     }
 
-    /// <summary>Body for the unified plugin login endpoint.</summary>
     public record UnifiedLoginRequest(string SystemKey, Dictionary<string, string>? Fields, string? DisplayName);
 }

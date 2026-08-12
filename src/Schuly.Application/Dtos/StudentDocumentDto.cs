@@ -1,9 +1,5 @@
 namespace Schuly.Application.Dtos
 {
-    /// <summary>
-    /// Metadata for a stored student document. Intentionally carries no file
-    /// bytes — download the content separately via GET /api/documents/{id}.
-    /// </summary>
     public class StudentDocumentDto
     {
         public Guid Id { get; set; }

@@ -14,7 +14,6 @@ namespace Schuly.API.Extensions
             return app;
         }
 
-        /// <summary>Seeds the school-systems catalog from configuration (seed-if-missing).</summary>
         public static async Task<WebApplication> SeedSchoolSystemsAsync(this WebApplication app)
         {
             using var scope = app.Services.CreateScope();

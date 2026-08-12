@@ -16,8 +16,6 @@ namespace Schuly.Application.Queries.Exam
     {
         public async ValueTask<Result<ExamDto>> Handle(GetExamQuery query, CancellationToken cancellationToken)
         {
-            // Students only see an exam for a class they're enrolled in, and only
-            // their own grade on it. Admins see all.
             var isAdmin = userService.IsCurrentUserAdmin();
             IReadOnlyList<Guid> myIds = isAdmin ? [] : await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
 

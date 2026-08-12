@@ -22,8 +22,6 @@ namespace Schuly.Tests
         private static UserService NewService(SchulyDbContext ctx, string? role) =>
             new(new FakeOidcService(ExternalId), ctx, Accessor(role));
 
-        // Seeds a user with one teacher record, that teacher teaching `taught` but
-        // not `other`. Returns (taughtClassId, otherClassId).
         private static (Guid taught, Guid other) Seed(SchulyDbContext ctx, bool linkTeacher)
         {
             var schoolId = Guid.NewGuid();
@@ -74,7 +72,6 @@ namespace Schuly.Tests
             using var ctx = TestDb.NewContext(nameof(Unlinked_teacher_cannot_manage_any_class));
             var (_, other) = Seed(ctx, linkTeacher: false);
 
-            // Fail closed: a teacher with no linked Teacher record manages nothing.
             await Assert.That(await NewService(ctx, "Teacher").CanManageClassAsync(other)).IsFalse();
         }
 

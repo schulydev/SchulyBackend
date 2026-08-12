@@ -21,7 +21,6 @@ namespace Schuly.API.Controllers
             return result.ToActionResult();
         }
 
-        /// <summary>The catalog of enabled school systems the app renders for login.</summary>
         [AllowAnonymous]
         [HttpGet("school-systems")]
         [ProducesResponseType(typeof(List<SchoolSystemDto>), StatusCodes.Status200OK)]
