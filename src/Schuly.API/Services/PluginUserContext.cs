@@ -12,7 +12,6 @@ namespace Schuly.API.Services
 
         public Task<Guid?> GetCurrentSchoolUserIdAsync(CancellationToken cancellationToken = default)
         {
-            // TODO: implement when school context selection is added
             return Task.FromResult<Guid?>(null);
         }
     }

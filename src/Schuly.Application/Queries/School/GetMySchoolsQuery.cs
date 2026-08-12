@@ -18,8 +18,6 @@ namespace Schuly.Application.Queries.School
         {
             var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
 
-            // Project the SchoolUser id too — avatars are keyed by it, and the
-            // signed URL must be minted in memory (can't call the signer in EF).
             var rows = await dbContext.SchoolUsers
                 .AsNoTracking()
                 .Where(su => su.ApplicationUserId == userId && su.School != null)

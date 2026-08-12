@@ -9,10 +9,6 @@ using Schuly.Infrastructure.Services;
 
 namespace Schuly.Application.Queries.SemesterReport
 {
-    /// <summary>
-    /// Lists semester reports (with their subject grades). Owner-only, with an
-    /// Administrator escape hatch — same rule as document/SchoolUser access.
-    /// </summary>
     [AllowAuthenticated]
     public record GetSemesterReportsQuery(Guid? SchoolUserId = null) : IQuery<Result<List<SemesterReportDto>>>;
 

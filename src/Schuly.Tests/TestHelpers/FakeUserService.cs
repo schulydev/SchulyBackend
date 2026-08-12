@@ -2,14 +2,8 @@ using Schuly.Infrastructure.Services;
 
 namespace Schuly.Tests.TestHelpers
 {
-    /// <summary>
-    /// Test double for <see cref="IUserService"/> — lets a test pretend to be a
-    /// specific user (by their SchoolUser ids) or an administrator, without an
-    /// OIDC round-trip.
-    /// </summary>
     public sealed class FakeUserService(bool isAdmin, params Guid[] schoolUserIds) : IUserService
     {
-        /// <summary>Decides <see cref="CanManageClassAsync"/>; allows everything by default.</summary>
         public Func<Guid, bool> ClassManager { get; init; } = _ => true;
 
         public bool IsCurrentUserAdmin() => isAdmin;

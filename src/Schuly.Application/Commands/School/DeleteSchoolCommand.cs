@@ -23,8 +23,6 @@ namespace Schuly.Application.Commands.School
             if (school == null)
                 return Result.Failure($"School with ID {command.Id} not found");
 
-            // All three relationships are Restrict — deleting with any dependent
-            // would raise an FK violation, so block it cleanly first (409).
             if (school.SchoolUsers.Any() || school.Classes.Any() || school.Teachers.Any())
                 return Result.Conflict("Cannot delete school that has associated users, classes or teachers");
 

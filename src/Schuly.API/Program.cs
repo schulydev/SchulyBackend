@@ -17,8 +17,6 @@ var mvcBuilder = builder.Services.AddSchulyControllers();
 
 builder.Services.AddSchulyOpenApi(builder.Configuration);
 builder.Services.AddMediator(options => { options.ServiceLifetime = ServiceLifetime.Scoped; });
-// Mediator does not auto-register pipeline behaviors — they must be added explicitly,
-// and run in registration order. Authorization first so role gates are enforced.
 builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
 builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(PluginEventBehavior<,>));
 builder.Services.AddSchulyDatabase(builder.Configuration);
@@ -40,8 +38,6 @@ builder.Services.AddSchulyAuthentication(builder.Configuration, builder.Environm
 builder.Services.AddSchulyAuthorization();
 builder.Services.AddSchulyExceptionHandling();
 
-// Per-IP backstop against abuse of the anonymous credential-handling proxy
-// endpoints (private-mode login/refresh/data) and brute force in general.
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -61,8 +57,6 @@ await app.SeedSchoolSystemsAsync();
 
 app.UseExceptionHandler();
 
-// Serve static assets (e.g. school-system logos under wwwroot/schoolsystems)
-// anonymously, before auth, so the app's catalog picker can load them.
 app.UseStaticFiles();
 
 if (app.Environment.IsDevelopment())
@@ -74,8 +68,6 @@ if (app.Environment.IsDevelopment())
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
-// Run plugin requests inside the owning plugin's service scope (after auth, before
-// the endpoint executes).
 app.UseMiddleware<PluginScopeMiddleware>();
 app.MapControllers();
 await app.UseSchulyPluginsAsync();

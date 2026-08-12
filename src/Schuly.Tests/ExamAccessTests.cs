@@ -7,8 +7,6 @@ namespace Schuly.Tests
 {
     public class ExamAccessTests
     {
-        // Alice + Carol share class1 (which has exam1); Bob is alone in class2
-        // (exam2). Returns Alice's SchoolUser id.
         private static Guid Seed(string dbName)
         {
             var schoolId = Guid.NewGuid();

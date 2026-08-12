@@ -24,7 +24,6 @@ namespace Schuly.Application.Queries.Absence
             if (absence == null)
                 return Result<AbsenceDto>.Failure($"Absence with ID '{query.AbsenceId}' not found");
 
-            // Non-admins can only read their own absences.
             if (!userService.IsCurrentUserAdmin())
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);

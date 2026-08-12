@@ -3,14 +3,11 @@ using System.Text.Json;
 
 namespace Schuly.API.Plugins
 {
-    /// <summary>On-disk record of an installed plugin, written next to its DLL.</summary>
     public sealed record PluginManifest
     {
         public string Name { get; init; } = "";
         public string Version { get; init; } = "";
-        /// <summary>The plugin's main assembly file name (relative to the plugins dir).</summary>
         public string Dll { get; init; } = "";
-        /// <summary>Every file this install dropped (main DLL + extracted dependencies).</summary>
         public IReadOnlyList<string> Files { get; init; } = [];
     }
 
@@ -56,11 +53,6 @@ namespace Schuly.API.Plugins
 
         public string MainDllPath(PluginManifest manifest) => Path.Combine(Directory, manifest.Dll);
 
-        /// <summary>
-        /// Downloads the plugin DLL and its dependency bundle and writes them to the
-        /// plugins directory, replacing any previous install of the same plugin.
-        /// Returns the written manifest.
-        /// </summary>
         public async Task<PluginManifest> InstallAsync(RegistryPlugin entry, PluginRegistryClient registry, CancellationToken ct = default)
         {
             // Clean any previous version's files first so a downgrade/upgrade leaves no
@@ -98,10 +90,6 @@ namespace Schuly.API.Plugins
             return manifest;
         }
 
-        /// <summary>
-        /// Deletes a plugin's files and manifest. Dependency files still referenced by
-        /// another installed plugin's manifest are left in place.
-        /// </summary>
         public void Remove(string name)
         {
             var manifest = Find(name);

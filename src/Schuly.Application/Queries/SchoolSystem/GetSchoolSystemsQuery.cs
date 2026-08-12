@@ -8,8 +8,6 @@ using Schuly.Infrastructure;
 
 namespace Schuly.Application.Queries.SchoolSystem
 {
-    // Anonymous-friendly: the app fetches this before any login (account or proxy mode).
-    // Admins pass IncludeDisabled to manage the full catalog.
     [AllowAuthenticated]
     public record GetSchoolSystemsQuery(bool IncludeDisabled = false) : IQuery<Result<List<SchoolSystemDto>>>;
 

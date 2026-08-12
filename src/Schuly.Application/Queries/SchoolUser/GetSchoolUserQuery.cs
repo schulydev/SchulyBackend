@@ -27,7 +27,6 @@ namespace Schuly.Application.Queries.SchoolUser
             if (schoolUser == null)
                 return Result<SchoolUserDto>.Failure($"SchoolUser with ID '{query.SchoolUserId}' not found");
 
-            // Non-admins can only read their own row. Admins bypass.
             if (!userService.IsCurrentUserAdmin())
             {
                 var currentUserId = await userService.GetCurrentUserIdAsync(cancellationToken);

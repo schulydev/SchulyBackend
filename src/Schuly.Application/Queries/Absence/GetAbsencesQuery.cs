@@ -21,7 +21,6 @@ namespace Schuly.Application.Queries.Absence
                 .Include(a => a.SchoolUser)
                 .AsQueryable();
 
-            // Non-admins only see absences for their own SchoolUser rows.
             if (!userService.IsCurrentUserAdmin())
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);

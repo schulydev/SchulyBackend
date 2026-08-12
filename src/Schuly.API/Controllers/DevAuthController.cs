@@ -8,11 +8,6 @@ using System.Security.Claims;
 
 namespace Schuly.API.Controllers
 {
-    /// <summary>
-    /// Development-only fake OIDC. Mints JWTs the backend trusts so authenticated and
-    /// role-gated endpoints can be tested without a real IdP. Active only when
-    /// <c>DevAuth:Enabled</c> is set (Development); returns 404 otherwise.
-    /// </summary>
     [ApiController]
     [Route("api/dev")]
     [AllowAnonymous]

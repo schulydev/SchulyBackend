@@ -20,7 +20,6 @@ namespace Schuly.Application.Commands.Agenda
             if (agendaEntry == null)
                 return Result.Failure($"Agenda entry with ID '{command.AgendaEntryId}' not found");
 
-            // Non-admins may only delete their own personal entry.
             if (!userService.IsCurrentUserAdmin())
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);

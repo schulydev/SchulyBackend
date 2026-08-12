@@ -17,7 +17,6 @@ namespace Schuly.API.Plugins
 
         public IChangeToken GetChangeToken() => new CancellationChangeToken(_cts.Token);
 
-        /// <summary>Signals MVC to recompute the action descriptor collection.</summary>
         public void NotifyChanged()
         {
             var old = Interlocked.Exchange(ref _cts, new CancellationTokenSource());

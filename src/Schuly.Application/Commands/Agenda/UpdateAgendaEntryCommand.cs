@@ -27,8 +27,6 @@ namespace Schuly.Application.Commands.Agenda
             if (agendaEntry == null)
                 return Result.Failure($"Agenda entry with ID '{command.AgendaEntryId}' not found");
 
-            // Non-admins may only edit their own personal entry, and may not turn
-            // it into a class/school entry or hand it to another user.
             if (!userService.IsCurrentUserAdmin())
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);

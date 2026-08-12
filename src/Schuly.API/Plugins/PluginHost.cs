@@ -15,15 +15,8 @@ using Schuly.Plugin.Abstractions;
 
 namespace Schuly.API.Plugins
 {
-    /// <summary>Lightweight view of a loaded plugin for the API.</summary>
     public sealed record LoadedPluginInfo(string Name, string Version);
 
-    /// <summary>
-    /// Loads and unloads plugins at runtime. Each plugin runs in its own collectible
-    /// <see cref="PluginLoadContext"/> and its own child <see cref="IServiceProvider"/>;
-    /// its controllers (MVC ApplicationParts), minimal-API endpoints, and background
-    /// tasks are wired in on load and torn down on unload — no process restart.
-    /// </summary>
     public sealed class PluginHost(IServiceProvider rootProvider, IConfiguration configuration, ApplicationPartManager partManager, PluginEndpointDataSource endpointSource, PluginAssemblyMap assemblyMap, PluginSchedulerRegistry scheduler, ILogger<PluginHost> logger)
     {
         private readonly ConcurrentDictionary<string, LoadedPlugin> _loaded = new(StringComparer.OrdinalIgnoreCase);
@@ -35,21 +28,11 @@ namespace Schuly.API.Plugins
         public IReadOnlyList<LoadedPluginInfo> List() =>
             _loaded.Values.Select(p => new LoadedPluginInfo(p.Name, p.Version)).ToList();
 
-        /// <summary>Live snapshot of the loaded plugin instances (for read-only queries).</summary>
         public IReadOnlyList<ISchulyPlugin> Instances() =>
             _loaded.Values.Select(p => p.Instance).ToList();
 
         public bool IsLoaded(string name) => _loaded.ContainsKey(name);
 
-        /// <summary>
-        /// Resolves the <see cref="IPluginLogin"/> across loaded plugins whose
-        /// <see cref="IPluginLogin.SystemKey"/> matches <paramref name="systemKey"/> and
-        /// runs its connect inside that plugin's own DI scope — so the login's scoped
-        /// services (DbContext, vault, the request's user context) resolve correctly.
-        /// Returns null when no loaded plugin handles the system. The host controller
-        /// can't inject these directly: plugin logins live in each plugin's child
-        /// provider, not the frozen root container, so this bridge is the only path.
-        /// </summary>
         public async Task<PluginLoginResult?> ConnectAsync(string systemKey, IReadOnlyDictionary<string, string> fields, string? displayName, CancellationToken ct = default)
         {
             foreach (var loaded in _loaded.Values)
@@ -66,12 +49,6 @@ namespace Schuly.API.Plugins
             return null;
         }
 
-        /// <summary>
-        /// Seeds the school-systems catalog from a freshly-loaded plugin's
-        /// <see cref="IPluginLogin.SchoolSystem"/> descriptors (seed-if-missing by
-        /// <see cref="SchoolSystem.Key"/>), so the catalog is plugin-provided instead of
-        /// operator config. Anything an admin edits afterwards is left untouched.
-        /// </summary>
         private async Task SyncSchoolSystemsAsync(LoadedPlugin loaded, CancellationToken ct)
         {
             using var pluginScope = loaded.Provider.CreateScope();
@@ -142,10 +119,8 @@ namespace Schuly.API.Plugins
                 var provider = BuildChildProvider(plugin);
                 await plugin.MigrateAsync(provider, ct);
 
-                // Minimal-API endpoints (plugin.ConfigureEndpoints).
                 var endpoints = PluginEndpointDataSource.Build(plugin.Name, rootProvider, plugin.ConfigureEndpoints);
 
-                // MVC controllers shipped in the plugin assembly.
                 var part = new AssemblyPart(assembly);
                 partManager.ApplicationParts.Add(part);
                 assemblyMap.Add(assembly, plugin.Name);
@@ -201,7 +176,6 @@ namespace Schuly.API.Plugins
                 plugin.TaskCts?.Dispose();
                 plugin.LoadContext.Unload();
 
-                // Best-effort: help the collectible context actually unload.
                 for (var i = 0; i < 2; i++)
                 {
                     GC.Collect();
@@ -220,8 +194,6 @@ namespace Schuly.API.Plugins
         {
             var services = new ServiceCollection();
 
-            // Forward the shared host services a plugin may depend on. Plugin-specific
-            // services come from the plugin's own ConfigureServices below.
             services.AddSingleton(rootProvider.GetRequiredService<ILoggerFactory>());
             services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
             services.AddSingleton(rootProvider.GetRequiredService<IHttpClientFactory>());
@@ -234,8 +206,6 @@ namespace Schuly.API.Plugins
             // e.g. when the host reads a plugin's catalog descriptor at load time.
             services.AddScoped<IPluginUserContext>(_ => new DeferredPluginUserContext(rootProvider));
 
-            // The plugin's own isolated vault, keyed by its name (matches how plugins
-            // resolve it: [FromKeyedServices(PluginName)] IPluginVault).
             services.AddKeyedSingleton<IPluginVault>(plugin.Name, (sp, _) =>
                 sp.GetRequiredService<IPluginVaultFactory>().GetVault($"plugin:{plugin.Name}"));
 
@@ -337,11 +307,6 @@ namespace Schuly.API.Plugins
         private static long ElapsedMs(long start) =>
             (long)System.Diagnostics.Stopwatch.GetElapsedTime(start).TotalMilliseconds;
 
-        /// <summary>
-        /// A host DI scope owned by a plugin scope, so plugin-scoped services can pull
-        /// scoped host services (the main DB, blob storage) from it. Disposed when the
-        /// plugin scope is disposed.
-        /// </summary>
         private sealed class HostServiceScope(IServiceProvider root) : IDisposable
         {
             private readonly IServiceScope _scope = root.CreateScope();

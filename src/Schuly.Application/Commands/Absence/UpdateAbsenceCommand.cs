@@ -21,8 +21,6 @@ namespace Schuly.Application.Commands.Absence
             if (absence == null)
                 return Result.Failure($"Absence with ID '{command.AbsenceId}' not found");
 
-            // Non-admins may only touch their own absences, and may not reassign
-            // one to a SchoolUser they don't own.
             if (!userService.IsCurrentUserAdmin())
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);

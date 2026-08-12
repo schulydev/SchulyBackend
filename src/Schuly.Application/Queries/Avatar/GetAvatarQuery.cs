@@ -9,12 +9,6 @@ namespace Schuly.Application.Queries.Avatar
 {
     public record AvatarDownload(DocumentStream Stream);
 
-    /// <summary>
-    /// Streams a SchoolUser's stored avatar blob. Access is gated by the HMAC
-    /// signature validated in the controller (the endpoint is anonymous), so no
-    /// per-user check here — <see cref="AllowAuthenticatedAttribute"/> only
-    /// bypasses the role gate in the authorization behavior.
-    /// </summary>
     [AllowAuthenticated]
     public record GetAvatarQuery(Guid SchoolUserId) : IQuery<Result<AvatarDownload>>;
 

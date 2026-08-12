@@ -20,7 +20,6 @@ namespace Schuly.Application.Commands.Absence
             if (absence == null)
                 return Result.Failure($"Absence with ID '{command.AbsenceId}' not found");
 
-            // Non-admins may only delete their own absences.
             if (!userService.IsCurrentUserAdmin())
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);

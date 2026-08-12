@@ -11,12 +11,6 @@ using Schuly.Tests.TestHelpers;
 
 namespace Schuly.Tests
 {
-    /// <summary>
-    /// Proves the core hot-swap promise end-to-end over HTTP: a plugin's minimal-API
-    /// endpoint AND its MVC controller (resolving a service from the plugin's own child
-    /// container) appear when the plugin is loaded at runtime and 404 after it's
-    /// unloaded — no process restart.
-    /// </summary>
     public class PluginHotSwapTests
     {
         [Test]
@@ -24,25 +18,21 @@ namespace Schuly.Tests
         {
             await using var h = await Harness.StartAsync();
 
-            // Nothing loaded yet.
             await Assert.That(await h.Status("/api/plugins/test/ping")).IsEqualTo(HttpStatusCode.NotFound);
             await Assert.That(await h.Status("/api/plugins/test/controller-ping")).IsEqualTo(HttpStatusCode.NotFound);
 
-            // Hot-load the plugin.
             await h.Host.LoadAsync(h.CopyTestPlugin(), h.Directory);
 
             var ping = await h.Client.GetAsync("/api/plugins/test/ping");
             await Assert.That(ping.StatusCode).IsEqualTo(HttpStatusCode.OK);
             await Assert.That(await ping.Content.ReadAsStringAsync()).Contains("pong");
 
-            // Controller resolves TestGreeter from the plugin's child container.
             var ctrl = await h.Client.GetAsync("/api/plugins/test/controller-ping");
             await Assert.That(ctrl.StatusCode).IsEqualTo(HttpStatusCode.OK);
             await Assert.That(await ctrl.Content.ReadAsStringAsync()).Contains("child-di-ok");
 
             await Assert.That(h.Host.IsLoaded("Test Plugin")).IsTrue();
 
-            // Hot-unload — both surfaces disappear.
             await h.Host.UnloadAsync("Test Plugin");
             await Assert.That(await h.Status("/api/plugins/test/ping")).IsEqualTo(HttpStatusCode.NotFound);
             await Assert.That(await h.Status("/api/plugins/test/controller-ping")).IsEqualTo(HttpStatusCode.NotFound);

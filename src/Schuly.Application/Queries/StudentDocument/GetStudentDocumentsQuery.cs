@@ -9,11 +9,6 @@ using Schuly.Infrastructure.Services;
 
 namespace Schuly.Application.Queries.StudentDocument
 {
-    /// <summary>
-    /// Lists document metadata (no file bytes). Owner-only, with an
-    /// Administrator escape hatch — mirrors <see cref="OpenStudentDocumentQuery"/>.
-    /// Download the actual content via GET /api/documents/{id}.
-    /// </summary>
     [AllowAuthenticated]
     public record GetStudentDocumentsQuery(Guid? SchoolUserId = null) : IQuery<Result<List<StudentDocumentDto>>>;
 
