@@ -1,4 +1,4 @@
-# Self-hosting (step by step)
+# Self-hosting
 
 A from-zero walkthrough to stand up the Schuly backend **and the services it needs**
 on your own server, using the published GHCR images and the ready-made stack under
