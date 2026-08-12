@@ -52,7 +52,42 @@ git clone https://github.com/schulydev/SchulyBackend.git
 cd SchulyBackend/deploy
 ```
 
-Everything below runs from `deploy/`.
+Everything below runs from `deploy/`, which looks like this before you've touched
+anything:
+
+```
+deploy/
+├── .env.example
+├── Caddyfile
+├── compose.staging.yml
+├── config/
+│   ├── backend.env
+│   ├── keycloak.env
+│   ├── plugins.yml
+│   ├── plugins-config/
+│   │   └── Schuly.Plugin.Schulware.yml
+│   ├── postgres-init/
+│   │   └── 01-create-keycloak-db.sh
+│   └── seaweedfs/
+│       └── s3-config.json
+└── README.md
+```
+
+By the end of this guide you'll also have `.env` (step 3, from `.env.example`) and a
+`data/` folder (created automatically on first `up`, step 5) holding everything the
+stack persists:
+
+```
+deploy/
+├── .env                  # ← you create this
+├── ...                   #   (unchanged files omitted)
+└── data/                 # ← created on first `docker compose up`
+    ├── postgres/
+    ├── seaweedfs/
+    ├── plugins/           # downloaded plugin DLLs
+    ├── caddy/              # TLS certificates/state
+    └── caddy-config/
+```
 
 ## 2. Point DNS at the server
 
@@ -198,10 +233,53 @@ Two ways to get a stable hostname without a real domain:
   useful error, this is almost always why - fall back to the raw IP instead.
 
 With either option, since `API_HOST` and `AUTH_HOST` are now the same address, Caddy
-can no longer tell the two services apart by hostname - use distinct ports instead:
+can no longer tell the two services apart by hostname - use distinct ports instead.
+
+### Worked example
+
+Say your machine's LAN IP is `192.168.1.42`. Nothing about the `deploy/` folder
+structure from step 1 changes - you're editing four of the existing files in place,
+nothing more:
 
 ```
-# Caddyfile - plain HTTP, ports instead of hostnames/TLS
+deploy/
+├── .env                  ← create from .env.example; API_HOST/AUTH_HOST = the LAN IP
+├── Caddyfile              ← edit: plain HTTP, explicit ports, no hostname routing
+├── compose.staging.yml    ← edit: caddy service ports
+├── config/
+│   ├── backend.env        ← edit: RequireHttpsMetadata=false
+│   ├── keycloak.env        (unchanged - KC_HTTP_ENABLED is already true)
+│   ├── plugins.yml         (unchanged)
+│   ├── plugins-config/
+│   │   └── Schuly.Plugin.Schulware.yml   (unchanged)
+│   ├── postgres-init/
+│   │   └── 01-create-keycloak-db.sh      (unchanged)
+│   └── seaweedfs/
+│       └── s3-config.json                (unchanged)
+└── data/                  (created on first `up`, same as the domain case)
+```
+
+**`.env`** - same template as step 3, just point both hostnames at the raw IP and
+leave `SMTP_*` commented out for a quick test:
+
+```sh
+API_HOST=192.168.1.42
+AUTH_HOST=192.168.1.42
+SCHULY_VERSION=latest
+KEYCLOAK_VERSION=latest
+POSTGRES_USER=schuly
+POSTGRES_PASSWORD=change-me-postgres
+KC_ADMIN_USER=admin
+KC_ADMIN_PASSWORD=change-me-kc-admin
+S3_ACCESS_KEY=schuly-access
+S3_SECRET_KEY=change-me-s3-secret
+AVATAR_SIGNING_KEY=change-me-avatar-signing-key
+```
+
+**`Caddyfile`** - replace the whole file (the domain-based version obtains a TLS cert
+per hostname; this one just proxies by port):
+
+```
 http://{$API_HOST}:8080 {
 	reverse_proxy backend:8080
 }
@@ -210,26 +288,58 @@ http://{$AUTH_HOST}:8081 {
 }
 ```
 
+**`compose.staging.yml`** - in the `caddy` service, swap the `ports:` list (drop
+`443:443`, there's no certificate to serve):
+
 ```yaml
-# compose.staging.yml - caddy service
-ports:
-  - "8080:8080"
-  - "8081:8081"
-# drop the 443:443 mapping - there's no cert to serve
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    environment:
+      API_HOST: ${API_HOST}
+      AUTH_HOST: ${AUTH_HOST}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy:/data
+      - ./data/caddy-config:/config
+    depends_on:
+      - backend
+      - keycloak
 ```
 
-Then two settings need to allow plain HTTP:
+**`config/backend.env`** - one line changes, from `true` to `false`:
 
-- `config/backend.env`: set `Oidc__RequireHttpsMetadata=false` - the backend refuses
-  to fetch OIDC metadata over HTTP otherwise.
-- `config/keycloak.env`: `KC_HTTP_ENABLED=true` is already in the template; that's
-  what lets Keycloak serve over HTTP at all.
+```
+Oidc__RequireHttpsMetadata=false
+```
 
-Everything else - realm import, plugin loading, the verify and first-login steps
-above - works exactly the same, just with `http://` and the port instead of
-`https://`. One more thing worth knowing: Windows Firewall may silently block a phone
-on the same Wi-Fi from reaching these ports the first time - allow Docker Desktop on
-the **Private network** if prompted, or add an inbound rule for the ports yourself.
+Then start it exactly as in step 5:
+
+```sh
+docker compose -f compose.staging.yml up -d
+docker compose -f compose.staging.yml logs -f backend
+```
+
+And verify with the same checks as step 6, just `http://` and a port instead of
+`https://`:
+
+```sh
+curl http://192.168.1.42:8080/api/app/school-systems       # anonymous catalog
+curl http://192.168.1.42:8081/realms/schuly/.well-known/openid-configuration
+```
+
+The second command's `"issuer"` field in the response should read back exactly
+`http://192.168.1.42:8081/realms/schuly` - if it doesn't match what your app/browser
+is using to reach Keycloak, that's the mismatch described above, and login will fail.
+
+Everything else - DNS-independent steps like realm import, plugin loading, and the
+first-login walkthrough above - works exactly the same. One more thing worth knowing:
+Windows Firewall may silently block a phone on the same Wi-Fi from reaching these
+ports the first time - allow Docker Desktop on the **Private network** if prompted, or
+add an inbound rule for the ports yourself.
 
 ## Operations
 
