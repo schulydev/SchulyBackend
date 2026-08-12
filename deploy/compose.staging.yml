@@ -1,4 +1,4 @@
-# Schuly full staging stack — pulls published GHCR images and fronts the public
+# Schuly full staging stack - pulls published GHCR images and fronts the public
 # surfaces (API + Keycloak) with Caddy (automatic HTTPS).
 #
 #   cp .env.example .env   # then fill it in
