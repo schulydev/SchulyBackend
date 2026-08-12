@@ -41,6 +41,19 @@ explicitly in `Program.cs` and run in registration order:
 Mediator handlers are registered automatically via source generation, so a new
 command/query and its handler are wired up just by adding the classes.
 
+## Document storage
+
+Student documents and avatars are kept in an S3-compatible bucket - SeaweedFS in the
+bundled dev and self-hosting stacks, though any S3 implementation works without a code
+change. See [Configuration](setup/configuration.md#document-storage-s3) for the settings.
+
+The backend **proxies every byte itself**: clients never receive S3 URLs and never
+connect to the storage backend directly. Uploads go to
+`POST /api/students/{id}/documents` (multipart) and downloads come back from
+`GET /api/documents/{id}` as a file response. Avatars are the one exception - the
+database holds only a bare blob key, and a short-lived HMAC-signed capability URL is
+minted per access (see [Avatar URL signing](setup/configuration.md#avatar-url-signing)).
+
 ## Adding an entity + endpoint
 
 1. **Entity** in `Schuly.Domain` (inherits `Base`).
