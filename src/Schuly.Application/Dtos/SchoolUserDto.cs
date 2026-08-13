@@ -17,8 +17,8 @@ namespace Schuly.Application.Dtos
         public string? Street { get; set; }
         public string? City { get; set; }
         public string? Zip { get; set; }
-        public required DateOnly Birthday { get; set; }
-        public required DateOnly EntryDate { get; set; }
+        public DateOnly? Birthday { get; set; }
+        public DateOnly? EntryDate { get; set; }
         public DateOnly? LeaveDate { get; set; }
         public required Roles Role { get; set; }
         public UserState State { get; set; }
