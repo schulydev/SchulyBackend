@@ -27,7 +27,7 @@ builder.Services.AddScoped<IOidcService, OidcService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSingleton<IAvatarUrlSigner, AvatarUrlSigner>();
 builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
-builder.Services.AddSchulyDocumentStorage(builder.Configuration);
+builder.Services.AddSchulyDocumentStorage(builder.Configuration, builder.Environment.IsDevelopment());
 
 builder.Services.AddSchulyVault(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddSingleton<PluginSchedulerRegistry>();
