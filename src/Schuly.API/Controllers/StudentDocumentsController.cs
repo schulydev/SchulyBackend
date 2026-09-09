@@ -61,5 +61,14 @@ namespace Schuly.API.Controllers
                 download.Stream.ContentType ?? "application/octet-stream",
                 download.FileName);
         }
+
+        [HttpPost("api/documents/reencrypt")]
+        [Authorize(Roles = "Administrator")]
+        [ProducesResponseType(typeof(ReencryptStudentDocumentsResult), StatusCodes.Status200OK)]
+        public async Task<IActionResult> Reencrypt(CancellationToken ct)
+        {
+            var result = await mediator.Send(new ReencryptStudentDocumentsCommand(), ct);
+            return result.ToActionResult();
+        }
     }
 }
