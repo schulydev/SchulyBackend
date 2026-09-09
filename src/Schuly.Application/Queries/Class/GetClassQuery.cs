@@ -25,7 +25,10 @@ namespace Schuly.Application.Queries.Class
                 .Where(c => c.Id == query.ClassId);
 
             if (!isAdmin)
-                dbQuery = dbQuery.Where(c => c.Students.Any(su => myIds.Contains(su.Id)));
+            {
+                var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
+                dbQuery = dbQuery.Where(c => c.Students.Any(su => myIds.Contains(su.Id)) || c.Teachers.Any(t => t.ApplicationUserId == userId));
+            }
 
             var classEntity = await dbQuery
                 .IncludeRoster(isAdmin, myIds)
