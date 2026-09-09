@@ -9,9 +9,7 @@ namespace Schuly.Infrastructure.Services
     {
         // Per-user purge steps. Every table that stores rows scoped to a SchoolUser or
         // an ApplicationUser must be represented here; a new user-scoped table is a
-        // two-line addition. The push-notification work adds DeviceTokens,
-        // NotificationPreferences and NotificationOutbox (all keyed by
-        // ApplicationUserId) - add one step per DbSet here when that lands.
+        // two-line addition.
         // Plugin vault entries are not purged: a VaultEntry is keyed by plugin namespace
         // and an opaque key with no user dimension, so nothing here can attribute one to
         // an account. Purging them needs a user-scoped key on the vault first.
@@ -28,6 +26,22 @@ namespace Schuly.Infrastructure.Services
             QueueGradeDeletionAsync,
             QueueAbsenceDeletionAsync,
             QueueAgendaEntryDeletionAsync,
+        ];
+
+        // DeviceTokens, NotificationPreferences and NotificationOutbox are keyed by
+        // ApplicationUserId rather than SchoolUserId, so they cannot join the list above
+        // and only ever run from PurgeApplicationUserAsync (PurgeSchoolUsersAsync has no
+        // single ApplicationUserId to scope them to). DeviceTokens and
+        // NotificationPreferences also cascade-delete at the DB level via their FK to
+        // ApplicationUser, but they are purged explicitly here anyway so the behavior
+        // does not depend on the provider enforcing that cascade. NotificationOutbox has
+        // no FK at all (it is a queue, meant to outlive sync ordering), so this is the
+        // only thing that ever cleans it up for a deleted account.
+        private static readonly IReadOnlyList<Func<SchulyDbContext, Guid, CancellationToken, Task>> ApplicationUserScopedSteps =
+        [
+            QueueDeviceTokenDeletionAsync,
+            QueueNotificationPreferenceDeletionAsync,
+            QueueNotificationOutboxDeletionAsync,
         ];
 
         public async Task<AccountPurgeSummary> PurgeApplicationUserAsync(Guid applicationUserId, CancellationToken cancellationToken = default)
@@ -51,6 +65,9 @@ namespace Schuly.Infrastructure.Services
                 await using var transaction = dbContext.Database.IsRelational() ? await dbContext.Database.BeginTransactionAsync(ct) : null;
 
                 (schoolUsersRemoved, documentsRemoved, fileUrls) = await PurgeSchoolUserScopedDataAsync(schoolUserIds, ct);
+
+                foreach (var step in ApplicationUserScopedSteps)
+                    await step(dbContext, applicationUserId, ct);
 
                 // Teacher records are school-owned master data referenced by Classes,
                 // not data belonging to this account - unlink instead of delete. The
@@ -187,6 +204,24 @@ namespace Schuly.Infrastructure.Services
         {
             var entries = await dbContext.AgendaEntries.Where(ae => ae.SchoolUserId != null && schoolUserIds.Contains(ae.SchoolUserId.Value)).ToListAsync(cancellationToken);
             dbContext.AgendaEntries.RemoveRange(entries);
+        }
+
+        private static async Task QueueDeviceTokenDeletionAsync(SchulyDbContext dbContext, Guid applicationUserId, CancellationToken cancellationToken)
+        {
+            var deviceTokens = await dbContext.DeviceTokens.Where(dt => dt.ApplicationUserId == applicationUserId).ToListAsync(cancellationToken);
+            dbContext.DeviceTokens.RemoveRange(deviceTokens);
+        }
+
+        private static async Task QueueNotificationPreferenceDeletionAsync(SchulyDbContext dbContext, Guid applicationUserId, CancellationToken cancellationToken)
+        {
+            var preferences = await dbContext.NotificationPreferences.Where(p => p.ApplicationUserId == applicationUserId).ToListAsync(cancellationToken);
+            dbContext.NotificationPreferences.RemoveRange(preferences);
+        }
+
+        private static async Task QueueNotificationOutboxDeletionAsync(SchulyDbContext dbContext, Guid applicationUserId, CancellationToken cancellationToken)
+        {
+            var outboxEntries = await dbContext.NotificationOutbox.Where(o => o.ApplicationUserId == applicationUserId).ToListAsync(cancellationToken);
+            dbContext.NotificationOutbox.RemoveRange(outboxEntries);
         }
 
         private static string HashUserId(Guid id) => Convert.ToHexStringLower(SHA256.HashData(id.ToByteArray()))[..16];

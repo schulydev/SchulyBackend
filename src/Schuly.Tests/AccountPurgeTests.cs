@@ -9,7 +9,7 @@ namespace Schuly.Tests
 {
     public class AccountPurgeTests
     {
-        private sealed record SeedResult(Guid User1Id, Guid User2Id, Guid SchoolUser1Id, Guid SchoolUser2Id, Guid ClassId, Guid TeacherId, Guid SubjectId1, string DocumentKey1, string DocumentKey2);
+        private sealed record SeedResult(Guid User1Id, Guid User2Id, Guid SchoolUser1Id, Guid SchoolUser2Id, Guid ClassId, Guid TeacherId, Guid SubjectId1, string DocumentKey1, string DocumentKey2, Guid DeviceTokenId1, Guid DeviceTokenId2, Guid NotificationPreferenceId1, Guid NotificationPreferenceId2, Guid NotificationOutboxId1, Guid NotificationOutboxId2);
 
         private static SeedResult Seed(string db)
         {
@@ -47,6 +47,15 @@ namespace Schuly.Tests
 
             var teacher = new Teacher { SchoolId = schoolId, ApplicationUserId = user1.Id, FirstName = "T", LastName = "X", Code = "TX" };
 
+            var deviceToken1 = new DeviceToken { ApplicationUserId = user1.Id, Token = "token-1", Platform = "ios", Locale = "en" };
+            var deviceToken2 = new DeviceToken { ApplicationUserId = user2.Id, Token = "token-2", Platform = "android", Locale = "en" };
+
+            var notificationPreference1 = new NotificationPreference { ApplicationUserId = user1.Id };
+            var notificationPreference2 = new NotificationPreference { ApplicationUserId = user2.Id };
+
+            var notificationOutbox1 = new NotificationOutbox { ApplicationUserId = user1.Id, Type = NotificationType.GradeAdded, EntityId = Guid.NewGuid(), Status = NotificationOutboxStatus.Pending, NextAttemptAt = DateTime.UtcNow };
+            var notificationOutbox2 = new NotificationOutbox { ApplicationUserId = user2.Id, Type = NotificationType.GradeAdded, EntityId = Guid.NewGuid(), Status = NotificationOutboxStatus.Pending, NextAttemptAt = DateTime.UtcNow };
+
             using var ctx = TestDb.NewContext(db);
             ctx.Schools.Add(school);
             ctx.ApplicationUsers.AddRange(user1, user2);
@@ -56,9 +65,12 @@ namespace Schuly.Tests
             ctx.SemesterReports.AddRange(report1, report2);
             ctx.StudentDocuments.AddRange(doc1, doc2);
             ctx.Teachers.Add(teacher);
+            ctx.DeviceTokens.AddRange(deviceToken1, deviceToken2);
+            ctx.NotificationPreferences.AddRange(notificationPreference1, notificationPreference2);
+            ctx.NotificationOutbox.AddRange(notificationOutbox1, notificationOutbox2);
             ctx.SaveChanges();
 
-            return new SeedResult(user1.Id, user2.Id, su1.Id, su2.Id, cls.Id, teacher.Id, subject1.Id, doc1.FileUrl, doc2.FileUrl);
+            return new SeedResult(user1.Id, user2.Id, su1.Id, su2.Id, cls.Id, teacher.Id, subject1.Id, doc1.FileUrl, doc2.FileUrl, deviceToken1.Id, deviceToken2.Id, notificationPreference1.Id, notificationPreference2.Id, notificationOutbox1.Id, notificationOutbox2.Id);
         }
 
         [Test]
@@ -81,6 +93,9 @@ namespace Schuly.Tests
             await Assert.That(ctx.SemesterReports.Any(r => r.SchoolUserId == seed.SchoolUser1Id)).IsFalse();
             await Assert.That(ctx.SemesterSubjectGrades.Any(sg => sg.Id == seed.SubjectId1)).IsFalse();
             await Assert.That(ctx.StudentDocuments.Any(d => d.SchoolUserId == seed.SchoolUser1Id)).IsFalse();
+            await Assert.That(ctx.DeviceTokens.Any(dt => dt.Id == seed.DeviceTokenId1)).IsFalse();
+            await Assert.That(ctx.NotificationPreferences.Any(p => p.Id == seed.NotificationPreferenceId1)).IsFalse();
+            await Assert.That(ctx.NotificationOutbox.Any(o => o.Id == seed.NotificationOutboxId1)).IsFalse();
 
             var cls = await ctx.Classes.Include(c => c.Students).SingleAsync(c => c.Id == seed.ClassId);
             await Assert.That(cls.Students.Any(s => s.Id == seed.SchoolUser1Id)).IsFalse();
@@ -105,6 +120,9 @@ namespace Schuly.Tests
             await Assert.That(ctx.AgendaEntries.Any(ae => ae.SchoolUserId == seed.SchoolUser2Id)).IsTrue();
             await Assert.That(ctx.SemesterReports.Any(r => r.SchoolUserId == seed.SchoolUser2Id)).IsTrue();
             await Assert.That(ctx.StudentDocuments.Any(d => d.SchoolUserId == seed.SchoolUser2Id)).IsTrue();
+            await Assert.That(ctx.DeviceTokens.Any(dt => dt.Id == seed.DeviceTokenId2)).IsTrue();
+            await Assert.That(ctx.NotificationPreferences.Any(p => p.Id == seed.NotificationPreferenceId2)).IsTrue();
+            await Assert.That(ctx.NotificationOutbox.Any(o => o.Id == seed.NotificationOutboxId2)).IsTrue();
         }
 
         [Test]
