@@ -103,6 +103,21 @@ account that has never been stamped falls back to its `CreatedAt`.
 The sweep never deletes identity-provider users, only what this backend stores, so an
 account swept for inactivity can sign in again and resync from scratch.
 
+## Push notifications (Firebase)
+
+The notification outbox (grades, absences, agenda changes) is drained by a background
+service and delivered through Firebase Cloud Messaging.
+
+| Key | Purpose |
+|---|---|
+| `Firebase:ServiceAccountJson` | Base64 of the Firebase service-account JSON. |
+| `Firebase:ServiceAccountPath` | Path to the service-account JSON file, as an alternative to the inline value. |
+
+With neither set, the backend logs once at startup that push notifications are
+disabled and no-ops from then on, so deployments without Firebase keep working. The
+outbox is still drained in that case, so the table stays bounded even with push
+turned off.
+
 ## Authorization policy
 
 The default (fallback) policy **requires an authenticated user for every endpoint**

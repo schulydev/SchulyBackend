@@ -17,8 +17,10 @@ var mvcBuilder = builder.Services.AddSchulyControllers();
 builder.Services.AddSchulyOpenApi(builder.Configuration);
 builder.Services.AddMediator(options => { options.ServiceLifetime = ServiceLifetime.Scoped; });
 builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
+builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(NotificationOriginBehavior<,>));
 builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(PluginEventBehavior<,>));
 builder.Services.AddSchulyDatabase(builder.Configuration);
+builder.Services.AddSchulyPushNotifications(builder.Configuration);
 
 builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();

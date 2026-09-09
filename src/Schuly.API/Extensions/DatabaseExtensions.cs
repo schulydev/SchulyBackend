@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Schuly.Infrastructure;
+using Schuly.Infrastructure.Services;
 
 namespace Schuly.API.Extensions
 {
@@ -7,7 +8,10 @@ namespace Schuly.API.Extensions
     {
         public static IServiceCollection AddSchulyDatabase(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<SchulyDbContext>(options =>
+            services.AddScoped<INotificationOriginContext, NotificationOriginContext>();
+            services.AddScoped<NotificationOutboxInterceptor>();
+
+            services.AddDbContext<SchulyDbContext>((sp, options) =>
                 options.UseNpgsql(
                     configuration.GetConnectionString("SchulyDatabase"),
                     npgsqlOptions => npgsqlOptions
@@ -16,7 +20,7 @@ namespace Schuly.API.Extensions
                             maxRetryDelay: TimeSpan.FromSeconds(10),
                             errorCodesToAdd: null
                         )
-                ));
+                ).AddInterceptors(sp.GetRequiredService<NotificationOutboxInterceptor>()));
             return services;
         }
     }
