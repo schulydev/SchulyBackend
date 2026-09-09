@@ -19,7 +19,7 @@ namespace Schuly.Application.Commands.Class
             if (schoolUser == null)
                 return Result.Failure($"SchoolUser with ID '{command.UserId}' not found");
 
-            var @class = await dbContext.Classes.AsTracking().SingleOrDefaultAsync(c => c.Id == command.ClassId, cancellationToken);
+            var @class = await dbContext.Classes.Include(c => c.Students).AsTracking().SingleOrDefaultAsync(c => c.Id == command.ClassId, cancellationToken);
             if (@class == null)
                 return Result.Failure($"Class with ID '{command.ClassId}' not found");
 
@@ -28,6 +28,9 @@ namespace Schuly.Application.Commands.Class
 
             if (schoolUser.SchoolId != @class.SchoolId)
                 return Result.Failure("Student and class belong to different schools");
+
+            if (@class.Students.Any(s => s.Id == command.UserId))
+                return Result.Conflict("Student is already enrolled in this class");
 
             @class.Students.Add(schoolUser);
             await dbContext.SaveChangesAsync(cancellationToken);

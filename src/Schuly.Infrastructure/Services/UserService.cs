@@ -6,6 +6,8 @@ namespace Schuly.Infrastructure.Services
 {
     public class UserService(IOidcService oidcService, SchulyDbContext dbContext, IHttpContextAccessor httpContextAccessor) : IUserService
     {
+        private Guid? _cachedCurrentUserId;
+
         public bool IsCurrentUserAdmin() =>
             httpContextAccessor.HttpContext?.User.IsAdministrator() ?? false;
 
@@ -19,13 +21,18 @@ namespace Schuly.Infrastructure.Services
 
         public async Task<Guid> GetCurrentUserIdAsync(CancellationToken cancellationToken = default)
         {
-            var oidcUser = await oidcService.GetCurrentUserAsync(cancellationToken)
-                ?? throw new UnauthorizedAccessException("No authenticated user");
+            if (_cachedCurrentUserId is { } id)
+                return id;
+
+            var externalId = oidcService.GetCurrentExternalId();
+            if (string.IsNullOrEmpty(externalId))
+                throw new UnauthorizedAccessException("No authenticated user");
 
             var user = await dbContext.ApplicationUsers
-                .SingleOrDefaultAsync(u => u.ExternalId == oidcUser.ExternalId, cancellationToken)
+                .SingleOrDefaultAsync(u => u.ExternalId == externalId, cancellationToken)
                 ?? throw new UnauthorizedAccessException("User not found");
 
+            _cachedCurrentUserId = user.Id;
             return user.Id;
         }
 
@@ -66,28 +73,45 @@ namespace Schuly.Infrastructure.Services
             var user = await dbContext.ApplicationUsers
                 .SingleOrDefaultAsync(u => u.ExternalId == oidcUser.ExternalId, cancellationToken);
 
-            var email = oidcUser.Email ?? string.Empty;
-            var displayName = oidcUser.DisplayName ?? "Schuly User";
-
             if (user is null)
             {
-                user = new ApplicationUser
+                var created = new ApplicationUser
                 {
                     Id = Guid.NewGuid(),
                     ExternalId = oidcUser.ExternalId,
-                    Email = email,
-                    DisplayName = displayName,
-                    ProfilePictureUrl = oidcUser.AvatarUrl
+                    Email = !string.IsNullOrWhiteSpace(oidcUser.Email) ? oidcUser.Email : string.Empty,
+                    DisplayName = !string.IsNullOrWhiteSpace(oidcUser.DisplayName) ? oidcUser.DisplayName : "Schuly User",
+                    ProfilePictureUrl = !string.IsNullOrWhiteSpace(oidcUser.AvatarUrl) ? oidcUser.AvatarUrl : null
                 };
 
-                dbContext.ApplicationUsers.Add(user);
-                await dbContext.SaveChangesAsync(cancellationToken);
-                return;
+                dbContext.ApplicationUsers.Add(created);
+
+                try
+                {
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                    return;
+                }
+                catch (DbUpdateException)
+                {
+                    // Another request won the race to create this user - drop our failed
+                    // insert and fall through to update the row it created.
+                    dbContext.Entry(created).State = EntityState.Detached;
+                    user = await dbContext.ApplicationUsers
+                        .SingleOrDefaultAsync(u => u.ExternalId == oidcUser.ExternalId, cancellationToken);
+
+                    if (user is null)
+                        throw;
+                }
             }
 
-            user.Email = email;
-            user.DisplayName = displayName;
-            user.ProfilePictureUrl = oidcUser.AvatarUrl;
+            if (!string.IsNullOrWhiteSpace(oidcUser.Email))
+                user.Email = oidcUser.Email;
+
+            if (!string.IsNullOrWhiteSpace(oidcUser.DisplayName))
+                user.DisplayName = oidcUser.DisplayName;
+
+            if (!string.IsNullOrWhiteSpace(oidcUser.AvatarUrl))
+                user.ProfilePictureUrl = oidcUser.AvatarUrl;
 
             await dbContext.SaveChangesAsync(cancellationToken);
         }

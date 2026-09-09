@@ -1,4 +1,5 @@
 using Mediator;
+using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Authorization;
 using Schuly.Application.Models;
 using Schuly.Domain.Enums;
@@ -13,6 +14,15 @@ namespace Schuly.Application.Commands.SchoolUser
     {
         public async ValueTask<Result<Guid>> Handle(CreateSchoolUserCommand command, CancellationToken cancellationToken)
         {
+            if (!await dbContext.ApplicationUsers.AnyAsync(au => au.Id == command.ApplicationUserId, cancellationToken))
+                return Result<Guid>.Failure($"ApplicationUser with ID '{command.ApplicationUserId}' not found");
+
+            if (!await dbContext.Schools.AnyAsync(s => s.Id == command.SchoolId, cancellationToken))
+                return Result<Guid>.Failure($"School with ID '{command.SchoolId}' not found");
+
+            if (await dbContext.SchoolUsers.AnyAsync(su => su.ApplicationUserId == command.ApplicationUserId && su.SchoolId == command.SchoolId && su.Email == command.Email, cancellationToken))
+                return Result<Guid>.Conflict("A school user with this email already exists for this account and school");
+
             var schoolUser = new Domain.SchoolUser
             {
                 ApplicationUserId = command.ApplicationUserId,

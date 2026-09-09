@@ -43,5 +43,43 @@ namespace Schuly.Application.Mappers
         {
             return schoolUsers.Select(su => su.ToDto()).ToList();
         }
+
+        public static SchoolUserDto ToSummaryDto(this SchoolUser schoolUser)
+        {
+            return new SchoolUserDto
+            {
+                Id = schoolUser.Id,
+                SchoolId = schoolUser.SchoolId,
+                SchoolName = schoolUser.School?.Name,
+                FirstName = schoolUser.FirstName,
+                LastName = schoolUser.LastName,
+                Email = schoolUser.Email,
+                ProfilePictureUrl = schoolUser.ProfilePictureUrl,
+                Role = schoolUser.Role,
+                State = schoolUser.State,
+                CreatedAt = schoolUser.CreatedAt,
+                UpdatedAt = schoolUser.UpdatedAt,
+                Classes = schoolUser.Classes.Select(c => new UserClassDto
+                {
+                    ClassId = c.Id,
+                    ClassName = c.Name
+                }).ToList()
+            };
+        }
+
+        public static ClassMemberDto ToClassMemberDto(this SchoolUser schoolUser)
+        {
+            return new ClassMemberDto
+            {
+                Id = schoolUser.Id,
+                SchoolId = schoolUser.SchoolId,
+                FirstName = schoolUser.FirstName,
+                LastName = schoolUser.LastName,
+                ProfilePictureUrl = schoolUser.ProfilePictureUrl,
+                Role = schoolUser.Role,
+                Absences = schoolUser.Absences.Select(a => a.ToDto()).ToList(),
+                Grades = schoolUser.Grades.Select(g => g.ToDto()).ToList()
+            };
+        }
     }
 }

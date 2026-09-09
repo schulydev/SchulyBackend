@@ -7,5 +7,7 @@ namespace Schuly.Tests.TestHelpers
     {
         public Task<OidcUser?> GetCurrentUserAsync(CancellationToken cancellationToken = default)
             => Task.FromResult<OidcUser?>(new OidcUser(externalId, null, null, null, []));
+
+        public string? GetCurrentExternalId() => externalId;
     }
 }
