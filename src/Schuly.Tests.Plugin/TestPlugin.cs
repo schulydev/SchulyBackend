@@ -12,6 +12,13 @@ namespace Schuly.Tests.Plugin
         public string Greet() => "child-di-ok";
     }
 
+    public sealed class TestBackgroundTask : IPluginBackgroundTask
+    {
+        public string Name => "test.sync";
+        public PluginSchedule Schedule => PluginSchedule.Every(TimeSpan.FromMinutes(30));
+        public Task ExecuteAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
     public sealed class TestEventHandler(TestGreeter greeter) : IPluginEventHandler<string>
     {
         public Task HandleAsync(string path, CancellationToken cancellationToken = default) =>
@@ -43,6 +50,7 @@ namespace Schuly.Tests.Plugin
             var directory = context.Configuration["Plugins:Directory"];
             _pluginDirectory = directory;
             services.AddScoped<TestGreeter>();
+            services.AddSingleton<IPluginBackgroundTask, TestBackgroundTask>();
             services.AddScoped<IPluginEventHandler<string>, TestEventHandler>();
             // Factory-registered, not instance-registered: the container only disposes what
             // it built itself, and the probe is worthless unless the container owns it.

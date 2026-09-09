@@ -10,11 +10,14 @@ using Schuly.Plugin.Abstractions;
 
 namespace Schuly.Tests.TestHelpers
 {
-    internal sealed class PluginTestHarness(WebApplication app, HttpClient client, PluginHost host, string directory)
+    // Shared TestServer harness for plugin host tests: spins up a minimal app with the
+    // plugin pipeline wired in and a FakePluginTaskScheduler standing in for TickerQ.
+    internal sealed class PluginTestHarness(WebApplication app, HttpClient client, PluginHost host, FakePluginTaskScheduler scheduler, string directory)
         : IAsyncDisposable
     {
         public HttpClient Client { get; } = client;
         public PluginHost Host { get; } = host;
+        public FakePluginTaskScheduler Scheduler { get; } = scheduler;
         public string Directory { get; } = directory;
         public IServiceProvider Services => app.Services;
 
@@ -38,7 +41,8 @@ namespace Schuly.Tests.TestHelpers
             builder.Services.AddSchulyVault(builder.Configuration, isDevelopment: true);
             builder.Services.AddScoped<IPluginUserContext, FakePluginUserContext>();
             builder.Services.AddAuthorization();
-            builder.Services.AddSingleton<Schuly.API.Services.PluginSchedulerRegistry>();
+            builder.Services.AddSingleton<FakePluginTaskScheduler>();
+            builder.Services.AddSingleton<IPluginTaskScheduler>(sp => sp.GetRequiredService<FakePluginTaskScheduler>());
             var mvc = builder.Services.AddControllers();
             builder.Services.AddSchulyPlugins(builder.Configuration, mvc);
 
@@ -50,7 +54,7 @@ namespace Schuly.Tests.TestHelpers
             await app.UseSchulyPluginsAsync();
             await app.StartAsync();
 
-            return new PluginTestHarness(app, app.GetTestClient(), app.Services.GetRequiredService<PluginHost>(), dir);
+            return new PluginTestHarness(app, app.GetTestClient(), app.Services.GetRequiredService<PluginHost>(), app.Services.GetRequiredService<FakePluginTaskScheduler>(), dir);
         }
 
         public PluginManifest CopyTestPlugin()

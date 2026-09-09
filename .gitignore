@@ -438,6 +438,11 @@ FodyWeavers.xsd
 # SeaweedFS dev data (bind mount, host-persisted)
 /data/
 
-# Local runtime plugins (built artifacts dropped in from the SchulyPlugins repo)
-/src/Schuly.API/plugins/
+# Local runtime plugins (built artifacts dropped in from the SchulyPlugins repo).
+# Matched by extension: on a case-insensitive checkout a `plugins/` folder rule also
+# hides the tracked `Plugins/` sources next to it.
+/src/Schuly.API/plugins/**/*.dll
+/src/Schuly.API/plugins/**/*.pdb
+/src/Schuly.API/plugins/**/*.zip
+/src/Schuly.API/plugins/**/*.json
 /src/Schuly.API/plugins-config/

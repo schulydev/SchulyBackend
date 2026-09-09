@@ -14,7 +14,7 @@ The solution (`Schuly.API.slnx`) is split into the following projects:
 | `Schuly.API` | Entry point. Controllers, OIDC wiring, OpenAPI/Scalar, startup migrations, plugin host registration. Owns the `Dockerfile`. |
 | `Schuly.Application` | CQRS commands/queries + Mediator handlers, DTOs, mappers, authorization and pipeline behaviors. **Must not** reference Infrastructure. |
 | `Schuly.Domain` | Pure entities (`School`, `Class`, `Exam`, `Grade`, `Absence`, `AgendaEntry`, `ApplicationUser`, `SchoolUser`, `Teacher`, `SchoolSystem`, `SemesterReport`, `StudentDocument`, …). Each inherits `Base` (`Id`, `CreatedAt`, `UpdatedAt`). |
-| `Schuly.Infrastructure` | `SchulyDbContext`, OIDC/user services, storage and vault, repositories, plugin runtime (`PluginBackgroundTaskHost`). |
+| `Schuly.Infrastructure` | `SchulyDbContext`, OIDC/user services, storage and the plugin secrets vault, repositories. |
 | `Schuly.Tests` / `Schuly.Tests.Plugin` | Test projects (TUnit). |
 
 `Schuly.Plugin.Abstractions` is consumed as a **NuGet `PackageReference`**, not a
@@ -67,10 +67,11 @@ minted per access (see [Avatar URL signing](setup/configuration.md#avatar-url-si
 ## Plugin host
 
 The backend hosts plugins implementing `ISchulyPlugin` from
-`Schuly.Plugin.Abstractions`. Plugins are downloaded at runtime from a registry into
-`/app/plugins`, each loaded into its own collectible `AssemblyLoadContext` with a
-child DI container, and can register controllers, minimal-API endpoints, and
-recurring background tasks (run by `PluginBackgroundTaskHost`). Plugin requests
-execute inside the owning plugin's DI scope via `PluginScopeMiddleware`. See
-[Plugin management](plugin-management.md) for the registry, hot-swap, and admin
-endpoints.
+`Schuly.Plugin.Abstractions`. The plugin runtime lives in `Schuly.API/Plugins`:
+plugins are downloaded at runtime from a registry into `/app/plugins`, each loaded
+into its own collectible `AssemblyLoadContext` with a child DI container, and can
+register controllers, minimal-API endpoints, and recurring background tasks -
+scheduled on TickerQ and dispatched back into the owning plugin's DI scope by name.
+Plugin requests execute inside the owning plugin's DI scope via
+`PluginScopeMiddleware`. See [Plugin management](plugin-management.md) for the
+registry, hot-swap, background tasks, and admin endpoints.
