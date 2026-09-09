@@ -22,6 +22,15 @@ namespace Schuly.Infrastructure
 
         public SchulyDbContext(DbContextOptions<SchulyDbContext> options) : base(options) { }
 
+        // Normalises every DateTime property to UTC on the way in so no individual command has to.
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+            base.ConfigureConventions(configurationBuilder);
+
+            configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+            configurationBuilder.Properties<DateTime?>().HaveConversion<UtcNullableDateTimeConverter>();
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
