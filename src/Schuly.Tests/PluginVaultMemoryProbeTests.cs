@@ -18,7 +18,7 @@ namespace Schuly.Tests
         public async Task Reading_the_stored_blob_through_a_raw_pointer_yields_ciphertext_not_plaintext()
         {
             const string secret = "PointerProbe!! top-secret token 0xCAFEBABE";
-            var vault = new PluginVaultFactory(new VaultKeyring()).GetVault("plugin:probe");
+            var vault = new PluginVaultFactory(VaultKeyring.Ephemeral(), NullVaultStore.Instance).GetVault("plugin:probe");
             vault.Set("api-token", secret);
 
             // Reach the real stored byte[] and pin it, so we have a stable native
@@ -49,7 +49,7 @@ namespace Schuly.Tests
         {
             // A fresh random nonce per write means identical plaintext never produces
             // identical ciphertext — so the store leaks nothing by comparison either.
-            var vault = new PluginVaultFactory(new VaultKeyring()).GetVault("plugin:probe");
+            var vault = new PluginVaultFactory(VaultKeyring.Ephemeral(), NullVaultStore.Instance).GetVault("plugin:probe");
 
             vault.Set("k", "identical-value");
             var first = (byte[])ReadStore(vault)["k"].Clone();

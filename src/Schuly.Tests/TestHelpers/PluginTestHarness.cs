@@ -34,7 +34,8 @@ namespace Schuly.Tests.TestHelpers
 
             builder.Services.AddHttpClient();
             builder.Services.AddHttpContextAccessor();
-            builder.Services.AddSchulyVault();
+            builder.Services.AddSingleton<IVaultStore>(NullVaultStore.Instance);
+            builder.Services.AddSchulyVault(builder.Configuration, isDevelopment: true);
             builder.Services.AddScoped<IPluginUserContext, FakePluginUserContext>();
             builder.Services.AddAuthorization();
             builder.Services.AddSingleton<Schuly.API.Services.PluginSchedulerRegistry>();

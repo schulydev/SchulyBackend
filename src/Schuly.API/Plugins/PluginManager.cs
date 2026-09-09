@@ -1,6 +1,8 @@
+using Schuly.Infrastructure.Vault;
+
 namespace Schuly.API.Plugins
 {
-    public sealed class PluginManager(PluginHost host, PluginStore store, PluginSet set, PluginRegistryClient registry, ILogger<PluginManager> logger)
+    public sealed class PluginManager(PluginHost host, PluginStore store, PluginSet set, PluginRegistryClient registry, IPluginVaultFactory vaults, ILogger<PluginManager> logger)
     {
         public Task<IReadOnlyList<RegistryPlugin>> GetRegistryAsync(CancellationToken ct = default) =>
             registry.FetchIndexAsync(ct);
@@ -75,9 +77,14 @@ namespace Schuly.API.Plugins
 
         public async Task RemoveAsync(string name, CancellationToken ct = default)
         {
+            // Removing a plugin also drops its stored credentials — resolve the
+            // canonical name before the manifest disappears from disk.
+            var pluginName = store.Find(name)?.Name ?? name;
+
             if (host.IsLoaded(name)) await host.UnloadAsync(name, ct);
             store.Remove(name);
             set.RemoveEntry(name);
+            vaults.GetVault($"plugin:{pluginName}").Clear();
         }
 
         private static RegistryPlugin? Resolve(IReadOnlyList<RegistryPlugin> index, string name, string? version)
