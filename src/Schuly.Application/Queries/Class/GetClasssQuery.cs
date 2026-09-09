@@ -31,7 +31,8 @@ namespace Schuly.Application.Queries.Class
                 .IncludeRoster(isAdmin, myIds)
                 .ToListAsync(cancellationToken);
 
-            var dtos = classes.ToDto();
+            var averages = await dbContext.Grades.ToClassAveragesAsync(classes.SelectMany(c => c.Exams).Select(e => e.Id).ToList(), cancellationToken);
+            var dtos = classes.ToDto(averages);
             foreach (var student in dtos.SelectMany(c => c.Students))
                 student.ProfilePictureUrl = avatarSigner.ToPublicUrl(student.Id, student.ProfilePictureUrl);
             return Result<List<ClassDto>>.Success(dtos);

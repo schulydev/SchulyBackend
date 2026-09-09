@@ -31,6 +31,9 @@ namespace Schuly.Application.Commands.Class
                     return Result.Forbidden();
             }
 
+            if (await dbContext.Classes.AnyAsync(c => c.SchoolId == command.SchoolId && c.Name == command.Name, cancellationToken))
+                return Result.Conflict($"A class named '{command.Name}' already exists in this school");
+
             var newClass = new Domain.Class
             {
                 Name = command.Name,

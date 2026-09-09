@@ -5,7 +5,7 @@ namespace Schuly.Application.Mappers
 {
     public static class ClassMapper
     {
-        public static ClassDto ToDto(this Class classEntity)
+        public static ClassDto ToDto(this Class classEntity, IReadOnlyDictionary<Guid, decimal> classAverages)
         {
             return new ClassDto
             {
@@ -16,13 +16,13 @@ namespace Schuly.Application.Mappers
                 SchoolName = classEntity.School?.Name,
                 Students = classEntity.Students.Select(s => s.ToClassMemberDto()).ToList(),
                 Agenda = classEntity.Agenda.Select(a => a.ToDto()).ToList(),
-                Exams = classEntity.Exams.Select(e => e.ToDto()).ToList()
+                Exams = classEntity.Exams.Select(e => e.ToDto(classAverages)).ToList()
             };
         }
 
-        public static List<ClassDto> ToDto(this List<Class> classes)
+        public static List<ClassDto> ToDto(this List<Class> classes, IReadOnlyDictionary<Guid, decimal> classAverages)
         {
-            return classes.Select(c => c.ToDto()).ToList();
+            return classes.Select(c => c.ToDto(classAverages)).ToList();
         }
     }
 }
