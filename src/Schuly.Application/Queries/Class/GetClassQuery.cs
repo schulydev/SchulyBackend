@@ -25,7 +25,10 @@ namespace Schuly.Application.Queries.Class
                 .Where(c => c.Id == query.ClassId);
 
             if (!isAdmin)
-                dbQuery = dbQuery.Where(c => c.Students.Any(su => myIds.Contains(su.Id)));
+            {
+                var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
+                dbQuery = dbQuery.Where(c => c.Students.Any(su => myIds.Contains(su.Id)) || c.Teachers.Any(t => t.ApplicationUserId == userId));
+            }
 
             var classEntity = await dbQuery
                 .IncludeRoster(isAdmin, myIds)
@@ -34,7 +37,8 @@ namespace Schuly.Application.Queries.Class
             if (classEntity == null)
                 return Result<ClassDto>.Failure($"Class with ID '{query.ClassId}' not found");
 
-            var dto = classEntity.ToDto();
+            var averages = await dbContext.Grades.ToClassAveragesAsync(classEntity.Exams.Select(e => e.Id).ToList(), cancellationToken);
+            var dto = classEntity.ToDto(averages);
             foreach (var student in dto.Students)
                 student.ProfilePictureUrl = avatarSigner.ToPublicUrl(student.Id, student.ProfilePictureUrl);
             return Result<ClassDto>.Success(dto);

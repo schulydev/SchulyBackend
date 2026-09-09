@@ -59,6 +59,10 @@ namespace Schuly.API.Controllers
             {
                 return BadRequest(new { error = ex.Message });
             }
+            catch (HttpRequestException ex)
+            {
+                return BadRequest(new { error = $"Plugin registry request failed: {ex.Message}" });
+            }
         }
     }
 }

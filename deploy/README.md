@@ -26,6 +26,10 @@ from the registry - no DLL baked into the image).
 2. **Secrets** - `cp .env.example .env` and fill it in. Set `S3_SECRET_KEY` to the
    same value in `config/seaweedfs/s3-config.json` (`S3_ACCESS_KEY` too). The
    `SMTP_*` block is optional and applies only on the first realm import.
+   `VAULT_MASTER_KEY` must be a real generated base64 32-byte key
+   (`openssl rand -base64 32`) and must never change afterwards - the backend
+   refuses to start without it, and stored credentials become unreadable under
+   a different key.
 3. **Run**:
    ```sh
    docker compose -f compose.staging.yml up -d

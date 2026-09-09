@@ -3,13 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Authorization;
 using Schuly.Application.Dtos;
 using Schuly.Application.Models;
-using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 using Schuly.Infrastructure.Services;
 
 namespace Schuly.Application.Queries.School
 {
-    [AuthorizedRoles(Roles.Student)]
+    [AllowAuthenticated]
     public record GetMySchoolsQuery() : IQuery<Result<List<MySchoolDto>>>;
 
     public class GetMySchoolsQueryHandler(SchulyDbContext dbContext, IUserService userService, IAvatarUrlSigner avatarSigner) : IQueryHandler<GetMySchoolsQuery, Result<List<MySchoolDto>>>

@@ -22,8 +22,18 @@ namespace Schuly.Infrastructure
         public DbSet<DeviceToken> DeviceTokens { get; set; }
         public DbSet<NotificationPreference> NotificationPreferences { get; set; }
         public DbSet<NotificationOutbox> NotificationOutbox { get; set; }
+        public DbSet<VaultEntry> VaultEntries { get; set; }
 
         public SchulyDbContext(DbContextOptions<SchulyDbContext> options) : base(options) { }
+
+        // Normalises every DateTime property to UTC on the way in so no individual command has to.
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+            base.ConfigureConventions(configurationBuilder);
+
+            configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+            configurationBuilder.Properties<DateTime?>().HaveConversion<UtcNullableDateTimeConverter>();
+        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -356,6 +366,14 @@ namespace Schuly.Infrastructure
                 entity.HasIndex(o => o.ApplicationUserId);
                 // No FK to ApplicationUser: this is a queue, not a relation - rows must
                 // survive independently of the user row (and of sync ordering) until drained.
+            });
+
+            modelBuilder.Entity<VaultEntry>(entity =>
+            {
+                entity.HasKey(v => v.Id);
+                entity.Property(v => v.PluginName).HasMaxLength(200).IsRequired();
+                entity.Property(v => v.Key).HasMaxLength(200).IsRequired();
+                entity.HasIndex(v => new { v.PluginName, v.Key }).IsUnique();
             });
         }
 

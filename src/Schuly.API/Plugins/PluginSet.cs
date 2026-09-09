@@ -33,8 +33,8 @@ namespace Schuly.API.Plugins
             sb.AppendLine("plugins:");
             foreach (var p in plugins.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase))
             {
-                sb.AppendLine($"  - name: {p.Name}");
-                sb.AppendLine($"    version: {(string.IsNullOrWhiteSpace(p.Version) ? "latest" : p.Version)}");
+                sb.AppendLine($"  - name: {Quote(p.Name)}");
+                sb.AppendLine($"    version: {Quote(string.IsNullOrWhiteSpace(p.Version) ? "latest" : p.Version)}");
             }
 
             var dir = Path.GetDirectoryName(FilePath);
@@ -42,6 +42,8 @@ namespace Schuly.API.Plugins
                 Directory.CreateDirectory(dir);
             File.WriteAllText(FilePath, sb.ToString());
         }
+
+        private static string Quote(string value) => "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r") + "\"";
 
         public void Upsert(string name, string version)
         {

@@ -5,11 +5,12 @@ namespace Schuly.Tests.TestHelpers
     public sealed class FakeUserService(bool isAdmin, params Guid[] schoolUserIds) : IUserService
     {
         public Func<Guid, bool> ClassManager { get; init; } = _ => true;
+        public bool IsTeacher { get; init; }
         public Guid CurrentUserId { get; init; } = Guid.Empty;
 
         public bool IsCurrentUserAdmin() => isAdmin;
 
-        public bool IsCurrentUserTeacher() => false;
+        public bool IsCurrentUserTeacher() => IsTeacher;
 
         public Task<IReadOnlyList<Guid>> GetCurrentUserSchoolUserIdsAsync(CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<Guid>>(schoolUserIds);
