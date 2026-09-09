@@ -112,6 +112,7 @@ cp .env.example .env
 | `POSTGRES_PASSWORD` | A strong database password. |
 | `KC_ADMIN_USER` | Keycloak bootstrap admin username (master realm). |
 | `KC_ADMIN_PASSWORD` | Keycloak bootstrap admin password. |
+| `KC_ADMIN_CLIENT_ID`, `KC_ADMIN_CLIENT_SECRET` | Optional. Service-account client used to delete the Keycloak user when someone deletes their account. See below. |
 | `S3_ACCESS_KEY` | SeaweedFS S3 access key. |
 | `S3_SECRET_KEY` | SeaweedFS S3 secret key. |
 | `AVATAR_SIGNING_KEY` | HMAC key for signing avatar URLs (required). Generate with `openssl rand -hex 32`. |
@@ -125,6 +126,36 @@ cp .env.example .env
 > them later has no effect on an existing realm - edit **Realm settings → Email** in the
 > Keycloak admin console instead. Leaving them unset is fine; the realm then imports
 > with no working mail server.
+
+### Account deletion and the Keycloak admin client
+
+`DELETE /api/auth/me` erases everything the backend stores about the caller: their school
+users and all grades, absences, agenda entries, semester reports and documents (including
+the objects in S3), then the account row itself. To also remove the **Keycloak** user in
+the same step, give the backend a client it can authenticate as:
+
+1. In the Keycloak admin console, realm `schuly`, create a client (for example
+   `schuly-backend-admin`) with **Client authentication** on and **Service accounts
+   roles** enabled. Turn off the standard flow - it never logs a human in.
+2. On that client's **Service accounts roles** tab, assign the `manage-users` role from
+   the `realm-management` client.
+3. Copy the client id and the secret from **Credentials** into `KC_ADMIN_CLIENT_ID` and
+   `KC_ADMIN_CLIENT_SECRET` in `.env`, then recreate the backend container.
+
+Leaving both empty is supported: deletion still erases everything in the backend, and the
+log records a warning that the Keycloak user was left behind for you to remove by hand.
+
+### Retention
+
+The backend runs a retention sweep once a day, starting five minutes after startup. It
+drops cached school data for school users whose `LeaveDate` is further back than
+`Retention__MonthsAfterLeave` (6 months), and deletes accounts that have not made an
+authenticated request for `Retention__MonthsInactive` (12 months). Both thresholds, and
+the `Retention__Enabled` switch, live in
+[`config/backend.env`](https://github.com/schulydev/SchulyBackend/blob/main/deploy/config/backend.env).
+
+The sweep only touches the backend's own database and object storage. Keycloak users are
+never removed by it, so someone whose cached data expired can sign in again and resync.
 
 ### Where the rest of the settings live
 

@@ -5,6 +5,7 @@ using Schuly.Application.Commands.User;
 using Schuly.Application.Dtos;
 using Schuly.Application.Queries.User;
 using Schuly.API.Plugins;
+using System.Text.Json;
 
 namespace Schuly.API.Controllers
 {
@@ -13,6 +14,8 @@ namespace Schuly.API.Controllers
     [Route("api/[controller]")]
     public class AuthController(IMediator mediator, PluginHost pluginHost) : ControllerBase
     {
+        private static readonly JsonSerializerOptions ExportSerializerOptions = new() { WriteIndented = true };
+
         [HttpGet("me")]
         [ProducesResponseType(typeof(ApplicationUserDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -20,6 +23,28 @@ namespace Schuly.API.Controllers
         {
             var result = await mediator.Send(new GetCurrentUserQuery(), cancellationToken);
             return result.ToActionResult();
+        }
+
+        [HttpDelete("me")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> DeleteCurrentUser(CancellationToken cancellationToken)
+        {
+            var result = await mediator.Send(new DeleteCurrentUserCommand(), cancellationToken);
+            return result.ToActionResult();
+        }
+
+        [HttpGet("me/export")]
+        [ProducesResponseType(typeof(AccountExportDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ExportCurrentUser(CancellationToken cancellationToken)
+        {
+            var result = await mediator.Send(new ExportCurrentUserQuery(), cancellationToken);
+            if (result.IsFailure)
+                return result.ToActionResult();
+
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(result.Value, ExportSerializerOptions);
+            return File(bytes, "application/json", "schuly-export.json");
         }
 
         [HttpGet("sync")]

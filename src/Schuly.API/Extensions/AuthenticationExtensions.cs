@@ -83,7 +83,10 @@ namespace Schuly.API.Extensions
                         var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
 
                         if (await userService.ExistsAsync(externalId, context.HttpContext.RequestAborted))
+                        {
+                            await userService.TouchLastSeenAsync(externalId, context.HttpContext.RequestAborted);
                             return;
+                        }
 
                         await userService.SyncCurrentUserAsync(context.HttpContext.RequestAborted);
                     };
