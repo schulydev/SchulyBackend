@@ -25,18 +25,20 @@ namespace Schuly.Application.Queries.SchoolUser
                 .Include(su => su.Classes)
                 .AsQueryable();
 
-            if (userService.IsCurrentUserAdmin())
+            var isAdmin = userService.IsCurrentUserAdmin();
+            var currentUserId = isAdmin ? Guid.Empty : await userService.GetCurrentUserIdAsync(cancellationToken);
+
+            if (isAdmin)
             {
                 if (query.ApplicationUserId.HasValue)
                     dbQuery = dbQuery.Where(su => su.ApplicationUserId == query.ApplicationUserId.Value);
             }
             else if (userService.IsCurrentUserTeacher())
             {
-                var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
-                var mySchoolIds = await dbContext.SchoolUsers
+                var mySchoolIds = await dbContext.Teachers
                     .AsNoTracking()
-                    .Where(su => su.ApplicationUserId == userId)
-                    .Select(su => su.SchoolId)
+                    .Where(t => t.ApplicationUserId == currentUserId)
+                    .Select(t => t.SchoolId)
                     .Distinct()
                     .ToListAsync(cancellationToken);
                 dbQuery = dbQuery.Where(su => mySchoolIds.Contains(su.SchoolId));
@@ -45,12 +47,11 @@ namespace Schuly.Application.Queries.SchoolUser
             }
             else
             {
-                var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
-                dbQuery = dbQuery.Where(su => su.ApplicationUserId == userId);
+                dbQuery = dbQuery.Where(su => su.ApplicationUserId == currentUserId);
             }
 
             var schoolUsers = await dbQuery.ToListAsync(cancellationToken);
-            var dtos = schoolUsers.ToDto();
+            var dtos = schoolUsers.Select(su => isAdmin || su.ApplicationUserId == currentUserId ? su.ToDto() : su.ToSummaryDto()).ToList();
             foreach (var dto in dtos)
                 dto.ProfilePictureUrl = avatarSigner.ToPublicUrl(dto.Id, dto.ProfilePictureUrl);
             return Result<List<SchoolUserDto>>.Success(dtos);

@@ -14,7 +14,7 @@ namespace Schuly.Application.Mappers
                 Description = classEntity.Description,
                 SchoolId = classEntity.SchoolId,
                 SchoolName = classEntity.School?.Name,
-                Students = classEntity.Students.Select(s => s.ToDto()).ToList(),
+                Students = classEntity.Students.Select(s => s.ToClassMemberDto()).ToList(),
                 Agenda = classEntity.Agenda.Select(a => a.ToDto()).ToList(),
                 Exams = classEntity.Exams.Select(e => e.ToDto(classAverages)).ToList()
             };
