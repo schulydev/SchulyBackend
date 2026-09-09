@@ -116,6 +116,7 @@ cp .env.example .env
 | `S3_SECRET_KEY` | SeaweedFS S3 secret key. |
 | `AVATAR_SIGNING_KEY` | HMAC key for signing avatar URLs (required). Generate with `openssl rand -hex 32`. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SSL`, `SMTP_STARTTLS` | Optional. Mail server for the Keycloak realm - needed for verified emails and self-service password reset. |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Optional. Base64 of a Firebase service-account JSON, for push notifications - generate with `base64 -w0 service-account.json`. Leave unset to run without push. |
 
 > The S3 credentials **must match** `config/seaweedfs/s3-config.json` - update both
 > the `.env` and that file to the same values, or document storage won't authenticate.
