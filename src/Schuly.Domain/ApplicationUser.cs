@@ -6,6 +6,7 @@ namespace Schuly.Domain
         public required string Email { get; set; }
         public string DisplayName { get; set; } = "Schuly User";
         public string? ProfilePictureUrl { get; set; }
+        public DateTime? LastSeenAt { get; set; }
         public ICollection<SchoolUser> SchoolUsers { get; set; } = [];
         public ICollection<Teacher> Teachers { get; set; } = [];
     }

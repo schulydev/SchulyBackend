@@ -6,6 +6,8 @@ namespace Schuly.Infrastructure.Services
 {
     public class UserService(IOidcService oidcService, SchulyDbContext dbContext, IHttpContextAccessor httpContextAccessor) : IUserService
     {
+        private static readonly TimeSpan LastSeenResolution = TimeSpan.FromHours(1);
+
         private Guid? _cachedCurrentUserId;
 
         public bool IsCurrentUserAdmin() =>
@@ -17,6 +19,18 @@ namespace Schuly.Infrastructure.Services
         public async Task<bool> ExistsAsync(string externalId, CancellationToken cancellationToken = default)
         {
             return await dbContext.ApplicationUsers.AnyAsync(u => u.ExternalId == externalId, cancellationToken);
+        }
+
+        public async Task TouchLastSeenAsync(string externalId, CancellationToken cancellationToken = default)
+        {
+            var user = await dbContext.ApplicationUsers
+                .SingleOrDefaultAsync(u => u.ExternalId == externalId, cancellationToken);
+
+            if (user is null || user.LastSeenAt > DateTime.UtcNow - LastSeenResolution)
+                return;
+
+            user.LastSeenAt = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
 
         public async Task<Guid> GetCurrentUserIdAsync(CancellationToken cancellationToken = default)
@@ -81,7 +95,8 @@ namespace Schuly.Infrastructure.Services
                     ExternalId = oidcUser.ExternalId,
                     Email = !string.IsNullOrWhiteSpace(oidcUser.Email) ? oidcUser.Email : string.Empty,
                     DisplayName = !string.IsNullOrWhiteSpace(oidcUser.DisplayName) ? oidcUser.DisplayName : "Schuly User",
-                    ProfilePictureUrl = !string.IsNullOrWhiteSpace(oidcUser.AvatarUrl) ? oidcUser.AvatarUrl : null
+                    ProfilePictureUrl = !string.IsNullOrWhiteSpace(oidcUser.AvatarUrl) ? oidcUser.AvatarUrl : null,
+                    LastSeenAt = DateTime.UtcNow
                 };
 
                 dbContext.ApplicationUsers.Add(created);
@@ -112,6 +127,8 @@ namespace Schuly.Infrastructure.Services
 
             if (!string.IsNullOrWhiteSpace(oidcUser.AvatarUrl))
                 user.ProfilePictureUrl = oidcUser.AvatarUrl;
+
+            user.LastSeenAt = DateTime.UtcNow;
 
             await dbContext.SaveChangesAsync(cancellationToken);
         }

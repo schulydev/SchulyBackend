@@ -32,6 +32,7 @@ JWT bearer authentication validates tokens against the configured OIDC authority
 |---|---|
 | `Oidc:Authority` | OIDC authority (Keycloak) used to validate bearer tokens. |
 | `Oidc:RequireHttpsMetadata` | Whether HTTPS metadata is required (default `true`). |
+| `Oidc:AdminClientId` / `Oidc:AdminClientSecret` | Optional. Confidential client whose service account holds the `realm-management` `manage-users` role, used to delete the identity-provider user on account deletion. Unset means the backend deletes only its own data and logs a warning. |
 
 Token claim mapping:
 
@@ -82,6 +83,25 @@ The database stores only a bare blob key; a signed capability URL is minted per 
 The key is read lazily, so a missing value surfaces as
 `Avatar:SigningKey is not configured.` the first time an avatar URL is signed rather
 than at startup.
+
+## Retention
+
+A hosted service sweeps expired data once a day, five minutes after startup and every 24
+hours after that. It reuses the same purge code as `DELETE /api/auth/me`, so a swept row
+leaves nothing behind in Postgres or S3.
+
+| Key | Purpose |
+|---|---|
+| `Retention:Enabled` | Whether the sweep runs at all (default `true`). |
+| `Retention:MonthsAfterLeave` | Cached school data is dropped for school users whose `LeaveDate` is older than this (default `6`). |
+| `Retention:MonthsInactive` | Accounts with no authenticated request for this long are deleted (default `12`). |
+
+"Inactive" is measured with `ApplicationUser.LastSeenAt`, stamped from the JWT validation
+pipeline at most once per hour so a busy client does not write on every request. An
+account that has never been stamped falls back to its `CreatedAt`.
+
+The sweep never deletes identity-provider users, only what this backend stores, so an
+account swept for inactivity can sign in again and resync from scratch.
 
 ## Push notifications (Firebase)
 

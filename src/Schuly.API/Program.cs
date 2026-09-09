@@ -29,7 +29,13 @@ builder.Services.AddScoped<IOidcService, OidcService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSingleton<IAvatarUrlSigner, AvatarUrlSigner>();
 builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
+builder.Services.AddScoped<IAccountPurger, AccountPurger>();
+builder.Services.AddScoped<IIdentityProviderAdmin, KeycloakAdminClient>();
 builder.Services.AddSchulyDocumentStorage(builder.Configuration, builder.Environment.IsDevelopment());
+
+builder.Services.Configure<RetentionOptions>(builder.Configuration.GetSection(RetentionOptions.SectionName));
+builder.Services.AddScoped<RetentionSweeper>();
+builder.Services.AddHostedService<RetentionHostedService>();
 
 builder.Services.AddSchulyVault(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddSingleton<PluginSchedulerRegistry>();
