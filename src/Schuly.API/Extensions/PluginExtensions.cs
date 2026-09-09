@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Options;
 using Schuly.API.Plugins;
+using Schuly.Application.Abstractions;
 using Schuly.Plugin.Abstractions;
 
 namespace Schuly.API.Extensions
@@ -24,6 +25,7 @@ namespace Schuly.API.Extensions
                 configuration["Plugins:Registry"] ?? DefaultRegistry));
 
             services.AddSingleton<PluginHost>();
+            services.AddSingleton<IPluginEventDispatcher>(sp => sp.GetRequiredService<PluginHost>());
             services.AddSingleton<PluginManager>();
 
             // Tag plugin controllers (added as ApplicationParts at runtime) with their

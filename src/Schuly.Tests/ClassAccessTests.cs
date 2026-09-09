@@ -12,6 +12,20 @@ namespace Schuly.Tests
             var alice = TestDb.NewSchoolUser(schoolId, "Alice");
             var bob = TestDb.NewSchoolUser(schoolId, "Bob");
 
+            alice.PrivateEmail = "alice.private@example.com";
+            alice.PhoneNumber = "+41 11 111 11 11";
+            alice.Street = "Alice Street 1";
+            alice.City = "Alice City";
+            alice.Zip = "AliceZip1111";
+            alice.Birthday = new DateOnly(2000, 1, 1);
+
+            bob.PrivateEmail = "bob.private@example.com";
+            bob.PhoneNumber = "+41 22 222 22 22";
+            bob.Street = "Bob Street 2";
+            bob.City = "Bob City";
+            bob.Zip = "BobZip2222";
+            bob.Birthday = new DateOnly(2001, 2, 2);
+
             var classA = new Class { Name = "A", SchoolId = schoolId, Students = { alice, bob } };
             var classB = new Class { Name = "B", SchoolId = schoolId, Students = { bob } };
 
@@ -70,6 +84,56 @@ namespace Schuly.Tests
             await Assert.That(result.Value!.Count).IsEqualTo(2);
             var classA = result.Value!.Single(c => c.Name == "A");
             await Assert.That(classA.Students.Sum(s => s.Grades.Count)).IsEqualTo(2);
+        }
+
+        [Test]
+        public async Task Class_roster_does_not_leak_classmate_pii()
+        {
+            var (alice, _, _) = Seed(nameof(Class_roster_does_not_leak_classmate_pii));
+            using var ctx = TestDb.NewContext(nameof(Class_roster_does_not_leak_classmate_pii));
+
+            var handler = new CQ.GetClassesQueryHandler(ctx, new FakeUserService(false, alice), new FakeAvatarUrlSigner());
+            var result = await handler.Handle(new CQ.GetClassesQuery(), CancellationToken.None);
+
+            await Assert.That(result.IsSuccess).IsTrue();
+            var json = System.Text.Json.JsonSerializer.Serialize(result.Value);
+
+            await Assert.That(json).DoesNotContain("Bob Street 2");
+            await Assert.That(json).DoesNotContain("+41 22 222 22 22");
+            await Assert.That(json).DoesNotContain("bob.private@example.com");
+            await Assert.That(json).DoesNotContain("BobZip2222");
+            await Assert.That(json).DoesNotContain("2001-02-02");
+        }
+
+        [Test]
+        public async Task Linked_teacher_sees_a_class_they_teach_but_are_not_enrolled_in()
+        {
+            var someGuid = Guid.NewGuid();
+            var schoolId = Guid.NewGuid();
+
+            var classC = new Class { Name = "C", SchoolId = schoolId };
+            var teacher = new Teacher
+            {
+                Id = Guid.NewGuid(),
+                SchoolId = schoolId,
+                FirstName = "T",
+                LastName = "Eacher",
+                Code = "TEA",
+                ApplicationUserId = someGuid,
+                Classes = { classC },
+            };
+
+            using var ctx = TestDb.NewContext(nameof(Linked_teacher_sees_a_class_they_teach_but_are_not_enrolled_in));
+            ctx.Classes.Add(classC);
+            ctx.Teachers.Add(teacher);
+            ctx.SaveChanges();
+
+            var handler = new CQ.GetClassesQueryHandler(ctx, new FakeUserService(false) { IsTeacher = true, CurrentUserId = someGuid }, new FakeAvatarUrlSigner());
+            var result = await handler.Handle(new CQ.GetClassesQuery(), CancellationToken.None);
+
+            await Assert.That(result.IsSuccess).IsTrue();
+            await Assert.That(result.Value!.Count).IsEqualTo(1);
+            await Assert.That(result.Value!.Single().Id).IsEqualTo(classC.Id);
         }
     }
 }
