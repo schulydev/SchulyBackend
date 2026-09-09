@@ -23,7 +23,8 @@ namespace Schuly.Application.Queries.Exam
                 .ApplyVisibility(isAdmin, myIds)
                 .ToListAsync(cancellationToken);
 
-            return Result<List<ExamDto>>.Success(exams.ToDto());
+            var averages = await dbContext.Grades.ToClassAveragesAsync(exams.Select(e => e.Id).ToList(), cancellationToken);
+            return Result<List<ExamDto>>.Success(exams.ToDto(averages));
         }
     }
 }

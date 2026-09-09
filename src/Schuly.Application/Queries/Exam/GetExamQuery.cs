@@ -26,7 +26,8 @@ namespace Schuly.Application.Queries.Exam
             if (exam == null)
                 return Result<ExamDto>.Failure($"Exam with ID '{query.ExamId}' not found");
 
-            return Result<ExamDto>.Success(exam.ToDto());
+            var averages = await dbContext.Grades.ToClassAveragesAsync([exam.Id], cancellationToken);
+            return Result<ExamDto>.Success(exam.ToDto(averages));
         }
     }
 }
