@@ -63,12 +63,13 @@ namespace Schuly.API.Plugins
 
         public async Task InstallAsync(string name, string? version, CancellationToken ct = default)
         {
-            var entry = await registry.ResolveAsync(name, version, ct)
+            var pinned = PluginVersion.Normalize(version);
+            var entry = await registry.ResolveAsync(name, pinned, ct)
                 ?? throw new InvalidOperationException($"Plugin '{name}' not found in the registry");
 
             if (host.IsLoaded(name)) await host.UnloadAsync(name, ct);
             var manifest = await store.InstallAsync(entry, registry, ct);
-            set.Upsert(name, string.IsNullOrWhiteSpace(version) ? "latest" : version);
+            set.Upsert(name, pinned);
             await host.LoadAsync(manifest, store.Directory, ct);
         }
 

@@ -20,11 +20,12 @@ namespace Schuly.API.Plugins
                 version.Equals(Version, StringComparison.OrdinalIgnoreCase))
                 return this;
 
+            var pinned = PluginVersion.Normalize(version);
             return this with
             {
-                Version = version,
-                Dll = $"{Name}-v{version}.dll",
-                Deps = $"{Name}-v{version}-deps.zip",
+                Version = pinned,
+                Dll = $"{Name}-v{pinned}.dll",
+                Deps = $"{Name}-v{pinned}-deps.zip",
             };
         }
     }

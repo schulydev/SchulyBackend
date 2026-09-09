@@ -10,7 +10,9 @@ namespace Schuly.Infrastructure.Services
 {
     public class OidcService(IHttpContextAccessor httpContextAccessor, IHttpClientFactory httpClientFactory, IOptionsMonitor<JwtBearerOptions> jwtOptionsMonitor) : IOidcService
     {
-        public async Task<OidcUser?> GetCurrentUserAsync(CancellationToken cancellationToken = default)
+        private OidcUser? _cachedUser;
+
+        public string? GetCurrentExternalId()
         {
             var identity = httpContextAccessor.HttpContext?.User.Identity as ClaimsIdentity;
             if (identity is null || !identity.IsAuthenticated)
@@ -19,17 +21,43 @@ namespace Schuly.Infrastructure.Services
             var externalId = identity.FindFirst("sub")?.Value
                 ?? identity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
+            return string.IsNullOrEmpty(externalId) ? null : externalId;
+        }
+
+        public async Task<OidcUser?> GetCurrentUserAsync(CancellationToken cancellationToken = default)
+        {
+            if (_cachedUser is not null)
+                return _cachedUser;
+
+            if (httpContextAccessor.HttpContext?.User.Identity is not ClaimsIdentity identity)
+                return null;
+
+            var externalId = GetCurrentExternalId();
             if (string.IsNullOrEmpty(externalId))
                 return null;
 
-            var userInfo = await FetchUserInfoAsync(cancellationToken);
+            JsonElement? userInfo;
+            try
+            {
+                userInfo = await FetchUserInfoAsync(cancellationToken);
+            }
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    throw;
 
-            return new OidcUser(
+                userInfo = null;
+            }
+
+            var user = new OidcUser(
                 externalId,
                 GetValue(userInfo, "email") ?? identity.FindFirst(ClaimTypes.Email)?.Value,
                 GetValue(userInfo, "name") ?? identity.FindFirst(ClaimTypes.Name)?.Value,
                 GetValue(userInfo, "picture") ?? identity.FindFirst("picture")?.Value,
                 GetArray(userInfo, "groups") ?? identity.FindAll("groups").Select(c => c.Value).ToList());
+
+            _cachedUser = user;
+            return user;
         }
 
         private async Task<JsonElement?> FetchUserInfoAsync(CancellationToken cancellationToken)

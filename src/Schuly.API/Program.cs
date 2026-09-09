@@ -7,7 +7,6 @@ using Schuly.Infrastructure.Services;
 using Schuly.Infrastructure.Storage;
 using Schuly.Infrastructure.Vault;
 using Schuly.Plugin.Abstractions;
-using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,15 +36,8 @@ builder.Services.AddSchulyPlugins(builder.Configuration, mvcBuilder);
 builder.Services.AddSchulyAuthentication(builder.Configuration, builder.Environment);
 builder.Services.AddSchulyAuthorization();
 builder.Services.AddSchulyExceptionHandling();
-
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = 600, Window = TimeSpan.FromMinutes(1) }));
-});
+builder.Services.AddSchulyForwardedHeaders(builder.Configuration);
+builder.Services.AddSchulyRateLimiting();
 
 if (builder.Environment.IsDevelopment())
     builder.Services.AddSchulyRequestLogging();
@@ -54,6 +46,8 @@ var app = builder.Build();
 
 app.ApplyMigrations();
 await app.SeedSchoolSystemsAsync();
+
+app.UseForwardedHeaders();
 
 app.UseExceptionHandler();
 
@@ -65,8 +59,9 @@ if (app.Environment.IsDevelopment())
     app.MapSchulyApiReference();
 }
 
-app.UseRateLimiter();
 app.UseAuthentication();
+// Partitions on the authenticated "sub" claim, so it has to run after authentication.
+app.UseRateLimiter();
 app.UseAuthorization();
 app.UseMiddleware<PluginScopeMiddleware>();
 app.MapControllers();

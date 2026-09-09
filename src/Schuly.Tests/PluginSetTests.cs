@@ -40,5 +40,21 @@ namespace Schuly.Tests
         {
             await Assert.That(new PluginSet(TempFile()).Read().Count).IsEqualTo(0);
         }
+
+        [Test]
+        public async Task A_colon_in_a_version_round_trips_instead_of_corrupting_the_file()
+        {
+            var file = TempFile();
+            try
+            {
+                var set = new PluginSet(file);
+                set.Write([new DesiredPlugin { Name = "Schuly.Plugin.Schulware", Version = "1.2.3: evil" }]);
+
+                var read = set.Read();
+                await Assert.That(read.Count).IsEqualTo(1);
+                await Assert.That(read[0].Version).IsEqualTo("1.2.3: evil");
+            }
+            finally { File.Delete(file); }
+        }
     }
 }

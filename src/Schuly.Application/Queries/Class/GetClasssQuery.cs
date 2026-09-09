@@ -22,13 +22,17 @@ namespace Schuly.Application.Queries.Class
             var dbQuery = dbContext.Classes.AsNoTracking().AsSplitQuery();
 
             if (!isAdmin)
-                dbQuery = dbQuery.Where(c => c.Students.Any(su => myIds.Contains(su.Id)));
+            {
+                var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
+                dbQuery = dbQuery.Where(c => c.Students.Any(su => myIds.Contains(su.Id)) || c.Teachers.Any(t => t.ApplicationUserId == userId));
+            }
 
             var classes = await dbQuery
                 .IncludeRoster(isAdmin, myIds)
                 .ToListAsync(cancellationToken);
 
-            var dtos = classes.ToDto();
+            var averages = await dbContext.Grades.ToClassAveragesAsync(classes.SelectMany(c => c.Exams).Select(e => e.Id).ToList(), cancellationToken);
+            var dtos = classes.ToDto(averages);
             foreach (var student in dtos.SelectMany(c => c.Students))
                 student.ProfilePictureUrl = avatarSigner.ToPublicUrl(student.Id, student.ProfilePictureUrl);
             return Result<List<ClassDto>>.Success(dtos);

@@ -15,6 +15,10 @@ namespace Schuly.Application.Commands.Absence
     {
         public async ValueTask<Result> Handle(UpdateAbsenceCommand command, CancellationToken cancellationToken)
         {
+            // Normalise before comparing: From and Until can arrive with different DateTimeKinds.
+            if (UtcDateTime.Normalize(command.From) > UtcDateTime.Normalize(command.Until))
+                return Result.Failure("From must not be after Until");
+
             var absence = await dbContext.Absences
                 .SingleOrDefaultAsync(a => a.Id == command.AbsenceId, cancellationToken);
 

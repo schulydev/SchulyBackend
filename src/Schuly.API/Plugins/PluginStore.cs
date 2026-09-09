@@ -61,21 +61,24 @@ namespace Schuly.API.Plugins
 
             var files = new List<string>();
 
-            var dllBytes = await registry.DownloadArtifactAsync(entry.Dll, ct);
-            await File.WriteAllBytesAsync(Path.Combine(Directory, entry.Dll), dllBytes, ct);
-            files.Add(entry.Dll);
+            var dll = SafeArtifactName(entry.Dll);
+            var dllBytes = await registry.DownloadArtifactAsync(dll, ct);
+            await File.WriteAllBytesAsync(Path.Combine(Directory, dll), dllBytes, ct);
+            files.Add(dll);
 
             if (!string.IsNullOrWhiteSpace(entry.Deps))
             {
-                var zipBytes = await registry.DownloadArtifactAsync(entry.Deps!, ct);
+                var deps = SafeArtifactName(entry.Deps);
+                var zipBytes = await registry.DownloadArtifactAsync(deps, ct);
                 using var zip = new ZipArchive(new MemoryStream(zipBytes), ZipArchiveMode.Read);
                 foreach (var zipEntry in zip.Entries)
                 {
                     if (string.IsNullOrEmpty(zipEntry.Name)) // directory entry
                         continue;
-                    var dest = Path.Combine(Directory, zipEntry.Name);
+                    var name = SafeArtifactName(zipEntry.Name);
+                    var dest = Path.Combine(Directory, name);
                     zipEntry.ExtractToFile(dest, overwrite: true);
-                    files.Add(zipEntry.Name);
+                    files.Add(name);
                 }
             }
 
@@ -112,6 +115,13 @@ namespace Schuly.API.Plugins
         }
 
         private string ManifestPath(string name) => Path.Combine(Directory, name + ManifestSuffix);
+
+        private static string SafeArtifactName(string file)
+        {
+            if (string.IsNullOrWhiteSpace(file) || Path.GetFileName(file) != file || file is "." or "..")
+                throw new InvalidOperationException($"Invalid plugin artifact name '{file}'");
+            return file;
+        }
 
         private static void TryDelete(string path)
         {
