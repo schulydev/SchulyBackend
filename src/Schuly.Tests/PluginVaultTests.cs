@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Reflection;
-using System.Security.Cryptography;
 using System.Text;
 using Schuly.Infrastructure.Vault;
 
@@ -8,7 +7,7 @@ namespace Schuly.Tests
 {
     public class PluginVaultTests
     {
-        private static IPluginVaultFactory NewFactory() => new PluginVaultFactory(new VaultKeyring());
+        private static IPluginVaultFactory NewFactory() => new PluginVaultFactory(VaultKeyring.Ephemeral(), NullVaultStore.Instance);
 
         [Test]
         public async Task Set_then_get_round_trips()
@@ -64,25 +63,28 @@ namespace Schuly.Tests
         [Test]
         public async Task Keyring_keys_are_stable_per_namespace_and_distinct_across_namespaces()
         {
-            var keyring = new VaultKeyring();
+            var keyring = VaultKeyring.Ephemeral();
 
             await Assert.That(keyring.DeriveKey("x").SequenceEqual(keyring.DeriveKey("x"))).IsTrue();
             await Assert.That(keyring.DeriveKey("x").SequenceEqual(keyring.DeriveKey("y"))).IsFalse();
         }
 
         [Test]
-        public async Task A_fresh_keyring_cannot_decrypt_another_keyrings_values()
+        public async Task A_vault_with_a_different_master_key_cannot_read_the_ciphertext()
         {
-            // Simulates a process restart (new master secret): the stored ciphertext
-            // is unreadable, proving values are bound to the host's startup secret.
-            var v1 = new PluginVaultFactory(new VaultKeyring()).GetVault("plugin:a");
+            // Simulates a process restart under a different master key: the stored
+            // ciphertext is unreadable, proving values are bound to the master key —
+            // TryGet/Get swallow the decryption failure rather than throwing.
+            var v1 = new PluginVaultFactory(VaultKeyring.Ephemeral(), NullVaultStore.Instance).GetVault("plugin:a");
             v1.Set("k", "secret");
             var blob = ReadStore(v1)["k"];
 
-            var v2 = new PluginVaultFactory(new VaultKeyring()).GetVault("plugin:a");
+            var v2 = new PluginVaultFactory(VaultKeyring.Ephemeral(), NullVaultStore.Instance).GetVault("plugin:a");
             ReadStore(v2)["k"] = blob; // inject the other process's ciphertext
 
-            await Assert.That(() => v2.Get("k")).Throws<CryptographicException>();
+            await Assert.That(v2.Get("k")).IsNull();
+            await Assert.That(v2.TryGet("k", out var value)).IsFalse();
+            await Assert.That(value).IsNull();
         }
 
         [Test]

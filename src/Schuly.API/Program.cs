@@ -30,7 +30,7 @@ builder.Services.AddSingleton<IAvatarUrlSigner, AvatarUrlSigner>();
 builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
 builder.Services.AddSchulyDocumentStorage(builder.Configuration);
 
-builder.Services.AddSchulyVault();
+builder.Services.AddSchulyVault(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddSingleton<PluginSchedulerRegistry>();
 builder.Services.AddSchulyPlugins(builder.Configuration, mvcBuilder);
 

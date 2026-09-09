@@ -19,6 +19,7 @@ namespace Schuly.Infrastructure
         public DbSet<SemesterReport> SemesterReports { get; set; }
         public DbSet<SemesterSubjectGrade> SemesterSubjectGrades { get; set; }
         public DbSet<Teacher> Teachers { get; set; }
+        public DbSet<VaultEntry> VaultEntries { get; set; }
 
         public SchulyDbContext(DbContextOptions<SchulyDbContext> options) : base(options) { }
 
@@ -313,6 +314,14 @@ namespace Schuly.Infrastructure
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(sg => new { sg.SemesterReportId, sg.SubjectCode }).IsUnique();
+            });
+
+            modelBuilder.Entity<VaultEntry>(entity =>
+            {
+                entity.HasKey(v => v.Id);
+                entity.Property(v => v.PluginName).HasMaxLength(200).IsRequired();
+                entity.Property(v => v.Key).HasMaxLength(200).IsRequired();
+                entity.HasIndex(v => new { v.PluginName, v.Key }).IsUnique();
             });
         }
 
