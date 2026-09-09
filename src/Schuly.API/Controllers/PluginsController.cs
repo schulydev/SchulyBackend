@@ -2,7 +2,6 @@ using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Schuly.API.Plugins;
-using Schuly.API.Services;
 using Schuly.Application.Dtos;
 using Schuly.Application.Queries.Plugins;
 
@@ -11,7 +10,7 @@ namespace Schuly.API.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Roles = "Administrator")]
-    public class PluginsController(IMediator mediator, PluginSchedulerRegistry scheduler, PluginManager plugins) : ControllerBase
+    public class PluginsController(IMediator mediator, IPluginTaskScheduler scheduler, PluginManager plugins) : ControllerBase
     {
         [HttpGet]
         [ProducesResponseType(typeof(List<PluginDto>), StatusCodes.Status200OK)]
@@ -24,7 +23,7 @@ namespace Schuly.API.Controllers
 
         [HttpGet("scheduler")]
         [ProducesResponseType(typeof(IReadOnlyList<PluginTaskStatus>), StatusCodes.Status200OK)]
-        public IActionResult Scheduler() => Ok(scheduler.Snapshot());
+        public async Task<IActionResult> Scheduler(CancellationToken cancellationToken) => Ok(await scheduler.SnapshotAsync(cancellationToken));
 
         [HttpGet("registry")]
         [Authorize(Roles = "Administrator")]

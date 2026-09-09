@@ -8,6 +8,7 @@ using Schuly.Infrastructure.Storage;
 using Schuly.Infrastructure.Vault;
 using Schuly.Plugin.Abstractions;
 using System.Threading.RateLimiting;
+using TickerQ.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +22,8 @@ builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBeh
 builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(PluginEventBehavior<,>));
 builder.Services.AddSchulyDatabase(builder.Configuration);
 
+builder.Services.AddSchulyTickerQ(enableDashboard: builder.Environment.IsDevelopment());
+
 builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
 
@@ -31,7 +34,8 @@ builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
 builder.Services.AddSchulyDocumentStorage(builder.Configuration);
 
 builder.Services.AddSchulyVault();
-builder.Services.AddSingleton<PluginSchedulerRegistry>();
+builder.Services.AddSingleton<IPluginTaskScheduler, TickerQPluginTaskScheduler>();
+builder.Services.AddSingleton<PluginTaskRunner>();
 builder.Services.AddSchulyPlugins(builder.Configuration, mvcBuilder);
 
 builder.Services.AddSchulyAuthentication(builder.Configuration, builder.Environment);
@@ -71,5 +75,6 @@ app.UseAuthorization();
 app.UseMiddleware<PluginScopeMiddleware>();
 app.MapControllers();
 await app.UseSchulyPluginsAsync();
+app.UseTickerQ();
 
 app.Run();

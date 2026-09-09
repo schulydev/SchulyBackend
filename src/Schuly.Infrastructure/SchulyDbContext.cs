@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
 using Schuly.Domain;
 
 namespace Schuly.Infrastructure
@@ -343,16 +342,6 @@ namespace Schuly.Infrastructure
                 if (entry.State == EntityState.Modified)
                     entry.Entity.UpdatedAt = DateTime.UtcNow;
             }
-        }
-    }
-
-    public class SchulyDbContextFactory : IDesignTimeDbContextFactory<SchulyDbContext>
-    {
-        public SchulyDbContext CreateDbContext(string[] args)
-        {
-            var optionsBuilder = new DbContextOptionsBuilder<SchulyDbContext>();
-            optionsBuilder.UseNpgsql();
-            return new SchulyDbContext(optionsBuilder.Options);
         }
     }
 }

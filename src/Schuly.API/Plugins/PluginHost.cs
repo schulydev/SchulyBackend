@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using Schuly.API.Services;
 using Schuly.Domain;
 using Schuly.Infrastructure;
 using Schuly.Infrastructure.Storage;
@@ -17,7 +16,7 @@ namespace Schuly.API.Plugins
 {
     public sealed record LoadedPluginInfo(string Name, string Version);
 
-    public sealed class PluginHost(IServiceProvider rootProvider, IConfiguration configuration, ApplicationPartManager partManager, PluginEndpointDataSource endpointSource, PluginAssemblyMap assemblyMap, PluginSchedulerRegistry scheduler, ILogger<PluginHost> logger)
+    public sealed class PluginHost(IServiceProvider rootProvider, IConfiguration configuration, ApplicationPartManager partManager, PluginEndpointDataSource endpointSource, PluginAssemblyMap assemblyMap, IPluginTaskScheduler scheduler, ILogger<PluginHost> logger)
     {
         private readonly ConcurrentDictionary<string, LoadedPlugin> _loaded = new(StringComparer.OrdinalIgnoreCase);
         private readonly SemaphoreSlim _gate = new(1, 1);
@@ -116,7 +115,7 @@ namespace Schuly.API.Plugins
                     throw new InvalidOperationException($"No ISchulyPlugin found in {manifest.Dll}");
                 }
 
-                var provider = BuildChildProvider(plugin);
+                var (provider, pluginConfiguration) = BuildChildProvider(plugin);
                 await plugin.MigrateAsync(provider, ct);
 
                 var endpoints = PluginEndpointDataSource.Build(plugin.Name, rootProvider, plugin.ConfigureEndpoints);
@@ -133,14 +132,16 @@ namespace Schuly.API.Plugins
                     LoadContext = alc,
                     Assembly = assembly,
                     Provider = provider,
+                    Configuration = pluginConfiguration,
                     Part = part,
                     Endpoints = endpoints,
+                    TaskCts = new CancellationTokenSource(),
                 };
                 _loaded[plugin.Name] = loaded;
 
                 RefreshEndpoints();
                 PluginActionDescriptorChangeProvider.Instance.NotifyChanged();
-                StartBackgroundTasks(loaded);
+                await SyncBackgroundTasksAsync(loaded, ct);
                 await SyncSchoolSystemsAsync(loaded, ct);
 
                 logger.LogInformation("Loaded plugin {Name} v{Version}", plugin.Name, plugin.Version);
@@ -159,12 +160,15 @@ namespace Schuly.API.Plugins
                 if (!_loaded.TryRemove(name, out var plugin))
                     return;
 
-                plugin.TaskCts?.Cancel();
+                await scheduler.RemoveAsync(name, ct);
+                plugin.TaskCts.Cancel();
 
                 partManager.ApplicationParts.Remove(plugin.Part);
                 assemblyMap.Remove(plugin.Assembly);
                 PluginActionDescriptorChangeProvider.Instance.NotifyChanged();
                 RefreshEndpoints();
+
+                await WaitForInFlightRunsAsync(plugin);
 
                 if (plugin.Instance is IAsyncDisposable instanceAsync)
                     await instanceAsync.DisposeAsync();
@@ -173,7 +177,7 @@ namespace Schuly.API.Plugins
 
                 await plugin.Provider.DisposeAsync();
 
-                plugin.TaskCts?.Dispose();
+                plugin.TaskCts.Dispose();
                 plugin.LoadContext.Unload();
 
                 for (var i = 0; i < 2; i++)
@@ -190,7 +194,7 @@ namespace Schuly.API.Plugins
             }
         }
 
-        private ServiceProvider BuildChildProvider(ISchulyPlugin plugin)
+        private (ServiceProvider Provider, IConfiguration Configuration) BuildChildProvider(ISchulyPlugin plugin)
         {
             var services = new ServiceCollection();
 
@@ -231,45 +235,52 @@ namespace Schuly.API.Plugins
             var context = new PluginServiceContext(PluginConnectionString(plugin.Name), pluginConfig);
             plugin.ConfigureServices(services, context);
 
-            return services.BuildServiceProvider();
+            return (services.BuildServiceProvider(), pluginConfig);
         }
 
-        private void StartBackgroundTasks(LoadedPlugin plugin)
+        private Task SyncBackgroundTasksAsync(LoadedPlugin plugin, CancellationToken ct)
         {
-            var tasks = plugin.Provider.GetServices<IPluginBackgroundTask>().ToList();
-            if (tasks.Count == 0)
-                return;
+            var registrations = plugin.Provider.GetServices<IPluginBackgroundTask>()
+                .Select(task => PluginTaskScheduleResolver.Resolve(plugin.Name, task, plugin.Configuration, logger))
+                .ToList();
 
-            plugin.TaskCts = new CancellationTokenSource();
-            foreach (var task in tasks)
-                _ = RunTaskLoop(task, plugin.Provider, plugin.TaskCts.Token);
+            return scheduler.SyncAsync(plugin.Name, registrations, ct);
         }
 
-        private async Task RunTaskLoop(IPluginBackgroundTask task, IServiceProvider provider, CancellationToken ct)
+        public async Task RunTaskAsync(string pluginName, string taskName, CancellationToken cancellationToken = default)
         {
-            scheduler.Register(task.Name, task.Interval);
-            while (!ct.IsCancellationRequested)
+            if (!_loaded.TryGetValue(pluginName, out var plugin))
             {
-                var startedAt = System.Diagnostics.Stopwatch.GetTimestamp();
-                scheduler.RecordStart(task.Name);
-                try
-                {
-                    await task.ExecuteAsync(provider, ct);
-                    scheduler.RecordSuccess(task.Name, ElapsedMs(startedAt));
-                }
-                catch (OperationCanceledException) when (ct.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    scheduler.RecordFailure(task.Name, ElapsedMs(startedAt), ex.Message);
-                    logger.LogError(ex, "Plugin background task '{Name}' failed", task.Name);
-                }
-
-                try { await Task.Delay(task.Interval, ct); }
-                catch (OperationCanceledException) { break; }
+                logger.LogWarning("Ticker fired for plugin task {Plugin}/{Task} but the plugin is not loaded", pluginName, taskName);
+                return;
             }
+
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, plugin.TaskCts.Token);
+            Interlocked.Increment(ref plugin.InFlightRuns);
+            try
+            {
+                using var scope = plugin.Provider.CreateScope();
+                var task = scope.ServiceProvider.GetServices<IPluginBackgroundTask>()
+                    .FirstOrDefault(t => string.Equals(t.Name, taskName, StringComparison.OrdinalIgnoreCase));
+                if (task is null)
+                    throw new InvalidOperationException($"Plugin '{pluginName}' has no background task named '{taskName}'");
+
+                await task.ExecuteAsync(scope.ServiceProvider, linkedCts.Token);
+            }
+            finally
+            {
+                Interlocked.Decrement(ref plugin.InFlightRuns);
+            }
+        }
+
+        private async Task WaitForInFlightRunsAsync(LoadedPlugin plugin)
+        {
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            while (Volatile.Read(ref plugin.InFlightRuns) > 0 && DateTime.UtcNow < deadline)
+                await Task.Delay(100);
+
+            if (Volatile.Read(ref plugin.InFlightRuns) > 0)
+                logger.LogWarning("Plugin {Name} still has {Count} in-flight background task run(s) after waiting 10 seconds; unloading anyway", plugin.Name, plugin.InFlightRuns);
         }
 
         private void RefreshEndpoints() =>
@@ -303,9 +314,6 @@ namespace Schuly.API.Plugins
             builder.AddEnvironmentVariables($"SCHULY_PLUGIN_{plugin.Name.ToUpperInvariant().Replace(" ", "_")}_");
             return builder.Build();
         }
-
-        private static long ElapsedMs(long start) =>
-            (long)System.Diagnostics.Stopwatch.GetElapsedTime(start).TotalMilliseconds;
 
         private sealed class HostServiceScope(IServiceProvider root) : IDisposable
         {
@@ -354,9 +362,11 @@ namespace Schuly.API.Plugins
             public required PluginLoadContext LoadContext { get; init; }
             public required Assembly Assembly { get; init; }
             public required ServiceProvider Provider { get; init; }
+            public required IConfiguration Configuration { get; init; }
             public required AssemblyPart Part { get; init; }
             public required IReadOnlyList<Endpoint> Endpoints { get; init; }
-            public CancellationTokenSource? TaskCts { get; set; }
+            public required CancellationTokenSource TaskCts { get; init; }
+            public int InFlightRuns;
         }
     }
 }

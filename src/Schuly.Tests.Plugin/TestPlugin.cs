@@ -12,6 +12,13 @@ namespace Schuly.Tests.Plugin
         public string Greet() => "child-di-ok";
     }
 
+    public sealed class TestBackgroundTask : IPluginBackgroundTask
+    {
+        public string Name => "test.sync";
+        public PluginSchedule Schedule => PluginSchedule.Every(TimeSpan.FromMinutes(30));
+        public Task ExecuteAsync(IServiceProvider serviceProvider, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
     public sealed class TestPlugin : ISchulyPlugin
     {
         public const string PluginName = "Test Plugin";
@@ -19,8 +26,11 @@ namespace Schuly.Tests.Plugin
         public string Name => PluginName;
         public string Version => "1.0.0";
 
-        public void ConfigureServices(IServiceCollection services, PluginServiceContext context) =>
+        public void ConfigureServices(IServiceCollection services, PluginServiceContext context)
+        {
             services.AddScoped<TestGreeter>();
+            services.AddSingleton<IPluginBackgroundTask, TestBackgroundTask>();
+        }
 
         public void ConfigureEndpoints(IEndpointRouteBuilder endpoints) =>
             endpoints.MapGet("/api/plugins/test/ping", () => Results.Ok("pong")).AllowAnonymous();
