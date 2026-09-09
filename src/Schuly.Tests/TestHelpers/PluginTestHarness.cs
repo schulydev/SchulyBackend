@@ -12,13 +12,14 @@ namespace Schuly.Tests.TestHelpers
 {
     // Shared TestServer harness for plugin host tests: spins up a minimal app with the
     // plugin pipeline wired in and a FakePluginTaskScheduler standing in for TickerQ.
-    public sealed class PluginTestHarness(WebApplication app, HttpClient client, PluginHost host, FakePluginTaskScheduler scheduler, string directory)
+    internal sealed class PluginTestHarness(WebApplication app, HttpClient client, PluginHost host, FakePluginTaskScheduler scheduler, string directory)
         : IAsyncDisposable
     {
         public HttpClient Client { get; } = client;
         public PluginHost Host { get; } = host;
         public FakePluginTaskScheduler Scheduler { get; } = scheduler;
         public string Directory { get; } = directory;
+        public IServiceProvider Services => app.Services;
 
         public static async Task<PluginTestHarness> StartAsync()
         {
@@ -36,7 +37,8 @@ namespace Schuly.Tests.TestHelpers
 
             builder.Services.AddHttpClient();
             builder.Services.AddHttpContextAccessor();
-            builder.Services.AddSchulyVault();
+            builder.Services.AddSingleton<IVaultStore>(NullVaultStore.Instance);
+            builder.Services.AddSchulyVault(builder.Configuration, isDevelopment: true);
             builder.Services.AddScoped<IPluginUserContext, FakePluginUserContext>();
             builder.Services.AddAuthorization();
             builder.Services.AddSingleton<FakePluginTaskScheduler>();

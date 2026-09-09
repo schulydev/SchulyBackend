@@ -7,7 +7,6 @@ using Schuly.Infrastructure.Services;
 using Schuly.Infrastructure.Storage;
 using Schuly.Infrastructure.Vault;
 using Schuly.Plugin.Abstractions;
-using System.Threading.RateLimiting;
 using TickerQ.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,8 +18,10 @@ var mvcBuilder = builder.Services.AddSchulyControllers();
 builder.Services.AddSchulyOpenApi(builder.Configuration);
 builder.Services.AddMediator(options => { options.ServiceLifetime = ServiceLifetime.Scoped; });
 builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
+builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(NotificationOriginBehavior<,>));
 builder.Services.AddScoped(typeof(IPipelineBehavior<,>), typeof(PluginEventBehavior<,>));
 builder.Services.AddSchulyDatabase(builder.Configuration);
+builder.Services.AddSchulyPushNotifications(builder.Configuration);
 
 builder.Services.AddSchulyTickerQ(enableDashboard: builder.Environment.IsDevelopment());
 
@@ -31,9 +32,9 @@ builder.Services.AddScoped<IOidcService, OidcService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSingleton<IAvatarUrlSigner, AvatarUrlSigner>();
 builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
-builder.Services.AddSchulyDocumentStorage(builder.Configuration);
+builder.Services.AddSchulyDocumentStorage(builder.Configuration, builder.Environment.IsDevelopment());
 
-builder.Services.AddSchulyVault();
+builder.Services.AddSchulyVault(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddSingleton<IPluginTaskScheduler, TickerQPluginTaskScheduler>();
 builder.Services.AddSingleton<PluginTaskRunner>();
 builder.Services.AddSchulyPlugins(builder.Configuration, mvcBuilder);
@@ -41,15 +42,8 @@ builder.Services.AddSchulyPlugins(builder.Configuration, mvcBuilder);
 builder.Services.AddSchulyAuthentication(builder.Configuration, builder.Environment);
 builder.Services.AddSchulyAuthorization();
 builder.Services.AddSchulyExceptionHandling();
-
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = 600, Window = TimeSpan.FromMinutes(1) }));
-});
+builder.Services.AddSchulyForwardedHeaders(builder.Configuration);
+builder.Services.AddSchulyRateLimiting();
 
 if (builder.Environment.IsDevelopment())
     builder.Services.AddSchulyRequestLogging();
@@ -58,6 +52,8 @@ var app = builder.Build();
 
 app.ApplyMigrations();
 await app.SeedSchoolSystemsAsync();
+
+app.UseForwardedHeaders();
 
 app.UseExceptionHandler();
 
@@ -69,8 +65,9 @@ if (app.Environment.IsDevelopment())
     app.MapSchulyApiReference();
 }
 
-app.UseRateLimiter();
 app.UseAuthentication();
+// Partitions on the authenticated "sub" claim, so it has to run after authentication.
+app.UseRateLimiter();
 app.UseAuthorization();
 app.UseMiddleware<PluginScopeMiddleware>();
 app.MapControllers();

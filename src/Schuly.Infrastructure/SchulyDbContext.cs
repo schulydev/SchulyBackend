@@ -18,8 +18,21 @@ namespace Schuly.Infrastructure
         public DbSet<SemesterReport> SemesterReports { get; set; }
         public DbSet<SemesterSubjectGrade> SemesterSubjectGrades { get; set; }
         public DbSet<Teacher> Teachers { get; set; }
+        public DbSet<DeviceToken> DeviceTokens { get; set; }
+        public DbSet<NotificationPreference> NotificationPreferences { get; set; }
+        public DbSet<NotificationOutbox> NotificationOutbox { get; set; }
+        public DbSet<VaultEntry> VaultEntries { get; set; }
 
         public SchulyDbContext(DbContextOptions<SchulyDbContext> options) : base(options) { }
+
+        // Normalises every DateTime property to UTC on the way in so no individual command has to.
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+            base.ConfigureConventions(configurationBuilder);
+
+            configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+            configurationBuilder.Properties<DateTime?>().HaveConversion<UtcNullableDateTimeConverter>();
+        }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -312,6 +325,54 @@ namespace Schuly.Infrastructure
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(sg => new { sg.SemesterReportId, sg.SubjectCode }).IsUnique();
+            });
+
+            modelBuilder.Entity<DeviceToken>(entity =>
+            {
+                entity.HasKey(t => t.Id);
+                entity.HasIndex(t => t.Token).IsUnique();
+                entity.Property(t => t.Token).HasMaxLength(500).IsRequired();
+                entity.Property(t => t.Platform).HasMaxLength(20).IsRequired();
+                entity.Property(t => t.Locale).HasMaxLength(10).IsRequired();
+                entity.HasIndex(t => t.ApplicationUserId);
+
+                entity.HasOne(t => t.ApplicationUser)
+                    .WithMany()
+                    .HasForeignKey(t => t.ApplicationUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<NotificationPreference>(entity =>
+            {
+                entity.HasKey(p => p.Id);
+                entity.HasIndex(p => p.ApplicationUserId).IsUnique();
+
+                entity.HasOne(p => p.ApplicationUser)
+                    .WithMany()
+                    .HasForeignKey(p => p.ApplicationUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<NotificationOutbox>(entity =>
+            {
+                entity.HasKey(o => o.Id);
+                entity.Property(o => o.Score).HasPrecision(4, 2);
+                entity.Property(o => o.SubjectName).HasMaxLength(200);
+                entity.Property(o => o.Summary).HasMaxLength(300);
+                entity.Property(o => o.LastError).HasMaxLength(1000);
+                // The drain query polls for due, pending rows.
+                entity.HasIndex(o => new { o.Status, o.NextAttemptAt });
+                entity.HasIndex(o => o.ApplicationUserId);
+                // No FK to ApplicationUser: this is a queue, not a relation - rows must
+                // survive independently of the user row (and of sync ordering) until drained.
+            });
+
+            modelBuilder.Entity<VaultEntry>(entity =>
+            {
+                entity.HasKey(v => v.Id);
+                entity.Property(v => v.PluginName).HasMaxLength(200).IsRequired();
+                entity.Property(v => v.Key).HasMaxLength(200).IsRequired();
+                entity.HasIndex(v => new { v.PluginName, v.Key }).IsUnique();
             });
         }
 

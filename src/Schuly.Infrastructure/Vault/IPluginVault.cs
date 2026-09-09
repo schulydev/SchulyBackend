@@ -3,13 +3,13 @@ using System.Diagnostics.CodeAnalysis;
 namespace Schuly.Infrastructure.Vault
 {
     /// <summary>
-    /// A small per-namespace secret store kept in process memory. Values are held
-    /// <b>encrypted</b> (AES-256-GCM) with a key the host derives from a master
-    /// secret it generates at startup, so inspecting the backing store — a heap or
-    /// pointer dump — only ever reveals ciphertext. Plaintext exists transiently,
-    /// just while a <see cref="Get"/> call decrypts. Each namespace (one per plugin,
-    /// plus one for the host) is cryptographically isolated: its values can only be
-    /// read back through the vault instance that holds its derived key.
+    /// A small per-namespace secret store, cached in process memory and persisted to
+    /// Postgres. Values are held <b>encrypted</b> (AES-256-GCM) with a key the host
+    /// derives from a configured master key, so inspecting the backing store — a heap
+    /// or pointer dump, or the database row — only ever reveals ciphertext. Plaintext
+    /// exists transiently, just while a <see cref="Get"/> call decrypts. Each namespace
+    /// (one per plugin, plus one for the host) is cryptographically isolated: its
+    /// values can only be read back through the vault instance that holds its derived key.
     /// </summary>
     public interface IPluginVault
     {

@@ -1,11 +1,10 @@
 using Mediator;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Schuly.Plugin.Abstractions;
+using Schuly.Application.Abstractions;
 
 namespace Schuly.Application.Behaviors
 {
-    public class PluginEventBehavior<TRequest, TResponse>(IServiceProvider serviceProvider, ILogger<PluginEventBehavior<TRequest, TResponse>> logger) : IPipelineBehavior<TRequest, TResponse>
+    public class PluginEventBehavior<TRequest, TResponse>(IPluginEventDispatcher dispatcher, ILogger<PluginEventBehavior<TRequest, TResponse>> logger) : IPipelineBehavior<TRequest, TResponse>
         where TRequest : notnull, IMessage
     {
         public async ValueTask<TResponse> Handle(TRequest request, MessageHandlerDelegate<TRequest, TResponse> next, CancellationToken cancellationToken)
@@ -18,20 +17,7 @@ namespace Schuly.Application.Behaviors
                 {
                     try
                     {
-                        using var scope = serviceProvider.CreateScope();
-                        var handlers = scope.ServiceProvider.GetServices<IPluginEventHandler<TRequest>>();
-
-                        foreach (var handler in handlers)
-                        {
-                            try
-                            {
-                                await handler.HandleAsync(request, CancellationToken.None);
-                            }
-                            catch (Exception ex)
-                            {
-                                logger.LogError(ex, "Plugin event handler {Handler} failed for {Command}", handler.GetType().Name, typeof(TRequest).Name);
-                            }
-                        }
+                        await dispatcher.DispatchAsync(request, CancellationToken.None);
                     }
                     catch (Exception ex)
                     {

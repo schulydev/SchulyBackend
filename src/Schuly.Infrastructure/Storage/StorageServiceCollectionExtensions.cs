@@ -8,9 +8,11 @@ namespace Schuly.Infrastructure.Storage
 {
     public static class StorageServiceCollectionExtensions
     {
-        public static IServiceCollection AddSchulyDocumentStorage(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddSchulyDocumentStorage(this IServiceCollection services, IConfiguration configuration, bool isDevelopment)
         {
             services.Configure<S3Options>(configuration.GetSection(S3Options.SectionName));
+            services.Configure<DocumentEncryptionOptions>(configuration.GetSection(DocumentEncryptionOptions.SectionName));
+            DocumentEncryptionKeyring.ValidateConfiguration(configuration, isDevelopment);
 
             services.AddSingleton<IAmazonS3>(sp =>
             {
@@ -24,7 +26,11 @@ namespace Schuly.Infrastructure.Storage
                 return new AmazonS3Client(creds, config);
             });
 
-            services.AddScoped<IDocumentStorage, S3DocumentStorage>();
+            services.AddSingleton<DocumentEncryptionKeyring>();
+            services.AddScoped<S3DocumentStorage>();
+            services.AddScoped<EncryptingDocumentStorage>(sp => new EncryptingDocumentStorage(sp.GetRequiredService<S3DocumentStorage>(), sp.GetRequiredService<DocumentEncryptionKeyring>()));
+            services.AddScoped<IDocumentStorage>(sp => sp.GetRequiredService<EncryptingDocumentStorage>());
+            services.AddScoped<IDocumentEncryptionMaintenance>(sp => sp.GetRequiredService<EncryptingDocumentStorage>());
             return services;
         }
     }

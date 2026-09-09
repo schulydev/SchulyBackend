@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Schuly.Domain;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
+using Schuly.Infrastructure.Services;
 
 namespace Schuly.Tests.TestHelpers
 {
@@ -11,6 +13,17 @@ namespace Schuly.Tests.TestHelpers
             new(new DbContextOptionsBuilder<SchulyDbContext>()
                 .UseInMemoryDatabase(name)
                 .Options);
+
+        public static SchulyDbContext NewNotifyingContext(string name, bool userInitiated = false)
+        {
+            var origin = new FakeNotificationOriginContext(userInitiated);
+            var interceptor = new NotificationOutboxInterceptor(origin, NullLogger<NotificationOutboxInterceptor>.Instance);
+
+            return new SchulyDbContext(new DbContextOptionsBuilder<SchulyDbContext>()
+                .UseInMemoryDatabase(name)
+                .AddInterceptors(interceptor)
+                .Options);
+        }
 
         public static SchoolUser NewSchoolUser(Guid schoolId, string last = "Doe") => new()
         {

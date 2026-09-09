@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Schuly.Application.Abstractions;
 using Schuly.Domain;
 using Schuly.Infrastructure;
 using Schuly.Infrastructure.Storage;
@@ -16,7 +17,7 @@ namespace Schuly.API.Plugins
 {
     public sealed record LoadedPluginInfo(string Name, string Version);
 
-    public sealed class PluginHost(IServiceProvider rootProvider, IConfiguration configuration, ApplicationPartManager partManager, PluginEndpointDataSource endpointSource, PluginAssemblyMap assemblyMap, IPluginTaskScheduler scheduler, ILogger<PluginHost> logger)
+    public sealed class PluginHost(IServiceProvider rootProvider, IConfiguration configuration, ApplicationPartManager partManager, PluginEndpointDataSource endpointSource, PluginAssemblyMap assemblyMap, IPluginTaskScheduler scheduler, ILogger<PluginHost> logger) : IPluginEventDispatcher
     {
         private readonly ConcurrentDictionary<string, LoadedPlugin> _loaded = new(StringComparer.OrdinalIgnoreCase);
         private readonly SemaphoreSlim _gate = new(1, 1);
@@ -46,6 +47,35 @@ namespace Schuly.API.Plugins
             }
 
             return null;
+        }
+
+        public async Task DispatchAsync<TEvent>(TEvent message, CancellationToken cancellationToken = default) where TEvent : notnull
+        {
+            if (_loaded.IsEmpty)
+                return;
+
+            foreach (var loaded in _loaded.Values)
+            {
+                try
+                {
+                    using var scope = loaded.Provider.CreateScope();
+                    foreach (var handler in scope.ServiceProvider.GetServices<IPluginEventHandler<TEvent>>())
+                    {
+                        try
+                        {
+                            await handler.HandleAsync(message, cancellationToken);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex, "Plugin event handler {Handler} failed for {Event}", handler.GetType().Name, typeof(TEvent).Name);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Plugin {Name} failed to dispatch {Event}", loaded.Name, typeof(TEvent).Name);
+                }
+            }
         }
 
         private async Task SyncSchoolSystemsAsync(LoadedPlugin loaded, CancellationToken ct)
@@ -115,36 +145,65 @@ namespace Schuly.API.Plugins
                     throw new InvalidOperationException($"No ISchulyPlugin found in {manifest.Dll}");
                 }
 
-                var (provider, pluginConfiguration) = BuildChildProvider(plugin);
-                await plugin.MigrateAsync(provider, ct);
-
-                var endpoints = PluginEndpointDataSource.Build(plugin.Name, rootProvider, plugin.ConfigureEndpoints);
-
-                var part = new AssemblyPart(assembly);
-                partManager.ApplicationParts.Add(part);
-                assemblyMap.Add(assembly, plugin.Name);
-
-                var loaded = new LoadedPlugin
+                ServiceProvider? provider = null;
+                AssemblyPart? part = null;
+                LoadedPlugin? loaded = null;
+                try
                 {
-                    Name = plugin.Name,
-                    Version = plugin.Version,
-                    Instance = plugin,
-                    LoadContext = alc,
-                    Assembly = assembly,
-                    Provider = provider,
-                    Configuration = pluginConfiguration,
-                    Part = part,
-                    Endpoints = endpoints,
-                    TaskCts = new CancellationTokenSource(),
-                };
-                _loaded[plugin.Name] = loaded;
+                    var (builtProvider, pluginConfiguration) = BuildChildProvider(plugin);
+                    provider = builtProvider;
+                    await plugin.MigrateAsync(provider, ct);
 
-                RefreshEndpoints();
-                PluginActionDescriptorChangeProvider.Instance.NotifyChanged();
-                await SyncBackgroundTasksAsync(loaded, ct);
-                await SyncSchoolSystemsAsync(loaded, ct);
+                    var endpoints = PluginEndpointDataSource.Build(plugin.Name, rootProvider, plugin.ConfigureEndpoints);
 
-                logger.LogInformation("Loaded plugin {Name} v{Version}", plugin.Name, plugin.Version);
+                    part = new AssemblyPart(assembly);
+                    partManager.ApplicationParts.Add(part);
+                    assemblyMap.Add(assembly, plugin.Name);
+
+                    loaded = new LoadedPlugin
+                    {
+                        Name = plugin.Name,
+                        Version = plugin.Version,
+                        Instance = plugin,
+                        LoadContext = alc,
+                        Assembly = assembly,
+                        Provider = provider,
+                        Configuration = pluginConfiguration,
+                        Part = part,
+                        Endpoints = endpoints,
+                        TaskCts = new CancellationTokenSource(),
+                    };
+                    _loaded[plugin.Name] = loaded;
+
+                    RefreshEndpoints();
+                    PluginActionDescriptorChangeProvider.Instance.NotifyChanged();
+                    await SyncBackgroundTasksAsync(loaded, ct);
+                    await SyncSchoolSystemsAsync(loaded, ct);
+
+                    logger.LogInformation("Loaded plugin {Name} v{Version}", plugin.Name, plugin.Version);
+                }
+                catch
+                {
+                    // A partial load must not leak the collectible ALC or the child provider
+                    // (and its DbContext/HttpClient) — undo exactly what was already created,
+                    // in reverse order, before letting the caller see the failure.
+                    loaded?.TaskCts?.Cancel();
+                    loaded?.TaskCts?.Dispose();
+                    _loaded.TryRemove(plugin.Name, out _);
+                    if (part is not null)
+                    {
+                        partManager.ApplicationParts.Remove(part);
+                        assemblyMap.Remove(assembly);
+                    }
+                    PluginActionDescriptorChangeProvider.Instance.NotifyChanged();
+                    RefreshEndpoints();
+                    if (loaded is not null)
+                        await scheduler.RemoveAsync(plugin.Name, CancellationToken.None);
+                    if (provider is not null)
+                        await provider.DisposeAsync();
+                    alc.Unload();
+                    throw;
+                }
             }
             finally
             {

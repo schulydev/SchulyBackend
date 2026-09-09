@@ -5,6 +5,7 @@ using Schuly.Application.Behaviors;
 using Schuly.Domain.Enums;
 using System.Linq;
 using System.Security.Claims;
+using GetMySchoolsQuery = Schuly.Application.Queries.School.GetMySchoolsQuery;
 
 namespace Schuly.Tests
 {
@@ -128,6 +129,16 @@ namespace Schuly.Tests
             var behavior = new AuthorizationBehavior<TeacherOnlyMessage, string>(AccessorWithGroups("Administrator"));
 
             var result = await behavior.Handle(new TeacherOnlyMessage(), Next, CancellationToken.None);
+
+            await Assert.That(result).IsEqualTo("ok");
+        }
+
+        [Test]
+        public async Task Teacher_is_allowed_on_GetMySchoolsQuery()
+        {
+            var behavior = new AuthorizationBehavior<GetMySchoolsQuery, string>(AccessorWithGroups("Teacher"));
+
+            var result = await behavior.Handle(new GetMySchoolsQuery(), Next, CancellationToken.None);
 
             await Assert.That(result).IsEqualTo("ok");
         }

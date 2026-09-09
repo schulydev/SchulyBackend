@@ -115,7 +115,9 @@ cp .env.example .env
 | `S3_ACCESS_KEY` | SeaweedFS S3 access key. |
 | `S3_SECRET_KEY` | SeaweedFS S3 secret key. |
 | `AVATAR_SIGNING_KEY` | HMAC key for signing avatar URLs (required). Generate with `openssl rand -hex 32`. |
+| `DOCUMENTS_ENCRYPTION_KEY` | Master key for encrypting student documents at rest (required). Base64 of 32 bytes - generate with `openssl rand -base64 32`. Losing it makes stored documents unreadable. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SSL`, `SMTP_STARTTLS` | Optional. Mail server for the Keycloak realm - needed for verified emails and self-service password reset. |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Optional. Base64 of a Firebase service-account JSON, for push notifications - generate with `base64 -w0 service-account.json`. Leave unset to run without push. |
 
 > The S3 credentials **must match** `config/seaweedfs/s3-config.json` - update both
 > the `.env` and that file to the same values, or document storage won't authenticate.
@@ -274,6 +276,7 @@ KC_ADMIN_PASSWORD=change-me-kc-admin
 S3_ACCESS_KEY=schuly-access
 S3_SECRET_KEY=change-me-s3-secret
 AVATAR_SIGNING_KEY=change-me-avatar-signing-key
+DOCUMENTS_ENCRYPTION_KEY=change-me-documents-encryption-key
 ```
 
 **`Caddyfile`** - replace the whole file (the domain-based version obtains a TLS cert
