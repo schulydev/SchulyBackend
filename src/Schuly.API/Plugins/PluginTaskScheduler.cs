@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NCrontab;
 using Schuly.Infrastructure;
@@ -66,12 +67,73 @@ namespace Schuly.API.Plugins
         }
     }
 
-    public sealed class TickerQPluginTaskScheduler(IServiceScopeFactory scopeFactory, ILogger<TickerQPluginTaskScheduler> logger) : IPluginTaskScheduler
+    public sealed class TickerQPluginTaskScheduler(IServiceScopeFactory scopeFactory, ILogger<TickerQPluginTaskScheduler> logger) : IPluginTaskScheduler, IHostedService
     {
         // Must match the [TickerFunction] name on PluginTaskRunner.RunAsync.
         private const string FunctionName = "RunPluginTask";
 
-        public async Task SyncAsync(string plugin, IReadOnlyList<PluginTaskRegistration> tasks, CancellationToken cancellationToken = default)
+        // Plugin schedules are always 5-field (minute hour day-of-month month day-of-week),
+        // but TickerQ's CronScheduleCache parses every expression with NCrontab configured for
+        // seconds, i.e. it requires 6 fields (second minute hour day-of-month month day-of-week).
+        // Convert at the boundary in both directions rather than touching the abstractions package.
+        private static string ToTickerExpression(string cron)
+        {
+            var fields = cron.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            return fields.Length == 5 ? "0 " + string.Join(' ', fields) : cron.Trim();
+        }
+
+        private static string ToPluginExpression(string expression)
+        {
+            var fields = expression.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            return fields.Length == 6 ? string.Join(' ', fields[1..]) : expression;
+        }
+
+        // TickerQ only materialises TickerFunctionProvider.TickerFunctions (the registry the
+        // validator checks writes against) from its own IHostedService, which starts at host
+        // start. Schuly.API loads plugins - and calls SyncAsync/RemoveAsync - earlier than that,
+        // via UseSchulyPluginsAsync() before app.Run(). Any write attempted before TickerQ has
+        // built its registry fails validation and is dropped, so writes are queued here and
+        // only actually run once this scheduler's own StartAsync has fired, which the Program.cs
+        // hosted-service registration order guarantees happens after TickerQ's initializer.
+        private readonly object _gate = new();
+        private bool _ready;
+        private List<Func<CancellationToken, Task>> _pending = [];
+
+        private Task DispatchAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken)
+        {
+            lock (_gate)
+            {
+                if (_ready)
+                    return operation(cancellationToken);
+
+                _pending.Add(operation);
+                return Task.CompletedTask;
+            }
+        }
+
+        public Task SyncAsync(string plugin, IReadOnlyList<PluginTaskRegistration> tasks, CancellationToken cancellationToken = default) =>
+            DispatchAsync(ct => SyncCoreAsync(plugin, tasks, ct), cancellationToken);
+
+        public Task RemoveAsync(string plugin, CancellationToken cancellationToken = default) =>
+            DispatchAsync(ct => RemoveCoreAsync(plugin, ct), cancellationToken);
+
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            List<Func<CancellationToken, Task>> pending;
+            lock (_gate)
+            {
+                pending = _pending;
+                _pending = [];
+                _ready = true;
+            }
+
+            foreach (var operation in pending)
+                await operation(cancellationToken);
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        private async Task SyncCoreAsync(string plugin, IReadOnlyList<PluginTaskRegistration> tasks, CancellationToken cancellationToken)
         {
             try
             {
@@ -98,7 +160,7 @@ namespace Schuly.API.Plugins
 
                     if (match is not null)
                     {
-                        match.Expression = registration.Cron;
+                        match.Expression = ToTickerExpression(registration.Cron);
                         match.Request = request;
                         match.Retries = registration.Retries;
                         match.RetryIntervals = retryIntervals;
@@ -114,7 +176,7 @@ namespace Schuly.API.Plugins
                         {
                             Function = FunctionName,
                             Description = key,
-                            Expression = registration.Cron,
+                            Expression = ToTickerExpression(registration.Cron),
                             Request = request,
                             Retries = registration.Retries,
                             RetryIntervals = retryIntervals,
@@ -156,7 +218,7 @@ namespace Schuly.API.Plugins
             }
         }
 
-        public async Task RemoveAsync(string plugin, CancellationToken cancellationToken = default)
+        private async Task RemoveCoreAsync(string plugin, CancellationToken cancellationToken)
         {
             try
             {
@@ -227,7 +289,7 @@ namespace Schuly.API.Plugins
             var plugin = separator >= 0 ? ticker.Description[..separator] : ticker.Description;
             var name = separator >= 0 ? ticker.Description[(separator + 1)..] : string.Empty;
 
-            var schedule = CrontabSchedule.TryParse(ticker.Expression);
+            var schedule = ParseSchedule(ticker.Expression);
             var orderedOccurrences = occurrences.OrderByDescending(o => o.ExecutionTime).ToList();
 
             var lastStarted = orderedOccurrences.FirstOrDefault(o => o.Status != TickerStatus.Idle && o.Status != TickerStatus.Queued);
@@ -256,8 +318,14 @@ namespace Schuly.API.Plugins
                 intervalSeconds = (next2 - next1).TotalSeconds;
             }
 
-            return new PluginTaskStatus(plugin, name, ticker.Expression, intervalSeconds, lastStatus, lastStartedAt, lastFinishedAt, lastDurationMs, lastError, nextRunAt, totalRuns, totalFailures, consecutiveFailures);
+            return new PluginTaskStatus(plugin, name, ToPluginExpression(ticker.Expression), intervalSeconds, lastStatus, lastStartedAt, lastFinishedAt, lastDurationMs, lastError, nextRunAt, totalRuns, totalFailures, consecutiveFailures);
         }
+
+        // Stored expressions are 6-field (seconds-first), but a row written by an older build
+        // may still be 5-field, so fall back to a plain parse for those.
+        private static CrontabSchedule? ParseSchedule(string expression) =>
+            CrontabSchedule.TryParse(expression, new CrontabSchedule.ParseOptions { IncludingSeconds = true }) ??
+            CrontabSchedule.TryParse(expression);
 
         private static string MapStatus(TickerStatus status) => status switch
         {

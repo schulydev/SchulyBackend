@@ -41,7 +41,11 @@ builder.Services.AddScoped<RetentionSweeper>();
 builder.Services.AddHostedService<RetentionHostedService>();
 
 builder.Services.AddSchulyVault(builder.Configuration, builder.Environment.IsDevelopment());
-builder.Services.AddSingleton<IPluginTaskScheduler, TickerQPluginTaskScheduler>();
+builder.Services.AddSingleton<TickerQPluginTaskScheduler>();
+builder.Services.AddSingleton<IPluginTaskScheduler>(sp => sp.GetRequiredService<TickerQPluginTaskScheduler>());
+// Must stay registered after AddSchulyTickerQ: hosted services start in registration order, so this
+// flushes queued plugin ticker writes only after TickerQ's own initializer has built its function registry.
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TickerQPluginTaskScheduler>());
 builder.Services.AddSingleton<PluginTaskRunner>();
 builder.Services.AddSchulyPlugins(builder.Configuration, mvcBuilder);
 
