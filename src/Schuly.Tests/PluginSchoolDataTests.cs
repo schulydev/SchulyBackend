@@ -86,7 +86,7 @@ namespace Schuly.Tests
             var (_, studentId) = await ProvisionedAsync(db);
             var other = new PluginSchoolData(TestDb.NewContext(db), "Schuly.Plugin.Other");
 
-            await Assert.That(() => other.SyncAbsencesAsync(studentId, [new AbsenceRecord("a", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow)])).Throws<UnauthorizedAccessException>();
+            await Assert.That(async () => { await other.SyncAbsencesAsync(studentId, [new AbsenceRecord("a", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow)]); }).Throws<UnauthorizedAccessException>();
         }
 
         [Test]
@@ -167,7 +167,7 @@ namespace Schuly.Tests
         {
             var (data, studentId) = await ProvisionedAsync(nameof(Sync_rejects_a_blank_external_id));
 
-            await Assert.That(() => data.SyncAgendaAsync(studentId, [new AgendaRecord(" ", AgendaKind.Event, "x", DateTimeOffset.UtcNow)])).Throws<ArgumentException>();
+            await Assert.That(async () => { await data.SyncAgendaAsync(studentId, [new AgendaRecord(" ", AgendaKind.Event, "x", DateTimeOffset.UtcNow)]); }).Throws<ArgumentException>();
         }
 
         [Test]

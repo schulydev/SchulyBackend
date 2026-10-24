@@ -15,7 +15,7 @@ namespace Schuly.API.Plugins
         [JsonPropertyName("contract")] public string? Contract { get; init; }
 
         /// <summary>False only when the index says this build targets a contract the host can't load. Entries without a contract are checked at load time.</summary>
-        public bool SupportsContract(Version host) => Contract is null || !Version.TryParse(Contract, out var contract) || PluginContract.IsCompatible(contract, host);
+        public bool SupportsContract(System.Version host) => Contract is null || !System.Version.TryParse(Contract, out var contract) || PluginContract.IsCompatible(contract, host);
 
         public RegistryPlugin WithPinnedVersion(string? version)
         {
