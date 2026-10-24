@@ -4,6 +4,7 @@ namespace Schuly.Domain
 {
     public class Exam : Base
     {
+        public string? Source { get; set; }
         public required string Name { get; set; }
         public string? Description { get; set; }
         public ExamType Type { get; set; }

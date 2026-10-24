@@ -14,7 +14,7 @@ The solution (`Schuly.API.slnx`) is split into the following projects:
 | `Schuly.API` | Entry point. Controllers, OIDC wiring, OpenAPI/Scalar, startup migrations, plugin host registration. Owns the `Dockerfile`. |
 | `Schuly.Application` | CQRS commands/queries + Mediator handlers, DTOs, mappers, authorization and pipeline behaviors. **Must not** reference Infrastructure. |
 | `Schuly.Domain` | Pure entities (`School`, `Class`, `Exam`, `Grade`, `Absence`, `AgendaEntry`, `ApplicationUser`, `SchoolUser`, `Teacher`, `SchoolSystem`, `SemesterReport`, `StudentDocument`, …). Each inherits `Base` (`Id`, `CreatedAt`, `UpdatedAt`). |
-| `Schuly.Infrastructure` | `SchulyDbContext`, OIDC/user services, storage and the plugin secrets vault, repositories. |
+| `Schuly.Infrastructure` | `SchulyDbContext`, OIDC/user services, storage and the plugin secrets vault, the plugin contract services (`Plugins/`), repositories. |
 | `Schuly.Tests` / `Schuly.Tests.Plugin` | Test projects (TUnit). |
 
 `Schuly.Plugin.Abstractions` is consumed as a **NuGet `PackageReference`**, not a
@@ -75,3 +75,28 @@ scheduled on TickerQ and dispatched back into the owning plugin's DI scope by na
 Plugin requests execute inside the owning plugin's DI scope via
 `PluginScopeMiddleware`. See [Plugin management](plugin-management.md) for the
 registry, hot-swap, background tasks, and admin endpoints.
+
+### What a plugin can reach
+
+Plugins never get `SchulyDbContext` or the backend's entities. The host registers the
+contract services in each plugin's container:
+
+| Service | Backed by |
+|---|---|
+| `ISchoolData` | `PluginSchoolData` over `SchulyDbContext`, stamped with the plugin's assembly name as `Source` |
+| `IPluginVault` | The persistent vault, namespace `plugin:<Name>` |
+| `IPluginFileStore` | `IDocumentStorage` (encrypted S3) |
+| `IPluginUserContext` | The current request's user |
+
+Synced rows (`AgendaEntry`, `Absence`, `Grade`, `StudentDocument`) carry `Source` and
+`ExternalId`, unique per student; `Source` null means the row was entered by hand and no
+plugin touches it. A plugin may only write to students whose `SchoolUser.Source` is its own;
+`EnsureStudentAsync` adopts a student that has no source yet.
+
+### Contract compatibility
+
+Before instantiating a plugin, `PluginContract` checks the `Schuly.Plugin.Abstractions`
+version the plugin was built against. Before 1.0 the MAJOR.MINOR must match; from 1.0 the
+MAJOR must match and the plugin's MINOR may not be newer than the host's. A plugin that
+references `Schuly.Domain`, `Schuly.Infrastructure`, `Schuly.Application` or `Schuly.API` is
+refused too. Refusals name both versions in the error.

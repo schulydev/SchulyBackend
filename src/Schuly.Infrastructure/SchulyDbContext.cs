@@ -1,4 +1,6 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Schuly.Domain;
 
 namespace Schuly.Infrastructure
@@ -112,6 +114,7 @@ namespace Schuly.Infrastructure
                 entity.Property(su => su.Street).HasMaxLength(200);
                 entity.Property(su => su.City).HasMaxLength(100);
                 entity.Property(su => su.Zip).HasMaxLength(20);
+                entity.Property(su => su.Source).HasMaxLength(SourceMaxLength);
                 entity.Property(su => su.Role).IsRequired();
 
                 entity.HasOne(su => su.ApplicationUser)
@@ -149,12 +152,14 @@ namespace Schuly.Infrastructure
                 // a composite (SchoolUserId, ExamId) only helps when filtering
                 // by the leading column.
                 entity.HasIndex(g => g.ExamId);
+                ConfigureSynced(entity, g => new { g.SchoolUserId, g.Source, g.ExternalId });
             });
 
             modelBuilder.Entity<Exam>(entity =>
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Name).HasMaxLength(200);
+                entity.Property(e => e.Source).HasMaxLength(SourceMaxLength);
                 // EF creates an FK index on ClassId automatically.
                 // Composite for "exams in class X ordered by date".
                 entity.HasIndex(e => new { e.ClassId, e.Date });
@@ -170,6 +175,7 @@ namespace Schuly.Infrastructure
                 entity.HasKey(c => c.Id);
                 entity.Property(c => c.Name).HasMaxLength(100);
                 entity.Property(c => c.Description).HasMaxLength(1000);
+                entity.Property(c => c.Source).HasMaxLength(SourceMaxLength);
                 // Name unique per school — different schools can both have a "Math" class.
                 // The leading SchoolId also serves FK lookups, so no separate index.
                 entity.HasIndex(c => new { c.SchoolId, c.Name }).IsUnique();
@@ -219,6 +225,7 @@ namespace Schuly.Infrastructure
                 // scopes so each is fast for "events between two dates".
                 entity.HasIndex(ae => new { ae.SchoolId, ae.Date });
                 entity.HasIndex(ae => new { ae.SchoolUserId, ae.Date });
+                ConfigureSynced(entity, ae => new { ae.SchoolUserId, ae.Source, ae.ExternalId });
 
                 entity.HasOne(ae => ae.Class)
                     .WithMany(c => c.Agenda)
@@ -261,6 +268,7 @@ namespace Schuly.Infrastructure
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(a => new { a.SchoolUserId, a.From, a.Until, a.Type });
+                ConfigureSynced(entity, a => new { a.SchoolUserId, a.Source, a.ExternalId });
 
                 // From must precede Until — otherwise period math downstream
                 // (durations, overlaps) silently produces nonsense.
@@ -286,6 +294,7 @@ namespace Schuly.Infrastructure
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(d => new { d.SchoolUserId, d.Category });
+                ConfigureSynced(entity, d => new { d.SchoolUserId, d.Source, d.ExternalId });
             });
 
             modelBuilder.Entity<SemesterReport>(entity =>
@@ -374,6 +383,16 @@ namespace Schuly.Infrastructure
                 entity.Property(v => v.Key).HasMaxLength(200).IsRequired();
                 entity.HasIndex(v => new { v.PluginName, v.Key }).IsUnique();
             });
+        }
+
+        public const int SourceMaxLength = 200;
+        public const int ExternalIdMaxLength = 300;
+
+        private static void ConfigureSynced<T>(EntityTypeBuilder<T> entity, Expression<Func<T, object?>> syncKey) where T : class, ISyncedEntity
+        {
+            entity.Property(e => e.Source).HasMaxLength(SourceMaxLength);
+            entity.Property(e => e.ExternalId).HasMaxLength(ExternalIdMaxLength);
+            entity.HasIndex(syncKey).IsUnique().HasFilter("\"Source\" IS NOT NULL");
         }
 
         public override int SaveChanges()

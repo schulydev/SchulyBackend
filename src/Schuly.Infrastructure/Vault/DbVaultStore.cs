@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Schuly.Domain;
+using Schuly.Plugin.Abstractions;
 
 namespace Schuly.Infrastructure.Vault
 {

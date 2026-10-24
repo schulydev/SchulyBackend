@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text;
 using Schuly.Infrastructure.Vault;
+using Schuly.Plugin.Abstractions;
 
 namespace Schuly.Tests
 {

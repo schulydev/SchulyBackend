@@ -1,7 +1,10 @@
 namespace Schuly.Domain
 {
-    public class Grade : Base
+    public class Grade : Base, ISyncedEntity
     {
+        public string? Source { get; set; }
+        public string? ExternalId { get; set; }
+
         public decimal Score { get; set; }
         public decimal Weighting { get; set; }
 

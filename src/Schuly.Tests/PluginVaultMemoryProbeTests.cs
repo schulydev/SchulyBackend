@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using Schuly.Infrastructure.Vault;
+using Schuly.Plugin.Abstractions;
 
 namespace Schuly.Tests
 {

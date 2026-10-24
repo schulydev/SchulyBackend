@@ -2,8 +2,11 @@ using Schuly.Domain.Enums;
 
 namespace Schuly.Domain
 {
-    public class Absence : Base
+    public class Absence : Base, ISyncedEntity
     {
+        public string? Source { get; set; }
+        public string? ExternalId { get; set; }
+
         public required string Reason { get; set; } = "Absent";
         public required AbsenceType Type { get; set; }
         public required DateTime From { get; set; }

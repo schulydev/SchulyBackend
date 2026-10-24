@@ -4,6 +4,7 @@ namespace Schuly.Domain
 {
     public class SchoolUser : Base
     {
+        public string? Source { get; set; }
         public Guid ApplicationUserId { get; set; }
         public ApplicationUser? ApplicationUser { get; set; }
 

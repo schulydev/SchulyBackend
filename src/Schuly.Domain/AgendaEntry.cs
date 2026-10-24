@@ -2,8 +2,11 @@ using Schuly.Domain.Enums;
 
 namespace Schuly.Domain
 {
-    public class AgendaEntry : Base
+    public class AgendaEntry : Base, ISyncedEntity
     {
+        public string? Source { get; set; }
+        public string? ExternalId { get; set; }
+
         public required AgendaEntryType EntryType { get; set; }
         public required string Title { get; set; }
         public string? Description { get; set; }

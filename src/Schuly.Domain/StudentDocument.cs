@@ -1,7 +1,10 @@
 namespace Schuly.Domain
 {
-    public class StudentDocument : Base
+    public class StudentDocument : Base, ISyncedEntity
     {
+        public string? Source { get; set; }
+        public string? ExternalId { get; set; }
+
         public Guid SchoolUserId { get; set; }
         public SchoolUser? SchoolUser { get; set; }
 

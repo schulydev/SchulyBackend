@@ -2,6 +2,7 @@ namespace Schuly.Domain
 {
     public class Class : Base
     {
+        public string? Source { get; set; }
         public required string Name { get; set; }
         public string? Description { get; set; }
 

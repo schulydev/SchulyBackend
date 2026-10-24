@@ -61,6 +61,10 @@ namespace Schuly.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<DateTime>("From")
                         .HasColumnType("timestamp with time zone");
 
@@ -72,6 +76,10 @@ namespace Schuly.Infrastructure.Migrations
                     b.Property<Guid>("SchoolUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Source")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<int>("Type")
                         .HasColumnType("integer");
 
@@ -82,6 +90,10 @@ namespace Schuly.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SchoolUserId", "Source", "ExternalId")
+                        .IsUnique()
+                        .HasFilter("\"Source\" IS NOT NULL");
 
                     b.HasIndex("SchoolUserId", "From", "Until", "Type");
 
@@ -115,6 +127,10 @@ namespace Schuly.Infrastructure.Migrations
                     b.Property<int>("EntryType")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<string>("Place")
                         .HasColumnType("text");
 
@@ -123,6 +139,10 @@ namespace Schuly.Infrastructure.Migrations
 
                     b.Property<Guid?>("SchoolUserId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -139,6 +159,10 @@ namespace Schuly.Infrastructure.Migrations
                     b.HasIndex("SchoolId", "Date");
 
                     b.HasIndex("SchoolUserId", "Date");
+
+                    b.HasIndex("SchoolUserId", "Source", "ExternalId")
+                        .IsUnique()
+                        .HasFilter("\"Source\" IS NOT NULL");
 
                     b.ToTable("AgendaEntries", t =>
                         {
@@ -210,6 +234,10 @@ namespace Schuly.Infrastructure.Migrations
 
                     b.Property<Guid>("SchoolId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -288,6 +316,10 @@ namespace Schuly.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("Source")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<int>("Type")
                         .HasColumnType("integer");
 
@@ -313,12 +345,20 @@ namespace Schuly.Infrastructure.Migrations
                     b.Property<Guid>("ExamId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<Guid>("SchoolUserId")
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("Score")
                         .HasPrecision(4, 2)
                         .HasColumnType("numeric(4,2)");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -332,6 +372,10 @@ namespace Schuly.Infrastructure.Migrations
                     b.HasIndex("ExamId");
 
                     b.HasIndex("SchoolUserId", "ExamId");
+
+                    b.HasIndex("SchoolUserId", "Source", "ExternalId")
+                        .IsUnique()
+                        .HasFilter("\"Source\" IS NOT NULL");
 
                     b.ToTable("Grades");
                 });
@@ -607,6 +651,10 @@ namespace Schuly.Infrastructure.Migrations
                     b.Property<Guid>("SchoolId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Source")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<int>("State")
                         .HasColumnType("integer");
 
@@ -767,6 +815,10 @@ namespace Schuly.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<string>("FileName")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
@@ -791,6 +843,10 @@ namespace Schuly.Infrastructure.Migrations
                     b.Property<Guid>("SchoolUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Source")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -802,6 +858,10 @@ namespace Schuly.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("SchoolUserId", "Category");
+
+                    b.HasIndex("SchoolUserId", "Source", "ExternalId")
+                        .IsUnique()
+                        .HasFilter("\"Source\" IS NOT NULL");
 
                     b.ToTable("StudentDocuments");
                 });

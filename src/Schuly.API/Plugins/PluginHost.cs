@@ -9,6 +9,7 @@ using Npgsql;
 using Schuly.Application.Abstractions;
 using Schuly.Domain;
 using Schuly.Infrastructure;
+using Schuly.Infrastructure.Plugins;
 using Schuly.Infrastructure.Storage;
 using Schuly.Infrastructure.Vault;
 using Schuly.Plugin.Abstractions;
@@ -136,6 +137,12 @@ namespace Schuly.API.Plugins
                 // Load the main assembly from a byte copy so the DLL file isn't locked —
                 // lets update/remove replace it while the old context is still unloading.
                 var assembly = alc.LoadFromStream(new MemoryStream(await File.ReadAllBytesAsync(dllPath, ct)));
+
+                if (PluginContract.Incompatibility(assembly.GetReferencedAssemblies(), PluginContract.HostVersion) is { } reason)
+                {
+                    alc.Unload();
+                    throw new InvalidOperationException($"Plugin {manifest.Name} can't be loaded: {reason}");
+                }
 
                 var pluginType = assembly.GetTypes()
                     .FirstOrDefault(t => typeof(ISchulyPlugin).IsAssignableFrom(t) && t is { IsAbstract: false, IsInterface: false });
@@ -269,17 +276,17 @@ namespace Schuly.API.Plugins
             // e.g. when the host reads a plugin's catalog descriptor at load time.
             services.AddScoped<IPluginUserContext>(_ => new DeferredPluginUserContext(rootProvider));
 
-            services.AddKeyedSingleton<IPluginVault>(plugin.Name, (sp, _) =>
+            services.AddSingleton<IPluginVault>(sp =>
                 sp.GetRequiredService<IPluginVaultFactory>().GetVault($"plugin:{plugin.Name}"));
 
-            // Host-owned scoped services plugin code writes against — the main database
-            // and blob storage. They're scoped, so they can't be forwarded as singletons:
-            // each plugin scope gets its own host scope to resolve them from, disposed
-            // with the plugin scope. Unlike the HttpContext bridge above this works in
-            // both request (unified login) and background-task (sync) scopes.
+            // Plugins reach the main database and blob storage only through the contract
+            // services below. The host-owned ones behind them are scoped, so each plugin
+            // scope gets its own host scope to resolve them from, disposed with the plugin
+            // scope; this works in both request (login) and background-task (sync) scopes.
+            var source = PluginSource(plugin);
             services.AddScoped(_ => new HostServiceScope(rootProvider));
-            services.AddScoped(sp => sp.GetRequiredService<HostServiceScope>().Services.GetRequiredService<SchulyDbContext>());
-            services.AddScoped(sp => sp.GetRequiredService<HostServiceScope>().Services.GetRequiredService<IDocumentStorage>());
+            services.AddScoped<ISchoolData>(sp => new PluginSchoolData(sp.GetRequiredService<HostServiceScope>().Services.GetRequiredService<SchulyDbContext>(), source));
+            services.AddScoped<IPluginFileStore>(sp => new PluginFileStore(sp.GetRequiredService<HostServiceScope>().Services.GetRequiredService<IDocumentStorage>()));
 
             // Plugin services that inject IConfiguration see the host config with the
             // plugin's own plugins-config (yml + SCHULY_PLUGIN_* env) overlaid on top, so
@@ -344,6 +351,8 @@ namespace Schuly.API.Plugins
 
         private void RefreshEndpoints() =>
             endpointSource.Replace(_loaded.Values.SelectMany(p => p.Endpoints));
+
+        internal static string PluginSource(ISchulyPlugin plugin) => plugin.GetType().Assembly.GetName().Name ?? plugin.Name;
 
         private string PluginConnectionString(string pluginName)
         {

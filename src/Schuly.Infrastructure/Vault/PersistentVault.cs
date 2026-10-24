@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Schuly.Plugin.Abstractions;
 
 namespace Schuly.Infrastructure.Vault
 {
