@@ -302,7 +302,7 @@ namespace Schuly.Infrastructure
                 entity.HasKey(r => r.Id);
                 entity.Property(r => r.ProgramCode).HasMaxLength(50).IsRequired();
                 entity.Property(r => r.ClassName).HasMaxLength(100).IsRequired();
-                entity.Property(r => r.PromotionDecision).HasMaxLength(10);
+                entity.Property(r => r.PromotionDecision).HasMaxLength(100);
                 entity.Property(r => r.GradeAverage).HasPrecision(4, 2);
                 entity.Property(r => r.Source).HasMaxLength(SourceMaxLength);
 

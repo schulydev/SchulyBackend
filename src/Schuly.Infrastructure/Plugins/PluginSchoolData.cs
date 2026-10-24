@@ -241,7 +241,7 @@ namespace Schuly.Infrastructure.Plugins
                 }
 
                 report.ClassName = Clip(record.ClassName, 100) ?? "";
-                report.PromotionDecision = Clip(record.PromotionDecision, 10);
+                report.PromotionDecision = Clip(record.PromotionDecision, 100);
                 report.GradeAverage = record.GradeAverage;
                 report.ExcusedAbsences = record.ExcusedAbsences;
                 report.UnexcusedAbsences = record.UnexcusedAbsences;

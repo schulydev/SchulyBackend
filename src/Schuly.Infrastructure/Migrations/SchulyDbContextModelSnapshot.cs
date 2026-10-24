@@ -714,8 +714,8 @@ namespace Schuly.Infrastructure.Migrations
                         .HasColumnType("character varying(50)");
 
                     b.Property<string>("PromotionDecision")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid>("SchoolUserId")
                         .HasColumnType("uuid");
