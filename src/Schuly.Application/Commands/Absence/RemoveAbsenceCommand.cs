@@ -20,6 +20,9 @@ namespace Schuly.Application.Commands.Absence
             if (absence == null)
                 return Result.Failure($"Absence with ID '{command.AbsenceId}' not found");
 
+            if (ManualEdit.RefuseSynced(absence) is { } synced)
+                return synced;
+
             if (!userService.IsCurrentUserAdmin())
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);

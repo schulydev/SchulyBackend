@@ -20,6 +20,8 @@ namespace Schuly.Application.Commands.Agenda
                        + (command.SchoolUserId.HasValue ? 1 : 0);
             if (scopes != 1)
                 return Result.Failure("Exactly one of ClassId / SchoolId / SchoolUserId must be set");
+            if (ManualEdit.RequireOffset(command.Date) is { } invalid)
+                return invalid;
 
             if (!userService.IsCurrentUserAdmin())
             {

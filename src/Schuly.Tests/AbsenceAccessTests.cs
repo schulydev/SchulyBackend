@@ -84,7 +84,7 @@ namespace Schuly.Tests
 
             var handler = new CreateAbsenceCommandHandler(ctx, new FakeUserService(false, a.Id));
             var result = await handler.Handle(
-                new CreateAbsenceCommand("Forged", default, default, default, b.Id), CancellationToken.None);
+                new CreateAbsenceCommand("Forged", default, DateTime.UnixEpoch, DateTime.UnixEpoch, b.Id), CancellationToken.None);
 
             await Assert.That(result.IsSuccess).IsFalse();
             await Assert.That(result.Error).IsEqualTo("Forbidden");

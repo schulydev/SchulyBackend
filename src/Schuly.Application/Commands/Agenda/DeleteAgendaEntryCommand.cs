@@ -20,6 +20,9 @@ namespace Schuly.Application.Commands.Agenda
             if (agendaEntry == null)
                 return Result.Failure($"Agenda entry with ID '{command.AgendaEntryId}' not found");
 
+            if (ManualEdit.RefuseSynced(agendaEntry) is { } synced)
+                return synced;
+
             if (!userService.IsCurrentUserAdmin())
             {
                 var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);

@@ -15,6 +15,9 @@ namespace Schuly.Application.Commands.Absence
     {
         public async ValueTask<Result> Handle(UpdateAbsenceCommand command, CancellationToken cancellationToken)
         {
+            if (ManualEdit.RequireOffset(command.From, command.Until) is { } invalid)
+                return invalid;
+
             // Normalise before comparing: From and Until can arrive with different DateTimeKinds.
             if (UtcDateTime.Normalize(command.From) > UtcDateTime.Normalize(command.Until))
                 return Result.Failure("From must not be after Until");
@@ -24,6 +27,9 @@ namespace Schuly.Application.Commands.Absence
 
             if (absence == null)
                 return Result.Failure($"Absence with ID '{command.AbsenceId}' not found");
+
+            if (ManualEdit.RefuseSynced(absence) is { } synced)
+                return synced;
 
             if (!userService.IsCurrentUserAdmin())
             {

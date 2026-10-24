@@ -93,6 +93,15 @@ Synced rows (`AgendaEntry`, `Absence`, `Grade`, `StudentDocument`) carry `Source
 plugin touches it. A plugin may only write to students whose `SchoolUser.Source` is its own;
 a student with no source yet is adopted by the first plugin that provisions or syncs it.
 
+### Hand-entered data
+
+Schuly works without any plugin. Under `api/me` a signed-in user creates a school of their
+own (`POST api/me/schools`, they become its student) and adds, changes and removes their own
+grades (`api/me/grades`; the subject and exam are created as needed). Absences and agenda
+entries use the regular endpoints. Hand-entered rows have `Source` null, so no sync touches
+them; a manual change or delete of a synced row is refused with the plugin's name. Times on
+manual writes must carry a UTC offset (`...Z` or `+02:00`); offset-less times are rejected.
+
 ### Contract compatibility
 
 Before instantiating a plugin, `PluginContract` checks the `Schuly.Plugin.Abstractions`
