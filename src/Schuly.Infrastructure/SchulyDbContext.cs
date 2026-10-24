@@ -304,6 +304,7 @@ namespace Schuly.Infrastructure
                 entity.Property(r => r.ClassName).HasMaxLength(100).IsRequired();
                 entity.Property(r => r.PromotionDecision).HasMaxLength(10);
                 entity.Property(r => r.GradeAverage).HasPrecision(4, 2);
+                entity.Property(r => r.Source).HasMaxLength(SourceMaxLength);
 
                 entity.HasOne(r => r.SchoolUser)
                     .WithMany(su => su.SemesterReports)

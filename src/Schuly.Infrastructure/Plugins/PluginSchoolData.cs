@@ -210,6 +210,75 @@ namespace Schuly.Infrastructure.Plugins
             return new SyncResult(added, updated);
         }
 
+        public async Task<SyncResult> SyncSemesterReportsAsync(Guid schoolUserId, IReadOnlyCollection<SemesterReportRecord> reports, CancellationToken cancellationToken = default)
+        {
+            await OwnedStudentAsync(schoolUserId, cancellationToken);
+            var existing = await db.SemesterReports
+                .Include(r => r.Subjects)
+                .Where(r => r.SchoolUserId == schoolUserId)
+                .ToListAsync(cancellationToken);
+            var byKey = existing.ToDictionary(r => (r.ProgramCode, r.SchoolYearStart, r.SemesterHalf));
+            var (added, updated) = (0, 0);
+
+            foreach (var record in reports.GroupBy(r => (Clip(r.ProgramCode, 50)!, r.SchoolYearStart, r.SemesterHalf)).Select(g => g.Last()))
+            {
+                if (record.SemesterHalf is not (1 or 2))
+                    throw new ArgumentException($"SemesterHalf must be 1 or 2, got {record.SemesterHalf}.", nameof(reports));
+                var key = (Clip(record.ProgramCode, 50)!, record.SchoolYearStart, record.SemesterHalf);
+                if (byKey.TryGetValue(key, out var report) && report.Source is not null && report.Source != Source)
+                    continue;
+
+                var isNew = report is null;
+                if (report is null)
+                {
+                    report = new SemesterReport { Source = Source, SchoolUserId = schoolUserId, ProgramCode = key.Item1, SchoolYearStart = record.SchoolYearStart, SemesterHalf = record.SemesterHalf, ClassName = "" };
+                    db.SemesterReports.Add(report);
+                    byKey[key] = report;
+                }
+                else if (report.Source is null)
+                {
+                    continue;
+                }
+
+                report.ClassName = Clip(record.ClassName, 100) ?? "";
+                report.PromotionDecision = Clip(record.PromotionDecision, 10);
+                report.GradeAverage = record.GradeAverage;
+                report.ExcusedAbsences = record.ExcusedAbsences;
+                report.UnexcusedAbsences = record.UnexcusedAbsences;
+                report.TotalAbsences = record.ExcusedAbsences is null && record.UnexcusedAbsences is null ? null : (record.ExcusedAbsences ?? 0) + (record.UnexcusedAbsences ?? 0);
+                var subjectsChanged = ReplaceSubjects(report, record.Subjects);
+
+                if (isNew) added++;
+                else if (subjectsChanged || IsModified(report)) updated++;
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
+            return new SyncResult(added, updated);
+        }
+
+        private bool ReplaceSubjects(SemesterReport report, IReadOnlyList<SemesterSubjectRecord> subjects)
+        {
+            var wanted = subjects
+                .GroupBy(s => Clip(s.SubjectCode, 50)!)
+                .Select(g => g.Last())
+                .Select(s => (Code: Clip(s.SubjectCode, 50)!, Name: Clip(s.SubjectName, 200)!, s.Grade, Marker: Clip(s.Marker, 20), Type: Clip(s.SubjectTypeMarker, 10)))
+                .OrderBy(s => s.Code, StringComparer.Ordinal)
+                .ToList();
+            var current = report.Subjects
+                .Select(s => (Code: s.SubjectCode, Name: s.SubjectName, s.Grade, s.Marker, Type: s.SubjectTypeMarker))
+                .OrderBy(s => s.Code, StringComparer.Ordinal)
+                .ToList();
+            if (wanted.SequenceEqual(current))
+                return false;
+
+            foreach (var subject in report.Subjects.ToList())
+                db.SemesterSubjectGrades.Remove(subject);
+            report.Subjects.Clear();
+            foreach (var s in wanted)
+                report.Subjects.Add(new SemesterSubjectGrade { SubjectCode = s.Code, SubjectName = s.Name, Grade = s.Grade, Marker = s.Marker, SubjectTypeMarker = s.Type });
+            return true;
+        }
+
         public async Task<IReadOnlySet<string>> GetDocumentIdsAsync(Guid schoolUserId, CancellationToken cancellationToken = default)
         {
             await OwnedStudentAsync(schoolUserId, cancellationToken);

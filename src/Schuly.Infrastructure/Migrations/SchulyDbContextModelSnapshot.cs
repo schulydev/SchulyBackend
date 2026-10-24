@@ -726,6 +726,10 @@ namespace Schuly.Infrastructure.Migrations
                     b.Property<int>("SemesterHalf")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Source")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<int?>("TotalAbsences")
                         .HasColumnType("integer");
 

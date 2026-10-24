@@ -170,6 +170,48 @@ namespace Schuly.Tests
             await Assert.That(async () => { await data.SyncAgendaAsync(studentId, [new AgendaRecord(" ", AgendaKind.Event, "x", DateTimeOffset.UtcNow)]); }).Throws<ArgumentException>();
         }
 
+        private static SemesterReportRecord Report(decimal mathGrade, params SemesterSubjectRecord[] extra) =>
+            new("BM1TALS15", 2025, 1, "BM23d", [new SemesterSubjectRecord("M", "Mathematik", mathGrade, SubjectTypeMarker: "r"), .. extra], "def.", 4.8m, 3, 0);
+
+        [Test]
+        public async Task SyncSemesterReports_adds_then_updates_only_on_change()
+        {
+            const string db = nameof(SyncSemesterReports_adds_then_updates_only_on_change);
+            var (data, studentId) = await ProvisionedAsync(db);
+
+            var first = await data.SyncSemesterReportsAsync(studentId, [Report(5.0m, new SemesterSubjectRecord("EGK", "Erweiterte Grundkompetenzen", Marker: "disp"))]);
+            var same = await data.SyncSemesterReportsAsync(studentId, [Report(5.0m, new SemesterSubjectRecord("EGK", "Erweiterte Grundkompetenzen", Marker: "disp"))]);
+            var changed = await data.SyncSemesterReportsAsync(studentId, [Report(5.5m)]);
+
+            await Assert.That(first).IsEqualTo(new SyncResult(1, 0));
+            await Assert.That(same).IsEqualTo(new SyncResult(0, 0));
+            await Assert.That(changed).IsEqualTo(new SyncResult(0, 1));
+
+            using var ctx = TestDb.NewContext(db);
+            var report = await ctx.SemesterReports.Include(r => r.Subjects).SingleAsync();
+            await Assert.That(report.Source).IsEqualTo(Source);
+            await Assert.That(report.TotalAbsences).IsEqualTo(3);
+            await Assert.That(report.Subjects.Single().Grade).IsEqualTo(5.5m);
+        }
+
+        [Test]
+        public async Task SyncSemesterReports_leaves_a_hand_entered_report_alone()
+        {
+            const string db = nameof(SyncSemesterReports_leaves_a_hand_entered_report_alone);
+            var (data, studentId) = await ProvisionedAsync(db);
+            using (var ctx = TestDb.NewContext(db))
+            {
+                ctx.SemesterReports.Add(new SemesterReport { SchoolUserId = studentId, ProgramCode = "BM1TALS15", SchoolYearStart = 2025, SemesterHalf = 1, ClassName = "mine" });
+                await ctx.SaveChangesAsync();
+            }
+
+            var result = await data.SyncSemesterReportsAsync(studentId, [Report(4.0m)]);
+
+            await Assert.That(result).IsEqualTo(new SyncResult(0, 0));
+            using var check = TestDb.NewContext(db);
+            await Assert.That((await check.SemesterReports.SingleAsync()).ClassName).IsEqualTo("mine");
+        }
+
         [Test]
         public async Task An_unchanged_resync_produces_no_notifications()
         {

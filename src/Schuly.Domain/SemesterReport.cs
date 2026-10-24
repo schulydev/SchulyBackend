@@ -2,6 +2,7 @@ namespace Schuly.Domain
 {
     public class SemesterReport : Base
     {
+        public string? Source { get; set; }
         public Guid SchoolUserId { get; set; }
         public SchoolUser? SchoolUser { get; set; }
 
