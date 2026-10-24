@@ -90,6 +90,24 @@ namespace Schuly.Tests
         }
 
         [Test]
+        public async Task Sync_adopts_a_student_provisioned_before_sources_existed()
+        {
+            const string db = nameof(Sync_adopts_a_student_provisioned_before_sources_existed);
+            var student = TestDb.NewSchoolUser(Guid.NewGuid());
+            using (var ctx = TestDb.NewContext(db))
+            {
+                ctx.SchoolUsers.Add(student);
+                await ctx.SaveChangesAsync();
+            }
+
+            var result = await new PluginSchoolData(TestDb.NewContext(db), Source).SyncAbsencesAsync(student.Id, [new AbsenceRecord("a", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow)]);
+
+            await Assert.That(result).IsEqualTo(new SyncResult(1, 0));
+            using var check = TestDb.NewContext(db);
+            await Assert.That((await check.SchoolUsers.SingleAsync()).Source).IsEqualTo(Source);
+        }
+
+        [Test]
         public async Task Sync_leaves_manual_rows_alone()
         {
             const string db = nameof(Sync_leaves_manual_rows_alone);

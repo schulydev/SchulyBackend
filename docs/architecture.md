@@ -91,7 +91,7 @@ contract services in each plugin's container:
 Synced rows (`AgendaEntry`, `Absence`, `Grade`, `StudentDocument`) carry `Source` and
 `ExternalId`, unique per student; `Source` null means the row was entered by hand and no
 plugin touches it. A plugin may only write to students whose `SchoolUser.Source` is its own;
-`EnsureStudentAsync` adopts a student that has no source yet.
+a student with no source yet is adopted by the first plugin that provisions or syncs it.
 
 ### Contract compatibility
 

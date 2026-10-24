@@ -225,8 +225,10 @@ namespace Schuly.Infrastructure.Plugins
             IQueryable<SchoolUser> query = withClasses ? db.SchoolUsers.Include(su => su.Classes) : db.SchoolUsers;
             var student = await query.FirstOrDefaultAsync(su => su.Id == schoolUserId, cancellationToken)
                 ?? throw new InvalidOperationException($"Student {schoolUserId} does not exist.");
-            if (student.Source != Source)
-                throw new UnauthorizedAccessException($"Student {schoolUserId} was not provisioned by {Source}.");
+            if (student.Source is null)
+                student.Source = Source;
+            else if (student.Source != Source)
+                throw new UnauthorizedAccessException($"Student {schoolUserId} is managed by {student.Source}, not {Source}.");
             return student;
         }
 
