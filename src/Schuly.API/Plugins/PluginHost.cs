@@ -92,39 +92,47 @@ namespace Schuly.API.Plugins
 
             using var hostScope = rootProvider.CreateScope();
             var db = hostScope.ServiceProvider.GetRequiredService<SchulyDbContext>();
-            var existingKeys = await db.SchoolSystems.Select(s => s.Key).ToListAsync(ct);
+            var existing = await db.SchoolSystems.ToDictionaryAsync(s => s.Key, ct);
 
-            var missing = descriptors
-                .Where(d => !existingKeys.Contains(d.Key))
-                .Select(d => new SchoolSystem
+            // Name, logo, enabled and order stay as an admin set them; how to log in follows the plugin.
+            var added = 0;
+            foreach (var d in descriptors)
+            {
+                if (!existing.TryGetValue(d.Key, out var system))
                 {
-                    Key = d.Key,
-                    DisplayName = d.DisplayName,
-                    LoginMethod = d.LoginMethod,
-                    LogoUrl = d.LogoUrl,
-                    PrivateAuthStrategy = d.PrivateAuthStrategy,
-                    StatelessBasePath = d.StatelessBasePath,
-                    PluginBasePath = d.PluginBasePath,
-                    Enabled = d.Enabled,
-                    SortOrder = d.SortOrder,
-                    LoginFields = d.LoginFields.Select(f => new SchoolSystemLoginField
+                    system = new SchoolSystem
                     {
-                        Key = f.Key,
-                        Label = f.Label,
-                        Type = f.Type,
-                        Placeholder = f.Placeholder,
-                        DefaultValue = f.DefaultValue,
-                        Required = f.Required,
-                    }).ToList(),
-                })
-                .ToList();
+                        Key = d.Key,
+                        DisplayName = d.DisplayName,
+                        LoginMethod = d.LoginMethod,
+                        LogoUrl = d.LogoUrl,
+                        Enabled = d.Enabled,
+                        SortOrder = d.SortOrder,
+                    };
+                    db.SchoolSystems.Add(system);
+                    added++;
+                }
 
-            if (missing.Count == 0)
-                return;
+                system.LoginMethod = d.LoginMethod;
+                system.PrivateAuthStrategy = d.PrivateAuthStrategy;
+                system.StatelessBasePath = d.StatelessBasePath;
+                system.PluginBasePath = d.PluginBasePath;
+                system.LoginMethodPath = d.LoginMethodPath;
+                system.LoginFields = d.LoginFields.Select(f => new SchoolSystemLoginField
+                {
+                    Key = f.Key,
+                    Label = f.Label,
+                    Type = f.Type,
+                    Placeholder = f.Placeholder,
+                    DefaultValue = f.DefaultValue,
+                    Required = f.Required,
+                    ReplacedByLinkedAccount = f.ReplacedByLinkedAccount,
+                }).ToList();
+            }
 
-            await db.SchoolSystems.AddRangeAsync(missing, ct);
             await db.SaveChangesAsync(ct);
-            logger.LogInformation("Seeded {Count} school system(s) from plugin {Name}", missing.Count, loaded.Name);
+            if (added > 0)
+                logger.LogInformation("Seeded {Count} school system(s) from plugin {Name}", added, loaded.Name);
         }
 
         public async Task LoadAsync(PluginManifest manifest, string pluginDirectory, CancellationToken ct = default)
@@ -287,6 +295,7 @@ namespace Schuly.API.Plugins
             services.AddScoped(_ => new HostServiceScope(rootProvider));
             services.AddScoped<ISchoolData>(sp => new PluginSchoolData(sp.GetRequiredService<HostServiceScope>().Services.GetRequiredService<SchulyDbContext>(), source));
             services.AddScoped<IPluginFileStore>(sp => new PluginFileStore(sp.GetRequiredService<HostServiceScope>().Services.GetRequiredService<IDocumentStorage>()));
+            services.AddScoped<ILinkedAccounts>(sp => new LinkedAccountStore(sp.GetRequiredService<HostServiceScope>().Services.GetRequiredService<SchulyDbContext>(), sp.GetRequiredService<IPluginVaultFactory>()));
 
             // Plugin services that inject IConfiguration see the host config with the
             // plugin's own plugins-config (yml + SCHULY_PLUGIN_* env) overlaid on top, so

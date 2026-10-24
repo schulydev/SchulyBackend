@@ -8,5 +8,6 @@ namespace Schuly.Application.Dtos
         public List<AgendaEntryDto> AgendaEntries { get; set; } = [];
         public List<SemesterReportDto> SemesterReports { get; set; } = [];
         public List<StudentDocumentDto> Documents { get; set; } = [];
+        public List<LinkedAccountDto> LinkedAccounts { get; set; } = [];
     }
 }

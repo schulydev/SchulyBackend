@@ -3,6 +3,7 @@ using Schuly.API.Extensions;
 using Schuly.API.Plugins;
 using Schuly.API.Services;
 using Schuly.Application.Behaviors;
+using Schuly.Infrastructure.Plugins;
 using Schuly.Infrastructure.Services;
 using Schuly.Infrastructure.Storage;
 using Schuly.Infrastructure.Vault;
@@ -33,6 +34,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSingleton<IAvatarUrlSigner, AvatarUrlSigner>();
 builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
 builder.Services.AddScoped<IAccountPurger, AccountPurger>();
+builder.Services.AddScoped<ILinkedAccounts, LinkedAccountStore>();
 builder.Services.AddScoped<IIdentityProviderAdmin, KeycloakAdminClient>();
 builder.Services.AddSchulyDocumentStorage(builder.Configuration, builder.Environment.IsDevelopment());
 

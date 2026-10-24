@@ -53,6 +53,12 @@ namespace Schuly.Application.Queries.User
                 .Where(d => schoolUserIds.Contains(d.SchoolUserId))
                 .ToListAsync(cancellationToken);
 
+            var linkedAccounts = await dbContext.LinkedAccounts
+                .AsNoTracking()
+                .Where(a => a.ApplicationUserId == userId)
+                .Select(a => new LinkedAccountDto { Id = a.Id, Provider = a.Provider, Email = a.Email, DisplayName = a.DisplayName, CreatedAt = a.CreatedAt })
+                .ToListAsync(cancellationToken);
+
             var export = new AccountExportDto
             {
                 ExportedAt = DateTime.UtcNow,
@@ -61,6 +67,7 @@ namespace Schuly.Application.Queries.User
                 AgendaEntries = agendaEntries.ToDto(),
                 SemesterReports = semesterReports.ToDto(),
                 Documents = documents.ToDto(),
+                LinkedAccounts = linkedAccounts,
             };
 
             return Result<AccountExportDto>.Success(export);

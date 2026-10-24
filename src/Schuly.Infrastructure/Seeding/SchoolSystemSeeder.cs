@@ -29,6 +29,7 @@ namespace Schuly.Infrastructure.Seeding
                     PrivateAuthStrategy = s.PrivateAuthStrategy,
                     StatelessBasePath = s.StatelessBasePath,
                     PluginBasePath = s.PluginBasePath,
+                    LoginMethodPath = s.LoginMethodPath,
                     Enabled = s.Enabled,
                     SortOrder = s.SortOrder,
                     LoginFields = s.LoginFields.Select(f => new SchoolSystemLoginField
@@ -38,7 +39,8 @@ namespace Schuly.Infrastructure.Seeding
                         Type = f.Type,
                         Placeholder = f.Placeholder,
                         DefaultValue = f.DefaultValue,
-                        Required = f.Required
+                        Required = f.Required,
+                        ReplacedByLinkedAccount = f.ReplacedByLinkedAccount
                     }).ToList()
                 })
                 .ToList();
@@ -60,6 +62,7 @@ namespace Schuly.Infrastructure.Seeding
         public string? PrivateAuthStrategy { get; set; }
         public string? StatelessBasePath { get; set; }
         public string? PluginBasePath { get; set; }
+        public string? LoginMethodPath { get; set; }
         public bool Enabled { get; set; } = true;
         public int SortOrder { get; set; }
         public List<SchoolSystemLoginFieldSeed> LoginFields { get; set; } = [];
@@ -73,5 +76,6 @@ namespace Schuly.Infrastructure.Seeding
         public string? Placeholder { get; set; }
         public string? DefaultValue { get; set; }
         public bool Required { get; set; } = true;
+        public bool ReplacedByLinkedAccount { get; set; }
     }
 }

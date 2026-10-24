@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Schuly.Infrastructure.Plugins;
 using Schuly.Infrastructure.Storage;
+using Schuly.Infrastructure.Vault;
 using System.Security.Cryptography;
 
 namespace Schuly.Infrastructure.Services
 {
-    public sealed class AccountPurger(SchulyDbContext dbContext, IDocumentStorage documentStorage, ILogger<AccountPurger> logger) : IAccountPurger
+    public sealed class AccountPurger(SchulyDbContext dbContext, IDocumentStorage documentStorage, IPluginVaultFactory vaultFactory, ILogger<AccountPurger> logger) : IAccountPurger
     {
         // Per-user purge steps. Every table that stores rows scoped to a SchoolUser or
         // an ApplicationUser must be represented here; a new user-scoped table is a
@@ -58,6 +60,7 @@ namespace Schuly.Infrastructure.Services
             var schoolUsersRemoved = 0;
             var documentsRemoved = 0;
             IReadOnlyList<string> fileUrls = [];
+            IReadOnlyList<Guid> linkedAccountIds = [];
 
             var strategy = dbContext.Database.CreateExecutionStrategy();
             await strategy.ExecuteAsync(async ct =>
@@ -68,6 +71,10 @@ namespace Schuly.Infrastructure.Services
 
                 foreach (var step in ApplicationUserScopedSteps)
                     await step(dbContext, applicationUserId, ct);
+
+                var linkedAccounts = await dbContext.LinkedAccounts.Where(a => a.ApplicationUserId == applicationUserId).ToListAsync(ct);
+                linkedAccountIds = linkedAccounts.Select(a => a.Id).ToList();
+                dbContext.LinkedAccounts.RemoveRange(linkedAccounts);
 
                 // Teacher records are school-owned master data referenced by Classes,
                 // not data belonging to this account - unlink instead of delete. The
@@ -87,6 +94,9 @@ namespace Schuly.Infrastructure.Services
             }, cancellationToken);
 
             var (blobsDeleted, blobsFailed) = await DeleteBlobsAsync(fileUrls, cancellationToken);
+            var linkedSecrets = new LinkedAccountStore(dbContext, vaultFactory);
+            foreach (var linkedAccountId in linkedAccountIds)
+                linkedSecrets.RemoveSecrets(linkedAccountId);
             var summary = new AccountPurgeSummary(schoolUsersRemoved, documentsRemoved, blobsDeleted, blobsFailed);
 
             logger.LogInformation("Account purge completed for user {UserHash}: {SchoolUsers} school users, {Documents} documents, {BlobsDeleted} blobs deleted, {BlobsFailed} blob deletions failed",

@@ -380,6 +380,48 @@ namespace Schuly.Infrastructure.Migrations
                     b.ToTable("Grades");
                 });
 
+            modelBuilder.Entity("Schuly.Domain.LinkedAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ApplicationUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId", "Provider", "ExternalId")
+                        .IsUnique();
+
+                    b.ToTable("LinkedAccounts");
+                });
+
             modelBuilder.Entity("Schuly.Domain.NotificationOutbox", b =>
                 {
                     b.Property<Guid>("Id")
@@ -565,6 +607,9 @@ namespace Schuly.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<string>("LoginMethodPath")
+                        .HasColumnType("text");
 
                     b.Property<string>("LogoUrl")
                         .HasMaxLength(2000)
@@ -1265,6 +1310,17 @@ namespace Schuly.Infrastructure.Migrations
                     b.Navigation("SchoolUser");
                 });
 
+            modelBuilder.Entity("Schuly.Domain.LinkedAccount", b =>
+                {
+                    b.HasOne("Schuly.Domain.ApplicationUser", "ApplicationUser")
+                        .WithMany()
+                        .HasForeignKey("ApplicationUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApplicationUser");
+                });
+
             modelBuilder.Entity("Schuly.Domain.NotificationPreference", b =>
                 {
                     b.HasOne("Schuly.Domain.ApplicationUser", "ApplicationUser")
@@ -1294,6 +1350,8 @@ namespace Schuly.Infrastructure.Migrations
                                 .IsRequired();
 
                             b1.Property<string>("Placeholder");
+
+                            b1.Property<bool>("ReplacedByLinkedAccount");
 
                             b1.Property<bool>("Required");
 

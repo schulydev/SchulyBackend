@@ -9,6 +9,7 @@ namespace Schuly.Application.Dtos
         public string? PrivateAuthStrategy { get; set; }
         public string? StatelessBasePath { get; set; }
         public string? PluginBasePath { get; set; }
+        public string? LoginMethodPath { get; set; }
         public required string LoginMethod { get; set; }
         public bool Enabled { get; set; }
         public int SortOrder { get; set; }
@@ -25,5 +26,6 @@ namespace Schuly.Application.Dtos
         public string? Placeholder { get; set; }
         public string? DefaultValue { get; set; }
         public bool Required { get; set; } = true;
+        public bool ReplacedByLinkedAccount { get; set; }
     }
 }

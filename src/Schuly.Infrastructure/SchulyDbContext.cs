@@ -24,6 +24,7 @@ namespace Schuly.Infrastructure
         public DbSet<NotificationPreference> NotificationPreferences { get; set; }
         public DbSet<NotificationOutbox> NotificationOutbox { get; set; }
         public DbSet<VaultEntry> VaultEntries { get; set; }
+        public DbSet<LinkedAccount> LinkedAccounts { get; set; }
 
         public SchulyDbContext(DbContextOptions<SchulyDbContext> options) : base(options) { }
 
@@ -349,6 +350,21 @@ namespace Schuly.Infrastructure
                 entity.HasOne(t => t.ApplicationUser)
                     .WithMany()
                     .HasForeignKey(t => t.ApplicationUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<LinkedAccount>(entity =>
+            {
+                entity.HasKey(a => a.Id);
+                entity.Property(a => a.Provider).HasMaxLength(50).IsRequired();
+                entity.Property(a => a.ExternalId).HasMaxLength(200).IsRequired();
+                entity.Property(a => a.Email).HasMaxLength(320).IsRequired();
+                entity.Property(a => a.DisplayName).HasMaxLength(200);
+                entity.HasIndex(a => new { a.ApplicationUserId, a.Provider, a.ExternalId }).IsUnique();
+
+                entity.HasOne(a => a.ApplicationUser)
+                    .WithMany()
+                    .HasForeignKey(a => a.ApplicationUserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

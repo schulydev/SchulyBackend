@@ -16,6 +16,7 @@ namespace Schuly.Application.Mappers
                 PrivateAuthStrategy = system.PrivateAuthStrategy,
                 StatelessBasePath = system.StatelessBasePath,
                 PluginBasePath = system.PluginBasePath,
+                LoginMethodPath = system.LoginMethodPath,
                 LoginMethod = system.LoginMethod,
                 Enabled = system.Enabled,
                 SortOrder = system.SortOrder,
@@ -39,7 +40,8 @@ namespace Schuly.Application.Mappers
                 Type = field.Type,
                 Placeholder = field.Placeholder,
                 DefaultValue = field.DefaultValue,
-                Required = field.Required
+                Required = field.Required,
+                ReplacedByLinkedAccount = field.ReplacedByLinkedAccount
             };
         }
 
@@ -52,7 +54,8 @@ namespace Schuly.Application.Mappers
                 Type = field.Type,
                 Placeholder = field.Placeholder,
                 DefaultValue = field.DefaultValue,
-                Required = field.Required
+                Required = field.Required,
+                ReplacedByLinkedAccount = field.ReplacedByLinkedAccount
             };
         }
     }
