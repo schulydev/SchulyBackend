@@ -39,6 +39,17 @@ namespace Schuly.Tests
         }
 
         [Test]
+        public async Task A_registry_entry_for_a_newer_contract_is_not_supported_but_a_pinned_one_is_left_to_the_load_check()
+        {
+            var host = Version.Parse("0.4.0.0");
+            var latest = new RegistryPlugin { Name = "Schuly.Plugin.Schulware", Version = "3.0.0", Contract = "0.5" };
+
+            await Assert.That(latest.SupportsContract(host)).IsFalse();
+            await Assert.That(latest.WithPinnedVersion("2.6.0").SupportsContract(host)).IsTrue();
+            await Assert.That((latest with { Contract = "0.4" }).SupportsContract(host)).IsTrue();
+        }
+
+        [Test]
         public async Task A_compatible_plugin_is_accepted()
         {
             await Assert.That(PluginContract.Incompatibility([Contract("0.4.0.0"), new AssemblyName("System.Runtime")], Version.Parse("0.4.0.0"))).IsNull();

@@ -4,6 +4,8 @@ namespace Schuly.API.Plugins
 {
     public sealed class PluginManager(PluginHost host, PluginStore store, PluginSet set, PluginRegistryClient registry, IPluginVaultFactory vaults, ILogger<PluginManager> logger)
     {
+        private static string HostContract => $"{PluginContract.HostVersion.Major}.{PluginContract.HostVersion.Minor}";
+
         public Task<IReadOnlyList<RegistryPlugin>> GetRegistryAsync(CancellationToken ct = default) =>
             registry.FetchIndexAsync(ct);
 
@@ -35,6 +37,12 @@ namespace Schuly.API.Plugins
                 {
                     var entry = Resolve(index, d.Name, d.Version);
                     var installed = store.Find(d.Name);
+                    if (entry is not null && !entry.SupportsContract(PluginContract.HostVersion))
+                    {
+                        logger.LogWarning("Plugin {Name} v{Version} needs plugin contract {Contract}, but this backend provides {Host}; keeping the installed version", d.Name, entry.Version, entry.Contract, HostContract);
+                        if (installed is null) continue;
+                        entry = null;
+                    }
                     if (entry is not null && (installed is null || !installed.Version.Equals(entry.Version, StringComparison.OrdinalIgnoreCase)))
                     {
                         await store.InstallAsync(entry, registry, ct);
@@ -66,6 +74,8 @@ namespace Schuly.API.Plugins
             var pinned = PluginVersion.Normalize(version);
             var entry = await registry.ResolveAsync(name, pinned, ct)
                 ?? throw new InvalidOperationException($"Plugin '{name}' not found in the registry");
+            if (!entry.SupportsContract(PluginContract.HostVersion))
+                throw new InvalidOperationException($"Plugin '{name}' v{entry.Version} needs plugin contract {entry.Contract}, but this backend provides {HostContract}. Update the backend or pin an older plugin version.");
 
             if (host.IsLoaded(name)) await host.UnloadAsync(name, ct);
             var manifest = await store.InstallAsync(entry, registry, ct);
