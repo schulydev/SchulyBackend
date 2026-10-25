@@ -33,6 +33,7 @@ builder.Services.AddScoped<IOidcService, OidcService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddSingleton<IAvatarUrlSigner, AvatarUrlSigner>();
 builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
+builder.Services.AddScoped<IPluginUserDataPurger, Schuly.API.Plugins.PluginUserDataPurger>();
 builder.Services.AddScoped<IAccountPurger, AccountPurger>();
 builder.Services.AddScoped<ILinkedAccounts, LinkedAccountStore>();
 builder.Services.AddScoped<IIdentityProviderAdmin, KeycloakAdminClient>();

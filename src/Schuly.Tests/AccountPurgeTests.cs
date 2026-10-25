@@ -81,7 +81,7 @@ namespace Schuly.Tests
 
             using var ctx = TestDb.NewContext(db);
             var storage = new FakeDocumentStorage();
-            var purger = new AccountPurger(ctx, storage, TestVault.Factory(), NullLogger<AccountPurger>.Instance);
+            var purger = new AccountPurger(ctx, storage, TestVault.Factory(), NullPluginUserDataPurger.Instance, NullLogger<AccountPurger>.Instance);
 
             await purger.PurgeApplicationUserAsync(seed.User1Id, CancellationToken.None);
 
@@ -109,7 +109,7 @@ namespace Schuly.Tests
 
             using var ctx = TestDb.NewContext(db);
             var storage = new FakeDocumentStorage();
-            var purger = new AccountPurger(ctx, storage, TestVault.Factory(), NullLogger<AccountPurger>.Instance);
+            var purger = new AccountPurger(ctx, storage, TestVault.Factory(), NullPluginUserDataPurger.Instance, NullLogger<AccountPurger>.Instance);
 
             await purger.PurgeApplicationUserAsync(seed.User1Id, CancellationToken.None);
 
@@ -133,7 +133,7 @@ namespace Schuly.Tests
 
             using var ctx = TestDb.NewContext(db);
             var storage = new FakeDocumentStorage();
-            var purger = new AccountPurger(ctx, storage, TestVault.Factory(), NullLogger<AccountPurger>.Instance);
+            var purger = new AccountPurger(ctx, storage, TestVault.Factory(), NullPluginUserDataPurger.Instance, NullLogger<AccountPurger>.Instance);
 
             await purger.PurgeApplicationUserAsync(seed.User1Id, CancellationToken.None);
 
@@ -149,7 +149,7 @@ namespace Schuly.Tests
 
             using var ctx = TestDb.NewContext(db);
             var storage = new FakeDocumentStorage { ThrowOnDelete = true };
-            var purger = new AccountPurger(ctx, storage, TestVault.Factory(), NullLogger<AccountPurger>.Instance);
+            var purger = new AccountPurger(ctx, storage, TestVault.Factory(), NullPluginUserDataPurger.Instance, NullLogger<AccountPurger>.Instance);
 
             var summary = await purger.PurgeApplicationUserAsync(seed.User1Id, CancellationToken.None);
 
@@ -167,7 +167,7 @@ namespace Schuly.Tests
 
             using var ctx = TestDb.NewContext(db);
             var storage = new FakeDocumentStorage();
-            var purger = new AccountPurger(ctx, storage, TestVault.Factory(), NullLogger<AccountPurger>.Instance);
+            var purger = new AccountPurger(ctx, storage, TestVault.Factory(), NullPluginUserDataPurger.Instance, NullLogger<AccountPurger>.Instance);
 
             await purger.PurgeApplicationUserAsync(seed.User1Id, CancellationToken.None);
 
@@ -184,7 +184,7 @@ namespace Schuly.Tests
 
             using var ctx = TestDb.NewContext(db);
             var storage = new FakeDocumentStorage();
-            var purger = new AccountPurger(ctx, storage, TestVault.Factory(), NullLogger<AccountPurger>.Instance);
+            var purger = new AccountPurger(ctx, storage, TestVault.Factory(), NullPluginUserDataPurger.Instance, NullLogger<AccountPurger>.Instance);
 
             await purger.PurgeSchoolUsersAsync([seed.SchoolUser1Id], CancellationToken.None);
 

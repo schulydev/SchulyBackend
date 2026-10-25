@@ -7,7 +7,7 @@ using System.Security.Cryptography;
 
 namespace Schuly.Infrastructure.Services
 {
-    public sealed class AccountPurger(SchulyDbContext dbContext, IDocumentStorage documentStorage, IPluginVaultFactory vaultFactory, ILogger<AccountPurger> logger) : IAccountPurger
+    public sealed class AccountPurger(SchulyDbContext dbContext, IDocumentStorage documentStorage, IPluginVaultFactory vaultFactory, IPluginUserDataPurger pluginData, ILogger<AccountPurger> logger) : IAccountPurger
     {
         // Per-user purge steps. Every table that stores rows scoped to a SchoolUser or
         // an ApplicationUser must be represented here; a new user-scoped table is a
@@ -51,6 +51,10 @@ namespace Schuly.Infrastructure.Services
             var exists = await dbContext.ApplicationUsers.AsNoTracking().AnyAsync(u => u.Id == applicationUserId, cancellationToken);
             if (!exists)
                 return new AccountPurgeSummary(0, 0, 0, 0);
+
+            // Plugins wipe their own data (their DB rows and vault secrets) for this user
+            // before the core rows go; it only needs the user id, so order is not critical.
+            await pluginData.PurgeAsync(applicationUserId, cancellationToken);
 
             var schoolUserIds = await dbContext.SchoolUsers
                 .Where(su => su.ApplicationUserId == applicationUserId)

@@ -83,7 +83,7 @@ namespace Schuly.Tests
             var kept = await store.SaveAsync(keep, Alex);
             await store.SetSecretAsync(keep, kept.Id, LinkedSecrets.SessionCookies, "[]");
 
-            await new AccountPurger(ctx, new FakeDocumentStorage(), vaults, NullLogger<AccountPurger>.Instance).PurgeApplicationUserAsync(user);
+            await new AccountPurger(ctx, new FakeDocumentStorage(), vaults, NullPluginUserDataPurger.Instance, NullLogger<AccountPurger>.Instance).PurgeApplicationUserAsync(user);
 
             await Assert.That(ctx.LinkedAccounts.Any(a => a.ApplicationUserId == user)).IsFalse();
             await Assert.That(await store.GetSecretAsync(keep, kept.Id, LinkedSecrets.SessionCookies)).IsEqualTo("[]");
