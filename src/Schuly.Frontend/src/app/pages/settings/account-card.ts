@@ -37,11 +37,11 @@ import { UserStore } from '../../stores/user.store';
       </div>
       <div hlmCardContent class="flex flex-col gap-6">
         <div class="flex flex-wrap items-center gap-4">
-          <hlm-avatar class="size-16 rounded-xl">
+          <hlm-avatar class="size-16">
             @if (user.avatar(); as src) {
               <img hlmAvatarImage [src]="src" [alt]="user.name()" />
             }
-            <span hlmAvatarFallback class="rounded-xl text-lg">{{ user.initials() }}</span>
+            <span hlmAvatarFallback class="text-lg">{{ user.initials() }}</span>
           </hlm-avatar>
           <div class="grid flex-1 gap-0.5">
             <span class="font-medium">{{ user.name() }}</span>
