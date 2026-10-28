@@ -22,11 +22,11 @@ import { UserStore } from '../stores/user.store';
           [side]="menuSide()"
           align="end"
         >
-          <hlm-avatar class="size-8 rounded-lg">
+          <hlm-avatar class="size-8">
             @if (user.avatar(); as src) {
               <img hlmAvatarImage [src]="src" [alt]="user.name()" />
             }
-            <span hlmAvatarFallback class="rounded-lg">{{ user.initials() }}</span>
+            <span hlmAvatarFallback>{{ user.initials() }}</span>
           </hlm-avatar>
           <div class="grid flex-1 text-left text-sm leading-tight">
             <span class="truncate font-medium">{{ user.name() }}</span>
@@ -41,11 +41,11 @@ import { UserStore } from '../stores/user.store';
       <hlm-dropdown-menu class="min-w-56 rounded-lg">
         <hlm-dropdown-menu-label class="p-0 font-normal">
           <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-            <hlm-avatar class="size-8 rounded-lg">
+            <hlm-avatar class="size-8">
               @if (user.avatar(); as src) {
                 <img hlmAvatarImage [src]="src" [alt]="user.name()" />
               }
-              <span hlmAvatarFallback class="rounded-lg">{{ user.initials() }}</span>
+              <span hlmAvatarFallback>{{ user.initials() }}</span>
             </hlm-avatar>
             <div class="grid flex-1 text-left text-sm leading-tight">
               <span class="truncate font-medium">{{ user.name() }}</span>
