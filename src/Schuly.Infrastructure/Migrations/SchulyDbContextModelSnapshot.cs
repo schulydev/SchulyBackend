@@ -2029,6 +2029,31 @@ namespace Schuly.Infrastructure.Migrations
 
                             b1.WithOwner()
                                 .HasForeignKey("SchoolSystemId");
+
+                            b1.OwnsMany("Schuly.Domain.SchoolSystemLoginFieldSuggestion", "Suggestions", b2 =>
+                                {
+                                    b2.Property<Guid>("SchoolSystemLoginFieldSchoolSystemId");
+
+                                    b2.Property<int>("SchoolSystemLoginField__synthesizedOrdinal");
+
+                                    b2.Property<int>("__synthesizedOrdinal")
+                                        .ValueGeneratedOnAdd();
+
+                                    b2.Property<string>("Label")
+                                        .IsRequired();
+
+                                    b2.Property<string>("Value")
+                                        .IsRequired();
+
+                                    b2.HasKey("SchoolSystemLoginFieldSchoolSystemId", "SchoolSystemLoginField__synthesizedOrdinal", "__synthesizedOrdinal");
+
+                                    b2.ToTable("SchoolSystems");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("SchoolSystemLoginFieldSchoolSystemId", "SchoolSystemLoginField__synthesizedOrdinal");
+                                });
+
+                            b1.Navigation("Suggestions");
                         });
 
                     b.Navigation("LoginFields");
