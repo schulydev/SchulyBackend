@@ -10,12 +10,7 @@
 
 
 export interface AppDto { 
-    authority: string;
-    clientId: string;
-    redirectUri: string;
-    postLogoutRedirectUri: string;
-    scope: string;
     version: string;
-    webClientId: string;
+    registrationEnabled: boolean;
 }
 

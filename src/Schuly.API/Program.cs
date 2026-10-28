@@ -36,7 +36,6 @@ builder.Services.AddScoped<IPluginUserContext, PluginUserContext>();
 builder.Services.AddScoped<IPluginUserDataPurger, Schuly.API.Plugins.PluginUserDataPurger>();
 builder.Services.AddScoped<IAccountPurger, AccountPurger>();
 builder.Services.AddScoped<ILinkedAccounts, LinkedAccountStore>();
-builder.Services.AddScoped<IIdentityProviderAdmin, KeycloakAdminClient>();
 builder.Services.AddSchulyDocumentStorage(builder.Configuration, builder.Environment.IsDevelopment());
 
 builder.Services.Configure<RetentionOptions>(builder.Configuration.GetSection(RetentionOptions.SectionName));
@@ -52,8 +51,8 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<TickerQPluginTaskS
 builder.Services.AddSingleton<PluginTaskRunner>();
 builder.Services.AddSchulyPlugins(builder.Configuration, mvcBuilder);
 
-builder.Services.AddSchulyAuthentication(builder.Configuration, builder.Environment);
-builder.Services.AddSchulyAuthorization();
+builder.Services.AddSchulyAuthentication(builder.Configuration);
+builder.Services.AddSchulyAuthorization(builder.Configuration);
 builder.Services.AddSchulyExceptionHandling();
 builder.Services.AddSchulyForwardedHeaders(builder.Configuration);
 builder.Services.AddSchulyRateLimiting();
@@ -79,13 +78,15 @@ if (app.Environment.IsDevelopment())
     app.MapSchulyApiReference();
 }
 
+app.UseMiddleware<WebTokenCookies>();
 app.UseAuthentication();
 // Partitions on the authenticated "sub" claim, so it has to run after authentication.
 app.UseRateLimiter();
 app.UseAuthorization();
 app.UseMiddleware<PluginScopeMiddleware>();
+app.MapSchulyAuthEndpoints();
 app.MapControllers();
-app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/|openapi/|scalar).*$)}", "index.html").AllowAnonymous();
+app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/|auth/|openapi/|scalar).*$)}", "index.html").AllowAnonymous();
 await app.UseSchulyPluginsAsync();
 app.UseTickerQ();
 

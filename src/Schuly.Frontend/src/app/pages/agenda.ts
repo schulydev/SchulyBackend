@@ -12,11 +12,28 @@ import { AgendaFilter, AgendaStore } from '../stores/agenda.store';
 
 @Component({
   selector: 'app-agenda',
-  imports: [HlmCardImports, HlmToggleGroupImports, HlmSkeletonImports, NgIcon, DatePipe, AgendaTypeBadge, EmptyState],
+  imports: [
+    HlmCardImports,
+    HlmToggleGroupImports,
+    HlmSkeletonImports,
+    NgIcon,
+    DatePipe,
+    AgendaTypeBadge,
+    EmptyState,
+  ],
   providers: [provideIcons({ lucideCalendarDays, lucideMapPin })],
   template: `
     <div class="flex flex-col gap-4 p-4 lg:p-6">
-      <hlm-toggle-group type="single" variant="outline" size="sm" [nullable]="false" [value]="agenda.filter()" (valueChange)="setFilter($event)" aria-label="Filter agenda" class="self-start">
+      <hlm-toggle-group
+        type="single"
+        variant="outline"
+        size="sm"
+        [nullable]="false"
+        [value]="agenda.filter()"
+        (valueChange)="setFilter($event)"
+        aria-label="Filter agenda"
+        class="self-start"
+      >
         @for (option of filters; track option.value) {
           <button hlmToggleGroupItem [value]="option.value" class="px-3">{{ option.label }}</button>
         }
@@ -38,7 +55,9 @@ import { AgendaFilter, AgendaStore } from '../stores/agenda.store';
             <ul class="divide-y">
               @for (entry of day.entries; track entry.id) {
                 <li class="flex items-start gap-3 px-4 py-3 sm:gap-4 sm:px-6">
-                  <div class="text-muted-foreground w-12 shrink-0 pt-0.5 text-sm tabular-nums sm:w-24">
+                  <div
+                    class="text-muted-foreground w-12 shrink-0 pt-0.5 text-sm tabular-nums sm:w-24"
+                  >
                     {{ entry.date | date: 'HH:mm' }}
                     @if (entry.endDate) {
                       <span class="hidden sm:inline">- {{ entry.endDate | date: 'HH:mm' }}</span>
@@ -47,7 +66,9 @@ import { AgendaFilter, AgendaStore } from '../stores/agenda.store';
                   <div class="grid flex-1 gap-1">
                     <span class="text-sm font-medium">{{ entry.title }}</span>
                     @if (entry.description) {
-                      <span class="text-muted-foreground line-clamp-2 text-xs">{{ entry.description }}</span>
+                      <span class="text-muted-foreground line-clamp-2 text-xs">{{
+                        entry.description
+                      }}</span>
                     }
                     @if (entry.place) {
                       <span class="text-muted-foreground flex items-center gap-1 text-xs">
@@ -62,7 +83,11 @@ import { AgendaFilter, AgendaStore } from '../stores/agenda.store';
             </ul>
           </section>
         } @empty {
-          <app-empty-state icon="lucideCalendarDays" title="Nothing planned" description="Upcoming lessons, tests and events appear here." />
+          <app-empty-state
+            icon="lucideCalendarDays"
+            title="Nothing planned"
+            description="Upcoming lessons, tests and events appear here."
+          />
         }
       }
     </div>

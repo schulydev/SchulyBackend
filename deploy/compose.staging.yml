@@ -15,7 +15,6 @@ services:
       POSTGRES_DB: schuly
     volumes:
       - ./data/postgres:/var/lib/postgresql
-      - ./config/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d schuly -h 127.0.0.1"]
       interval: 10s
@@ -32,14 +31,6 @@ services:
     volumes:
       - ./data/seaweedfs:/data
       - ./config/seaweedfs/s3-config.json:/etc/seaweedfs/s3-config.json:ro
-
-  keycloak:
-    image: ghcr.io/schulydev/schulykeycloak:${KEYCLOAK_VERSION:-latest}
-    restart: unless-stopped
-    env_file: [./config/keycloak.env]
-    depends_on:
-      postgres:
-        condition: service_healthy
 
   schulware:
     image: ghcr.io/pianonic/schulwareapi:latest
@@ -71,11 +62,9 @@ services:
       - "443:443"
     environment:
       API_HOST: ${API_HOST}
-      AUTH_HOST: ${AUTH_HOST}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./data/caddy:/data
       - ./data/caddy-config:/config
     depends_on:
       - backend
-      - keycloak

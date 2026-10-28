@@ -13,7 +13,6 @@ export interface AgendaDay {
 }
 
 export const AgendaStore = signalStore(
-  { providedIn: 'root' },
   withCollection<AgendaEntryDto>(() => {
     const api = inject(AgendasService);
     return () => api.apiAgendasGet();

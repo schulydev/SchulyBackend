@@ -40,7 +40,9 @@ import { DocumentsStore } from '../stores/documents.store';
                     <td hlmTd>
                       <div class="font-medium">{{ document.title }}</div>
                       @if (document.comment) {
-                        <div class="text-muted-foreground max-w-md truncate text-xs">{{ document.comment }}</div>
+                        <div class="text-muted-foreground max-w-md truncate text-xs">
+                          {{ document.comment }}
+                        </div>
                       }
                     </td>
                     <td hlmTd class="hidden sm:table-cell">
@@ -48,16 +50,26 @@ import { DocumentsStore } from '../stores/documents.store';
                         <span hlmBadge variant="outline">{{ document.category }}</span>
                       }
                     </td>
-                    <td hlmTd class="text-muted-foreground hidden tabular-nums md:table-cell">{{ document.createdAt | date: 'd MMM y' }}</td>
+                    <td hlmTd class="text-muted-foreground hidden tabular-nums md:table-cell">
+                      {{ document.createdAt | date: 'd MMM y' }}
+                    </td>
                     <td hlmTd class="text-muted-foreground hidden lg:table-cell">
                       {{ document.followUpAction || '-' }}
                       @if (document.followUpDate) {
-                        <span class="tabular-nums">({{ document.followUpDate | date: 'd MMM' }})</span>
+                        <span class="tabular-nums"
+                          >({{ document.followUpDate | date: 'd MMM' }})</span
+                        >
                       }
                     </td>
                     <td hlmTd>
                       @if (document.fileName) {
-                        <button hlmBtn variant="ghost" size="icon-sm" (click)="documents.download(document)" [attr.aria-label]="'Download ' + document.title">
+                        <button
+                          hlmBtn
+                          variant="ghost"
+                          size="icon-sm"
+                          (click)="documents.download(document)"
+                          [attr.aria-label]="'Download ' + document.title"
+                        >
                           <ng-icon name="lucideDownload" />
                         </button>
                       }
@@ -69,7 +81,11 @@ import { DocumentsStore } from '../stores/documents.store';
           </div>
         </div>
       } @else {
-        <app-empty-state icon="lucideFileText" title="No documents" description="Documents your school shares with you appear here." />
+        <app-empty-state
+          icon="lucideFileText"
+          title="No documents"
+          description="Documents your school shares with you appear here."
+        />
       }
     </div>
   `,

@@ -12,7 +12,7 @@ namespace Schuly.Application.Queries.User
     [AllowAuthenticated]
     public record GetCurrentUserQuery() : IQuery<Result<ApplicationUserDto>>;
 
-    public class GetCurrentUserQueryHandler(IUserService userService, SchulyDbContext dbContext) : IQueryHandler<GetCurrentUserQuery, Result<ApplicationUserDto>>
+    public class GetCurrentUserQueryHandler(IUserService userService, SchulyDbContext dbContext, IAvatarUrlSigner avatarUrlSigner) : IQueryHandler<GetCurrentUserQuery, Result<ApplicationUserDto>>
     {
         public async ValueTask<Result<ApplicationUserDto>> Handle(GetCurrentUserQuery query, CancellationToken cancellationToken)
         {
@@ -25,7 +25,9 @@ namespace Schuly.Application.Queries.User
             if (user == null)
                 return Result<ApplicationUserDto>.Failure("User not found");
 
-            return Result<ApplicationUserDto>.Success(user.ToDto());
+            var dto = user.ToDto();
+            dto.ProfilePictureUrl = avatarUrlSigner.ToPublicUserUrl(user.Id, user.ProfilePictureUrl);
+            return Result<ApplicationUserDto>.Success(dto);
         }
     }
 }

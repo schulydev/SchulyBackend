@@ -7,13 +7,20 @@ import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmSeparator } from '@spartan-ng/helm/separator';
 import { HlmSidebarImports } from '@spartan-ng/helm/sidebar';
 import { filter, map, startWith } from 'rxjs';
+import { AbsencesStore } from '../stores/absences.store';
+import { AgendaStore } from '../stores/agenda.store';
+import { ClassesStore } from '../stores/classes.store';
+import { DocumentsStore } from '../stores/documents.store';
+import { GradesStore } from '../stores/grades.store';
+import { SecurityStore } from '../stores/security.store';
 import { ThemeStore } from '../stores/theme.store';
+import { UserStore } from '../stores/user.store';
 import { AppSidebar } from './app-sidebar';
 
 @Component({
   selector: 'app-layout',
   imports: [HlmSidebarImports, HlmButton, HlmSeparator, NgIcon, RouterOutlet, AppSidebar],
-  providers: [provideIcons({ lucideMoon, lucideSun })],
+  providers: [provideIcons({ lucideMoon, lucideSun }), UserStore, ClassesStore, GradesStore, AgendaStore, AbsencesStore, DocumentsStore, SecurityStore],
   styles: `
     [hlmSidebarWrapper] {
       --sidebar-width: calc(var(--spacing) * 64);

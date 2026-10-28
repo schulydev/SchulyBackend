@@ -10,22 +10,27 @@ with a real domain.
 |---|---|---|
 | `caddy` | `caddy:2` | **80 / 443** (the only public ports) |
 | `backend` | `ghcr.io/schulydev/schuly` | via Caddy → `https://${API_HOST}` |
-| `keycloak` | `ghcr.io/schulydev/schulykeycloak` | via Caddy → `https://${AUTH_HOST}` |
 | `schulware` | `ghcr.io/pianonic/schulwareapi` | internal |
-| `postgres` | `postgres:18.1` | internal (DBs: `schuly`, `keycloak`, `schuly_plugin_*`) |
+| `postgres` | `postgres:18.1` | internal (DBs: `schuly`, `schuly_plugin_*`) |
 | `seaweedfs` | `chrislusf/seaweedfs` | internal (S3 document storage) |
 
-The backend validates OIDC tokens against the Keycloak `schuly` realm, and loads
-the **Schulware plugin** declared in `config/plugins.yml` on startup (downloaded
-from the registry - no DLL baked into the image).
+Sign-in is built into the backend - there is no separate identity provider. The
+backend issues and validates its own tokens, and loads the **Schulware plugin**
+declared in `config/plugins.yml` on startup (downloaded from the registry - no DLL
+baked into the image).
 
 ## Setup
 
-1. **DNS** - point `API_HOST` and `AUTH_HOST` at this server (Caddy needs them to
-   issue Let's Encrypt certs).
+1. **DNS** - point `API_HOST` at this server (Caddy needs it to issue a Let's
+   Encrypt cert).
 2. **Secrets** - `cp .env.example .env` and fill it in. Set `S3_SECRET_KEY` to the
-   same value in `config/seaweedfs/s3-config.json` (`S3_ACCESS_KEY` too). The
-   `SMTP_*` block is optional and applies only on the first realm import.
+   same value in `config/seaweedfs/s3-config.json` (`S3_ACCESS_KEY` too).
+   `LOCAL_LOGIN_SIGNING_KEY` and `TWO_FACTOR_ENCRYPTION_KEY` must be generated base64
+   32-byte keys (`openssl rand -base64 32`) and must stay stable - a new signing key
+   signs everybody out, a new encryption key breaks two-factor. Set `ADMIN_EMAIL` to
+   your own address; that account gets the `Administrator` role once you register
+   with it. The `SMTP_*` block is the mail server for email verification and
+   password reset.
    `VAULT_MASTER_KEY` must be a real generated base64 32-byte key
    (`openssl rand -base64 32`) and must never change afterwards - the backend
    refuses to start without it, and stored credentials become unreadable under
@@ -38,22 +43,17 @@ from the registry - no DLL baked into the image).
 
 ## Verify end-to-end
 
-- `https://${AUTH_HOST}` → Keycloak admin console (master realm, `KC_ADMIN_*`); the
-  `schuly` realm is imported automatically.
 - `https://${API_HOST}/api/app/school-systems` → anonymous catalog (proves the API
   is up).
+- Register with `ADMIN_EMAIL` (`POST https://${API_HOST}/auth/register`, or through
+  the web app at `https://${API_HOST}`), then sign in.
 - Loaded plugins: `GET https://${API_HOST}/api/plugins` (after an `Administrator`
   login). Manage at runtime with `POST /api/plugins/install`, `DELETE /api/plugins/{name}`.
-- Point the Schuly app at `https://${API_HOST}`; its login flow drives Keycloak
-  (`schuly-app` client). Because the backend and the app both use
-  `https://${AUTH_HOST}` as the authority, the token issuer matches and validation
-  passes.
+- Point the Schuly app at `https://${API_HOST}`; it signs in against the backend's
+  `/auth` endpoints.
 
 ## Notes
 
-- The `schuly` realm ships a starter `schuly-app` PKCE client and the
-  Student/Teacher/Administrator groups (mapped to the `groups` claim the backend
-  reads). Replace it with a real export for production use.
 - Plugin changes made via the API are persisted back to `config/plugins.yml`.
 - All state is **bind-mounted to host folders under `./data`** (recommended over
   named volumes - visible and easy to back up): `data/postgres`, `data/seaweedfs`,

@@ -6,10 +6,8 @@ namespace Schuly.API.Extensions
 {
     public static class OpenApiExtensions
     {
-        private static readonly string[] Scopes = ["openid", "profile", "email", "groups", "picture"];
-
-        // OpenAPI 3.0 document generation with the OAuth2 (authorization-code + PKCE)
-        // security scheme applied to every operation, so Scalar's Authorize works.
+        // OpenAPI 3.0 document generation with the bearer security scheme applied to
+        // every operation, so Scalar's Authorize works.
         // 3.0 (not 3.1) because the app's dart-dio client generator can't parse the
         // JSON Schema 2020-12 constructs that OpenAPI 3.1 emits.
         public static IServiceCollection AddSchulyOpenApi(this IServiceCollection services, IConfiguration configuration)
@@ -37,30 +35,13 @@ namespace Schuly.API.Extensions
                 });
                 options.AddDocumentTransformer((document, context, cancellationToken) =>
                 {
-                    var authority = configuration["Oidc:Authority"]
-                        ?? throw new InvalidOperationException("Oidc:Authority not configured");
-
                     document.Components ??= new OpenApiComponents();
                     document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-                    document.Components.SecuritySchemes["OAuth2"] = new OpenApiSecurityScheme
+                    document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
                     {
-                        Type = SecuritySchemeType.OAuth2,
-                        Flows = new OpenApiOAuthFlows
-                        {
-                            AuthorizationCode = new OpenApiOAuthFlow
-                            {
-                                AuthorizationUrl = new Uri($"{authority}/authorize"),
-                                TokenUrl = new Uri($"{authority}/api/oidc/token"),
-                                Scopes = new Dictionary<string, string>
-                                {
-                                    ["openid"] = "OpenID Connect",
-                                    ["profile"] = "User profile",
-                                    ["email"] = "User email",
-                                    ["groups"] = "User groups (roles)",
-                                    ["picture"] = "Profile Picture",
-                                }
-                            }
-                        }
+                        Type = SecuritySchemeType.Http,
+                        Scheme = "bearer",
+                        BearerFormat = "JWT"
                     };
 
                     foreach (var pathItem in document.Paths.Values)
@@ -73,7 +54,7 @@ namespace Schuly.API.Extensions
                             operation.Security ??= [];
                             operation.Security.Add(new OpenApiSecurityRequirement
                             {
-                                [new OpenApiSecuritySchemeReference("OAuth2", document)] = []
+                                [new OpenApiSecuritySchemeReference("Bearer", document)] = []
                             });
                         }
                     }
@@ -95,13 +76,7 @@ namespace Schuly.API.Extensions
                 options
                     .WithTitle("Schuly API")
                     .AddDocument("v1", routePattern: "/openapi/{documentName}.json")
-                    .AddPreferredSecuritySchemes("OAuth2")
-                    .AddAuthorizationCodeFlow("OAuth2", flow =>
-                    {
-                        flow.ClientId = app.Configuration["Oidc:ClientId"];
-                        flow.Pkce = Pkce.Sha256;
-                        flow.SelectedScopes = Scopes;
-                    });
+                    .AddPreferredSecuritySchemes("Bearer");
             }).AllowAnonymous();
             return app;
         }

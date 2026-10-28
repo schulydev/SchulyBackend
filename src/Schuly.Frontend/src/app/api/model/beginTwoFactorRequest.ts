@@ -9,10 +9,7 @@
  */
 
 
-export interface DevTokenRequest { 
-    role?: string | null;
-    sub?: string | null;
-    name?: string | null;
-    email?: string | null;
+export interface BeginTwoFactorRequest { 
+    currentPassword?: string | null;
 }
 

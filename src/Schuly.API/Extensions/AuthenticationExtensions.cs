@@ -1,59 +1,44 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Hosting;
-using Microsoft.IdentityModel.Tokens;
+using Schuly.Infrastructure;
 using Schuly.Infrastructure.Services;
 using System.Security.Claims;
+using Toamaisutaa.Abstractions;
+using Toamaisutaa.EntityFrameworkCore;
 
 namespace Schuly.API.Extensions
 {
     public static class AuthenticationExtensions
     {
-        public static IServiceCollection AddSchulyAuthentication(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
+        public static IServiceCollection AddSchulyAuthentication(this IServiceCollection services, IConfiguration configuration)
         {
-            if (configuration.GetValue($"{DevAuthDefaults.Section}:Enabled", false) && !environment.IsDevelopment())
-                throw new InvalidOperationException(
-                    "DevAuth:Enabled must never be set outside the Development environment.");
+            services.AddToamaisutaaBearer(configuration).AddUserSync();
+            services.AddToamaisutaaEntityFrameworkStores<SchulyDbContext>();
 
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
-                {
-                    if (DevAuthDefaults.IsEnabled(configuration, environment))
-                    {
-                        options.RequireHttpsMetadata = false;
-                        options.MapInboundClaims = false;
-                        options.TokenValidationParameters = new TokenValidationParameters
-                        {
-                            ValidateIssuer = true,
-                            ValidIssuer = DevAuthDefaults.Issuer(configuration),
-                            ValidateAudience = false,
-                            ValidateIssuerSigningKey = true,
-                            IssuerSigningKey = DevAuthDefaults.SigningKey(configuration),
-                            NameClaimType = "name",
-                            RoleClaimType = ClaimTypes.Role,
-                        };
-                    }
-                    else
-                    {
-                        options.Authority = configuration["Oidc:Authority"];
-                        options.RequireHttpsMetadata = configuration.GetValue("Oidc:RequireHttpsMetadata", true);
-                        options.TokenValidationParameters.NameClaimType = "name";
-                        options.TokenValidationParameters.RoleClaimType = "groups";
-                        options.TokenValidationParameters.ValidateAudience = false;
-                    }
-                })
-                .AddUserSync();
+            services.AddScoped<IUserRoleProvider, UserRoleProvider>();
+
+            services.AddToamaisutaaSmtpEmail(configuration);
+            services.AddToamaisutaaSmtpEmailVerification();
+            services.AddToamaisutaaPasswordLogin(configuration);
+            services.AddToamaisutaaTwoFactor(configuration);
+            services.AddToamaisutaaTrustedDevices(configuration);
+            services.AddToamaisutaaTokenCleanup();
+
             return services;
         }
 
-        public static IServiceCollection AddSchulyAuthorization(this IServiceCollection services)
+        public static IServiceCollection AddSchulyAuthorization(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddAuthorization(options =>
-                options.FallbackPolicy = new AuthorizationPolicyBuilder()
-                    .RequireAuthenticatedUser()
-                    .Build());
+            services.AddToamaisutaaAuthorization(configuration);
             return services;
+        }
+
+        public static WebApplication MapSchulyAuthEndpoints(this WebApplication app)
+        {
+            app.MapToamaisutaaPasswordEndpoints();
+            app.MapToamaisutaaTwoFactorEndpoints();
+            app.MapToamaisutaaTrustedDeviceEndpoints();
+            return app;
         }
 
         public static AuthenticationBuilder AddUserSync(this AuthenticationBuilder builder)
@@ -84,7 +69,7 @@ namespace Schuly.API.Extensions
 
                         if (await userService.ExistsAsync(externalId, context.HttpContext.RequestAborted))
                         {
-                            await userService.TouchLastSeenAsync(externalId, context.HttpContext.RequestAborted);
+                            await userService.TouchLastSeenAsync(externalId, identity.FindFirst("email")?.Value, context.HttpContext.RequestAborted);
                             return;
                         }
 

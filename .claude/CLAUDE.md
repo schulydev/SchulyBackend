@@ -1,6 +1,6 @@
 # Notes for Claude (and humans) - SchulyServer
 
-ASP.NET Core 10 API. Clean architecture + CQRS via [Mediator](https://github.com/martinothamar/Mediator). EF Core on PostgreSQL. OIDC auth. Plugin host.
+ASP.NET Core 10 API. Clean architecture + CQRS via [Mediator](https://github.com/martinothamar/Mediator). EF Core on PostgreSQL. Built-in sign-in (Toamaisutaa). Plugin host.
 
 ## Workflow rules (enforced)
 
@@ -49,10 +49,10 @@ API reference (Scalar): <http://localhost:5033/scalar> - OpenAPI 3.0 doc generat
 
 | Project | Role |
 |---|---|
-| `Schuly.API` | Entry point. Controllers, OIDC wiring, EF migrations applied on startup, plugin host registration. Has the `Dockerfile`. |
+| `Schuly.API` | Entry point. Controllers, sign-in wiring (`/auth`), EF migrations applied on startup, plugin host registration. Has the `Dockerfile`. |
 | `Schuly.Application` | CQRS commands/queries + Mediator handlers. **Don't** reference Infrastructure from here. |
 | `Schuly.Domain` | Pure entities (`School`, `Class`, `Exam`, `Grade`, `Absence`, `AgendaEntry`, `ApplicationUser`, `SchoolUser`). Base type with `Id`, `CreatedAt`, `UpdatedAt`. |
-| `Schuly.Infrastructure` | `SchulyDbContext`, OIDC services, repositories, plugin runtime (`PluginBackgroundTaskHost`). |
+| `Schuly.Infrastructure` | `SchulyDbContext` (incl. sign-in tables), user services, repositories, plugin runtime (`PluginBackgroundTaskHost`). |
 | `Schuly.Tests` | TUnit. |
 
 `Schuly.Plugin.Abstractions` is a **NuGet `PackageReference`**, not a project ref - see the abstractions repo. Plugin projects live in a separate repo entirely.
@@ -78,9 +78,13 @@ Applied at startup by `ApplyMigrations()` in `Program.cs`.
 
 ## Auth
 
-- OIDC authority + clientId configured via `appsettings.json` (`Oidc:Authority`, `Oidc:ClientId`).
-- `groups` claim → role mapping (`Student`, `Teacher`, `Administrator`).
-- Default policy requires auth; only `/api/app` is anonymous.
+- Sign-in is built in via Toamaisutaa (`Toamaisutaa.*` 0.10.0). No external IdP. Tables live in the Schuly DB (migration `AddToamaisutaa`).
+- Endpoints under `/auth` (register, login, refresh, logout, password, email, `2fa/*`, devices). `/api/*` takes `Authorization: Bearer`. Access tokens live 15 min; refresh tokens rotate on every use.
+- Web app sends `X-Schuly-Client: web` and gets refresh + device tokens as `HttpOnly` `SameSite=Strict` cookies on `/auth`; other clients get them in the JSON body.
+- Required secrets: `LocalLogin:SigningKey`, `TwoFactor:EncryptionKey` (base64, 32 bytes, keep stable). Set via user-secrets or env vars.
+- `Auth:Administrators` (emails/usernames) get the `Administrator` role.
+- Locally, mail goes to an SMTP catcher on `localhost:1025` (e.g. mailpit). Get a token with `POST /auth/register` then `POST /auth/login`.
+- Default policy requires auth; `/api/app` and the public `/auth` endpoints are anonymous.
 
 ## Versioning + release
 

@@ -1,3 +1,4 @@
+using Toamaisutaa.EntityFrameworkCore;
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -40,6 +41,7 @@ namespace Schuly.Infrastructure
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.ApplyToamaisutaaConfiguration(Database);
 
             modelBuilder.Entity<ApplicationUser>(entity =>
             {

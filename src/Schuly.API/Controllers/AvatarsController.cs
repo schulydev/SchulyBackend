@@ -24,5 +24,20 @@ namespace Schuly.API.Controllers
             Response.Headers.CacheControl = "private, max-age=3600";
             return File(stream.Content, stream.ContentType ?? "image/png");
         }
+
+        [HttpGet("users/{applicationUserId:guid}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetUser(Guid applicationUserId, [FromQuery] long exp, [FromQuery] string? sig, CancellationToken ct)
+        {
+            if (string.IsNullOrEmpty(sig) || !signer.VerifyUser(applicationUserId, exp, sig))
+                return NotFound();
+
+            var result = await mediator.Send(new GetUserAvatarQuery(applicationUserId), ct);
+            if (!result.IsSuccess) return NotFound();
+
+            var stream = result.Value!.Stream;
+            Response.Headers.CacheControl = "private, max-age=3600";
+            return File(stream.Content, stream.ContentType ?? "image/png");
+        }
     }
 }

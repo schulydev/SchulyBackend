@@ -40,10 +40,14 @@ import { ExamRow, GradesStore } from '../stores/grades.store';
                     <div class="font-medium">{{ exam.name }}</div>
                     <div class="text-muted-foreground text-xs sm:hidden">{{ exam.subject }}</div>
                     @if (exam.description) {
-                      <div class="text-muted-foreground max-w-md truncate text-xs">{{ exam.description }}</div>
+                      <div class="text-muted-foreground max-w-md truncate text-xs">
+                        {{ exam.description }}
+                      </div>
                     }
                   </td>
-                  <td hlmTd class="text-muted-foreground hidden sm:table-cell">{{ exam.subject }}</td>
+                  <td hlmTd class="text-muted-foreground hidden sm:table-cell">
+                    {{ exam.subject }}
+                  </td>
                   <td hlmTd class="text-muted-foreground tabular-nums">
                     @if (exam.date) {
                       <span class="sm:hidden">{{ exam.date | date: 'd MMM' }}</span>
@@ -53,7 +57,9 @@ import { ExamRow, GradesStore } from '../stores/grades.store';
                     }
                   </td>
                   <td hlmTd class="hidden md:table-cell">
-                    <span hlmBadge [variant]="exam.finalExam ? 'default' : 'outline'">{{ exam.finalExam ? 'Final exam' : 'Exam' }}</span>
+                    <span hlmBadge [variant]="exam.finalExam ? 'default' : 'outline'">{{
+                      exam.finalExam ? 'Final exam' : 'Exam'
+                    }}</span>
                   </td>
                   <td hlmTd class="text-right">
                     @if (exam.score != null) {
@@ -69,7 +75,11 @@ import { ExamRow, GradesStore } from '../stores/grades.store';
         </div>
       </div>
     } @else {
-      <app-empty-state icon="lucideClipboardList" [title]="emptyTitle()" description="Exams from your school appear here." />
+      <app-empty-state
+        icon="lucideClipboardList"
+        [title]="emptyTitle()"
+        description="Exams from your school appear here."
+      />
     }
   `,
 })
@@ -86,7 +96,10 @@ export class ExamTable {
   template: `
     <div class="flex flex-col gap-4 p-4 lg:p-6">
       <hlm-tabs tab="upcoming" class="w-full">
-        <hlm-tabs-list aria-label="Exams" class="**:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1">
+        <hlm-tabs-list
+          aria-label="Exams"
+          class="**:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1"
+        >
           <button hlmTabsTrigger="upcoming">
             Upcoming
             <span hlmBadge variant="secondary">{{ grades.upcomingExams().length }}</span>
@@ -97,10 +110,18 @@ export class ExamTable {
           </button>
         </hlm-tabs-list>
         <div hlmTabsContent="upcoming" class="mt-2">
-          <app-exam-table [exams]="grades.upcomingExams()" [loading]="grades.loading()" emptyTitle="No upcoming exams" />
+          <app-exam-table
+            [exams]="grades.upcomingExams()"
+            [loading]="grades.loading()"
+            emptyTitle="No upcoming exams"
+          />
         </div>
         <div hlmTabsContent="past" class="mt-2">
-          <app-exam-table [exams]="grades.pastExams()" [loading]="grades.loading()" emptyTitle="No past exams" />
+          <app-exam-table
+            [exams]="grades.pastExams()"
+            [loading]="grades.loading()"
+            emptyTitle="No past exams"
+          />
         </div>
       </hlm-tabs>
     </div>

@@ -1,10 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>11993bc9-42ff-4cbd-8e54-ba99547048a3</UserSecretsId>
+    <UserSecretsId>250b1db8-b421-48b7-858a-05c1799208f0</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
 
@@ -27,6 +27,9 @@
     <PackageReference Include="NetEscapades.Configuration.Yaml" Version="3.1.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.18.*" />
+    <PackageReference Include="Toamaisutaa.AspNetCore" Version="0.10.0" />
+    <PackageReference Include="Toamaisutaa.Email.Smtp" Version="0.10.0" />
+    <PackageReference Include="Toamaisutaa.OpenIdConnect" Version="0.10.0" />
     <PackageReference Include="TickerQ" Version="10.4.0" />
     <PackageReference Include="TickerQ.Dashboard" Version="10.4.0" />
     <PackageReference Include="TickerQ.EntityFrameworkCore" Version="10.4.0" />

@@ -21,15 +21,7 @@ namespace Schuly.Application.Queries.App
 
         public async ValueTask<Result<AppDto>> Handle(AppQuery query, CancellationToken cancellationToken)
         {
-            return Result<AppDto>.Success(new AppDto(
-                configuration["Oidc:Authority"] ?? string.Empty,
-                configuration["Oidc:ClientId"] ?? string.Empty,
-                configuration["Oidc:RedirectUri"] ?? "http://localhost:4200/callback",
-                configuration["Oidc:PostLogoutRedirectUri"] ?? "http://localhost:4200/",
-                configuration["Oidc:Scope"] ?? "openid profile email groups picture offline_access",
-                Version,
-                configuration["Oidc:WebClientId"] ?? "schuly-web"
-            ));
+            return Result<AppDto>.Success(new AppDto(Version, configuration.GetValue("LocalLogin:AllowSelfRegistration", false)));
         }
     }
 }

@@ -9,10 +9,7 @@
  */
 
 
-export interface DevTokenResponse { 
-    accessToken: string;
-    tokenType: string;
-    expiresIn: number;
-    role: string;
+export interface RefreshRequest { 
+    refreshToken: string;
 }
 

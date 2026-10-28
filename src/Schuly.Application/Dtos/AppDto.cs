@@ -1,4 +1,4 @@
 namespace Schuly.Application.Dtos
 {
-    public record AppDto(string Authority, string ClientId, string RedirectUri, string PostLogoutRedirectUri, string Scope, string Version, string WebClientId);
+    public record AppDto(string Version, bool RegistrationEnabled);
 }

@@ -6,7 +6,6 @@ import { withCollection } from './with-collection';
 export type AbsenceFilter = 'all' | AbsenceType;
 
 export const AbsencesStore = signalStore(
-  { providedIn: 'root' },
   withCollection<AbsenceDto>(() => {
     const api = inject(AbsencesService);
     return () => api.apiAbsencesGet();

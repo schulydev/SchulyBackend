@@ -41,7 +41,7 @@ namespace Schuly.API.Controllers
                 FollowUpAction: followUpAction,
                 FollowUpDate: followUpDate), ct);
 
-            return result.IsSuccess ? Ok(new { id = result.Value }) : BadRequest(result.Error);
+            return result.IsSuccess ? Ok(new { id = result.Value }) : result.ToErrorResult();
         }
 
         /// <summary>
@@ -53,7 +53,7 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> Download(Guid documentId, CancellationToken ct)
         {
             var result = await mediator.Send(new OpenStudentDocumentQuery(documentId), ct);
-            if (!result.IsSuccess) return BadRequest(result.Error);
+            if (!result.IsSuccess) return result.ToErrorResult();
 
             var download = result.Value!;
             return File(

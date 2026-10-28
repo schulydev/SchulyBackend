@@ -7,7 +7,6 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { UserState } from './userState';
 
 
 export interface UpdateSchoolUserCommand { 
@@ -21,9 +20,14 @@ export interface UpdateSchoolUserCommand {
     city: string | null;
     zip: string | null;
     leaveDate: string | null;
-    state: UserState | null;
+    state: UpdateSchoolUserCommandStateEnum | null;
     profilePictureUrl?: string | null;
 }
+export enum UpdateSchoolUserCommandStateEnum {
+    None = 'None',
+    Active = 'Active',
+    Inactive = 'Inactive'
+};
 
 
 

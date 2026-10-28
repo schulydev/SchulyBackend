@@ -2,7 +2,13 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideArrowRight, lucideCalendarDays, lucideChartColumn, lucideTrendingDown, lucideTrendingUp } from '@ng-icons/lucide';
+import {
+  lucideArrowRight,
+  lucideCalendarDays,
+  lucideChartColumn,
+  lucideTrendingDown,
+  lucideTrendingUp,
+} from '@ng-icons/lucide';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmCardImports } from '@spartan-ng/helm/card';
@@ -19,8 +25,30 @@ import { UserStore } from '../stores/user.store';
 
 @Component({
   selector: 'app-overview',
-  imports: [HlmCardImports, HlmBadge, HlmButton, HlmTableImports, HlmProgressImports, HlmSkeletonImports, NgIcon, RouterLink, DatePipe, DecimalPipe, GradeBadge, AgendaTypeBadge, EmptyState],
-  providers: [provideIcons({ lucideTrendingUp, lucideTrendingDown, lucideArrowRight, lucideChartColumn, lucideCalendarDays })],
+  imports: [
+    HlmCardImports,
+    HlmBadge,
+    HlmButton,
+    HlmTableImports,
+    HlmProgressImports,
+    HlmSkeletonImports,
+    NgIcon,
+    RouterLink,
+    DatePipe,
+    DecimalPipe,
+    GradeBadge,
+    AgendaTypeBadge,
+    EmptyState,
+  ],
+  providers: [
+    provideIcons({
+      lucideTrendingUp,
+      lucideTrendingDown,
+      lucideArrowRight,
+      lucideChartColumn,
+      lucideCalendarDays,
+    }),
+  ],
   template: `
     <div class="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
       <div class="px-4 lg:px-6">
@@ -28,7 +56,9 @@ import { UserStore } from '../stores/user.store';
         <p class="text-muted-foreground text-sm">Here is what is going on at school.</p>
       </div>
 
-      <div class="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+      <div
+        class="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4"
+      >
         <div class="@container/card" hlmCard>
           <div hlmCardHeader>
             <p hlmCardDescription>Average grade</p>
@@ -41,7 +71,9 @@ import { UserStore } from '../stores/user.store';
             </h3>
             <div hlmCardAction>
               <span hlmBadge variant="outline">
-                <ng-icon [name]="grades.insufficientCount() ? 'lucideTrendingDown' : 'lucideTrendingUp'" />
+                <ng-icon
+                  [name]="grades.insufficientCount() ? 'lucideTrendingDown' : 'lucideTrendingUp'"
+                />
                 {{ grades.subjectAverages().length }} subjects
               </span>
             </div>
@@ -61,7 +93,9 @@ import { UserStore } from '../stores/user.store';
         <div class="@container/card" hlmCard>
           <div hlmCardHeader>
             <p hlmCardDescription>Upcoming tests</p>
-            <h3 hlmCardTitle class="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{{ upcoming().length }}</h3>
+            <h3 hlmCardTitle class="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {{ upcoming().length }}
+            </h3>
             <div hlmCardAction>
               <span hlmBadge variant="outline">{{ examsThisWeek() }} this week</span>
             </div>
@@ -87,7 +121,9 @@ import { UserStore } from '../stores/user.store';
         <div class="@container/card" hlmCard>
           <div hlmCardHeader>
             <p hlmCardDescription>Today</p>
-            <h3 hlmCardTitle class="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{{ agenda.today().length }}</h3>
+            <h3 hlmCardTitle class="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {{ agenda.today().length }}
+            </h3>
             <div hlmCardAction>
               <span hlmBadge variant="outline">
                 <ng-icon name="lucideCalendarDays" />
@@ -110,13 +146,17 @@ import { UserStore } from '../stores/user.store';
         <div class="@container/card" hlmCard>
           <div hlmCardHeader>
             <p hlmCardDescription>Absences</p>
-            <h3 hlmCardTitle class="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{{ absences.absenceCount() }}</h3>
+            <h3 hlmCardTitle class="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {{ absences.absenceCount() }}
+            </h3>
             <div hlmCardAction>
               <span hlmBadge variant="outline">{{ absences.delayCount() }} delays</span>
             </div>
           </div>
           <div hlmCardFooter class="flex-col items-start gap-1.5 text-sm">
-            <div class="line-clamp-1 flex gap-2 font-medium">{{ absences.hoursAbsent() | number: '1.0-1' }} hours missed</div>
+            <div class="line-clamp-1 flex gap-2 font-medium">
+              {{ absences.hoursAbsent() | number: '1.0-1' }} hours missed
+            </div>
             <div class="text-muted-foreground">Recorded by your school</div>
           </div>
         </div>
@@ -156,8 +196,12 @@ import { UserStore } from '../stores/user.store';
                     @for (grade of recentGrades(); track grade.id) {
                       <tr hlmTr>
                         <td hlmTd class="font-medium">{{ grade.exam }}</td>
-                        <td hlmTd class="text-muted-foreground hidden sm:table-cell">{{ grade.subject }}</td>
-                        <td hlmTd class="text-muted-foreground hidden md:table-cell">{{ grade.date | date: 'd MMM y' }}</td>
+                        <td hlmTd class="text-muted-foreground hidden sm:table-cell">
+                          {{ grade.subject }}
+                        </td>
+                        <td hlmTd class="text-muted-foreground hidden md:table-cell">
+                          {{ grade.date | date: 'd MMM y' }}
+                        </td>
                         <td hlmTd class="text-right"><app-grade-badge [score]="grade.score" /></td>
                       </tr>
                     }
@@ -165,7 +209,11 @@ import { UserStore } from '../stores/user.store';
                 </table>
               </div>
             } @else {
-              <app-empty-state icon="lucideChartColumn" title="No grades yet" description="Grades show up here once your school publishes them." />
+              <app-empty-state
+                icon="lucideChartColumn"
+                title="No grades yet"
+                description="Grades show up here once your school publishes them."
+              />
             }
           </div>
         </section>
@@ -185,17 +233,28 @@ import { UserStore } from '../stores/user.store';
             @for (entry of comingUp(); track entry.id) {
               <div class="flex items-start gap-3">
                 <div class="bg-muted flex w-12 shrink-0 flex-col items-center rounded-md py-1.5">
-                  <span class="text-muted-foreground text-[10px] font-medium uppercase">{{ entry.date | date: 'MMM' }}</span>
-                  <span class="text-lg leading-none font-semibold tabular-nums">{{ entry.date | date: 'd' }}</span>
+                  <span class="text-muted-foreground text-[10px] font-medium uppercase">{{
+                    entry.date | date: 'MMM'
+                  }}</span>
+                  <span class="text-lg leading-none font-semibold tabular-nums">{{
+                    entry.date | date: 'd'
+                  }}</span>
                 </div>
                 <div class="grid flex-1 gap-0.5">
                   <span class="truncate text-sm font-medium">{{ entry.title }}</span>
-                  <span class="text-muted-foreground truncate text-xs">{{ entry.date | date: 'EEEE, HH:mm' }}{{ entry.place ? ' - ' + entry.place : '' }}</span>
+                  <span class="text-muted-foreground truncate text-xs"
+                    >{{ entry.date | date: 'EEEE, HH:mm'
+                    }}{{ entry.place ? ' - ' + entry.place : '' }}</span
+                  >
                 </div>
                 <app-agenda-type-badge [type]="entry.entryType" />
               </div>
             } @empty {
-              <app-empty-state icon="lucideCalendarDays" title="Nothing coming up" description="Your agenda is clear." />
+              <app-empty-state
+                icon="lucideCalendarDays"
+                title="Nothing coming up"
+                description="Your agenda is clear."
+              />
             }
           </div>
         </section>
@@ -213,9 +272,14 @@ import { UserStore } from '../stores/user.store';
                 <div class="flex flex-col gap-1.5">
                   <div class="flex items-center justify-between text-sm">
                     <span class="font-medium">{{ subject.subject }}</span>
-                    <span class="tabular-nums" [class.text-destructive]="subject.average < 4">{{ subject.average | number: '1.2-2' }}</span>
+                    <span class="tabular-nums" [class.text-destructive]="subject.average < 4">{{
+                      subject.average | number: '1.2-2'
+                    }}</span>
                   </div>
-                  <hlm-progress [value]="((subject.average - 1) / 5) * 100" [attr.aria-label]="subject.subject + ' average'">
+                  <hlm-progress
+                    [value]="((subject.average - 1) / 5) * 100"
+                    [attr.aria-label]="subject.subject + ' average'"
+                  >
                     <hlm-progress-indicator />
                   </hlm-progress>
                 </div>
@@ -235,15 +299,24 @@ export class Overview {
 
   protected readonly firstName = computed(() => this.user.name().split(' ')[0]);
   protected readonly recentGrades = computed(() => this.grades.grades().slice(0, 6));
-  protected readonly comingUp = computed(() => this.agenda.upcoming().filter((entry) => entry.entryType !== 'Lesson').slice(0, 5));
+  protected readonly comingUp = computed(() =>
+    this.agenda
+      .upcoming()
+      .filter((entry) => entry.entryType !== 'Lesson')
+      .slice(0, 5),
+  );
   protected readonly upcoming = computed(() =>
     [
       ...this.grades.upcomingExams().map((exam) => ({ name: exam.name, date: exam.date })),
-      ...this.agenda.upcoming().filter((entry) => entry.entryType === 'Test').map((entry) => ({ name: entry.title, date: entry.date })),
+      ...this.agenda
+        .upcoming()
+        .filter((entry) => entry.entryType === 'Test')
+        .map((entry) => ({ name: entry.title, date: entry.date })),
     ].sort((a, b) => (a.date ?? '').localeCompare(b.date ?? '')),
   );
   protected readonly examsThisWeek = computed(() => {
     const weekAhead = Date.now() + 7 * 24 * 3_600_000;
-    return this.upcoming().filter((exam) => exam.date && new Date(exam.date).getTime() <= weekAhead).length;
+    return this.upcoming().filter((exam) => exam.date && new Date(exam.date).getTime() <= weekAhead)
+      .length;
   });
 }

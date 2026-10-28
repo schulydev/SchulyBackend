@@ -6,7 +6,7 @@ standard ASP.NET Core precedence (env vars override user secrets, which override
 `appsettings.{Environment}.json`, which overrides `appsettings.json`).
 
 Secrets are deliberately **not** committed: the tracked `appsettings*.json` carry only
-logging levels and `DevAuth`. Locally that gap is filled with
+logging levels and non-secret defaults (sign-in issuer, local mail settings). Locally that gap is filled with
 `dotnet user-secrets set` (see [Development setup](development.md)); in a container it
 is filled with environment variables, using `__` as the section separator
 (`ConnectionStrings__SchulyDatabase`).
@@ -23,43 +23,68 @@ Provide it via configuration or an environment variable, e.g.:
 export ConnectionStrings__SchulyDatabase="Host=localhost;Port=2406;Database=schuly-dev;Username=postgres;Password=..."
 ```
 
-## OIDC authentication
+## Sign-in
 
-JWT bearer authentication validates tokens against the configured OIDC authority
-(`AddSchulyAuthentication`):
+Sign-in is built into the server with the
+[Toamaisutaa](https://www.nuget.org/packages/Toamaisutaa.AspNetCore) library
+(`AddSchulyAuthentication`). There is no separate identity provider. Its tables live
+in the Schuly database (migration `AddToamaisutaa`).
+
+Enabled features: password sign-in with self-registration, email verification,
+password reset by email, TOTP two-factor with recovery codes, "remember this device"
+(trusted devices), and expired-token cleanup. Passkeys, magic links, invitations,
+admin-created accounts and external OIDC providers are not enabled.
+
+The endpoints live under `/auth`, for example `POST /auth/register`, `/auth/login`,
+`/auth/refresh`, `/auth/logout`, `/auth/password`, `/auth/password/forgot`,
+`/auth/password/reset`, `/auth/email`, `/auth/email/verify`, `/auth/2fa/*` and
+`/auth/devices`. The API under `/api/*` takes the access token as
+`Authorization: Bearer`. Access tokens live 15 minutes. Refresh tokens rotate on
+every use.
+
+The web app (served by the server itself) sends the header `X-Schuly-Client: web`.
+It then gets the refresh token and the remembered-device token in `HttpOnly`,
+`SameSite=Strict` cookies scoped to `/auth`. Other clients, such as the mobile app,
+get the tokens in the JSON body.
 
 | Key | Purpose |
 |---|---|
-| `Oidc:Authority` | OIDC authority (Keycloak) used to validate bearer tokens. |
-| `Oidc:RequireHttpsMetadata` | Whether HTTPS metadata is required (default `true`). |
-| `Oidc:AdminClientId` / `Oidc:AdminClientSecret` | Optional. Confidential client whose service account holds the `realm-management` `manage-users` role, used to delete the identity-provider user on account deletion. Unset means the backend deletes only its own data and logs a warning. |
+| `LocalLogin:SigningKey` | Key that signs access tokens. Base64, exactly 32 bytes. |
+| `TwoFactor:EncryptionKey` | Key that encrypts the two-factor secrets. Base64, exactly 32 bytes. |
+| `LocalLogin:Issuer` / `LocalLogin:Audience` | Token issuer and audience. `appsettings.json` sets both to `schuly`. |
+| `LocalLogin:AllowSelfRegistration` | Whether anyone can register (`true` in `appsettings.json`). |
+| `LocalLogin:RequireVerifiedEmailForPasswordReset` | Only send reset mails to verified addresses (`true` in `appsettings.json`). |
+| `TwoFactor:Issuer` | Name shown in authenticator apps (`Schuly`). |
+| `Auth:Administrators` | List of emails or usernames that get the `Administrator` role (`Auth__Administrators__0`, `__1`, ...). |
 
-Token claim mapping:
+Generate both keys with `openssl rand -base64 32` and keep them stable. A new signing
+key signs everybody out. A new encryption key breaks two-factor for every account
+that has it set up.
 
-- `name` → display name (`NameClaimType`).
-- **`groups` claim → role** (`RoleClaimType`). Group values map to the application
-  roles **`Student`**, **`Teacher`**, and **`Administrator`**.
-- Audience validation is disabled (`ValidateAudience = false`).
+Every account not listed in `Auth:Administrators` has no role. On the first valid
+token for an unknown user, the API creates the matching Schuly user (`AddUserSync` /
+`IUserService`).
 
-On the first valid token for an unknown user, the API syncs the user from the token
-(`AddUserSync` / `IUserService`).
+### Email (SMTP)
 
-### Development auth (DevAuth)
+Verification and password-reset mails go out over SMTP:
 
-In Development you can enable a local fake-OIDC path instead of a real IdP. With
-`DevAuth:Enabled = true` (see `appsettings.Development.json`), the API trusts tokens
-minted by `/api/dev/token`, signed with a symmetric key, using `DevAuth:Issuer`
-(default `schuly-dev`). No external identity provider is contacted. **Do not enable
-DevAuth in production.**
+| Key | Purpose |
+|---|---|
+| `Email:Smtp:Host` / `Email:Smtp:Port` | Mail server. |
+| `Email:Smtp:User` / `Email:Smtp:Password` | Mail server credentials. |
+| `Email:Smtp:From` | Sender address. |
+| `Email:Smtp:PasswordResetLinkTemplate` | Link in the reset mail, e.g. `https://<API_HOST>/reset-password?token={token}`. |
+| `Email:Smtp:EmailVerificationLinkTemplate` | Link in the verification mail, e.g. `https://<API_HOST>/verify-email?token={token}`. |
+
+In Development, `appsettings.Development.json` points mail at a local SMTP catcher on
+`localhost:1025` and builds links to `http://localhost:4200`. See
+[Development setup](development.md).
 
 ## OpenAPI document
 
-`Oidc:Authority` is also read when the OpenAPI document is generated, to advertise the
-OAuth2 authorization-code flow. It is required even when `DevAuth` replaces the real
-identity provider: without it `/openapi/v1.json` returns **500**
-(`Oidc:Authority not configured`) and the Scalar UI comes up empty, since it renders
-that document. `Oidc:ClientId` prefills the client id in the reference UI's
-authorization dialog.
+The OpenAPI document uses an HTTP bearer security scheme. In the Scalar UI you paste
+an access token; there is no OAuth2 flow.
 
 ## Document storage (S3)
 
@@ -78,6 +103,11 @@ stacks), configured under `S3:`:
 | Key | Purpose |
 |---|---|
 | `Avatar:SigningKey` | HMAC key for short-lived signed avatar URLs. Generate with `openssl rand -hex 32`. |
+
+Users upload a profile picture with `PUT /api/me/avatar` (multipart, PNG, JPEG or WebP,
+max 2 MB) and remove it with `DELETE /api/me/avatar`. The file goes to the document
+storage (S3) and is served through short-lived signed URLs under
+`/api/avatars/users/{id}`.
 
 The database stores only a bare blob key; a signed capability URL is minted per access.
 The key is read lazily, so a missing value surfaces as
@@ -100,8 +130,8 @@ leaves nothing behind in Postgres or S3.
 pipeline at most once per hour so a busy client does not write on every request. An
 account that has never been stamped falls back to its `CreatedAt`.
 
-The sweep never deletes identity-provider users, only what this backend stores, so an
-account swept for inactivity can sign in again and resync from scratch.
+The sweep deletes only the Schuly data, not the sign-in account, so an account swept
+for inactivity can sign in again and resync from scratch.
 
 ## Push notifications (Firebase)
 
@@ -123,7 +153,8 @@ turned off.
 The default (fallback) policy **requires an authenticated user for every endpoint**
 (`AddSchulyAuthorization`). Endpoints opt out with `[AllowAnonymous]`. The anonymous
 `/api/app` surface (e.g. the school-systems catalog and static logo assets under
-`wwwroot`) is reachable without auth so the app can load its login catalog. Admin
+`wwwroot`) is reachable without auth so the app can load its login catalog. Register,
+login and the other public sign-in endpoints under `/auth` need no token either. Admin
 plugin endpoints under `/api/plugins` require the `Administrator` role.
 
 ## Plugins

@@ -24,7 +24,7 @@ namespace Schuly.Tests.TestHelpers
         public Task<bool> ExistsAsync(string externalId, CancellationToken cancellationToken = default)
             => Task.FromResult(true);
 
-        public Task TouchLastSeenAsync(string externalId, CancellationToken cancellationToken = default)
+        public Task TouchLastSeenAsync(string externalId, string? verifiedEmail, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
 
         public Task SyncCurrentUserAsync(CancellationToken cancellationToken = default)

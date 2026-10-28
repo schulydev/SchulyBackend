@@ -4,7 +4,6 @@ import { ClassDto, ClassService } from '../api';
 import { withCollection } from './with-collection';
 
 export const ClassesStore = signalStore(
-  { providedIn: 'root' },
   withCollection<ClassDto>(() => {
     const api = inject(ClassService);
     return () => api.apiClassGet();

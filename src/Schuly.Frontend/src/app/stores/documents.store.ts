@@ -4,7 +4,6 @@ import { StudentDocumentDto, StudentDocumentsService } from '../api';
 import { withCollection } from './with-collection';
 
 export const DocumentsStore = signalStore(
-  { providedIn: 'root' },
   withCollection<StudentDocumentDto>(() => {
     const api = inject(StudentDocumentsService);
     return () => api.apiDocumentsGet();

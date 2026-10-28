@@ -21,13 +21,20 @@ namespace Schuly.Infrastructure.Services
             return await dbContext.ApplicationUsers.AnyAsync(u => u.ExternalId == externalId, cancellationToken);
         }
 
-        public async Task TouchLastSeenAsync(string externalId, CancellationToken cancellationToken = default)
+        public async Task TouchLastSeenAsync(string externalId, string? verifiedEmail, CancellationToken cancellationToken = default)
         {
             var user = await dbContext.ApplicationUsers
                 .SingleOrDefaultAsync(u => u.ExternalId == externalId, cancellationToken);
 
-            if (user is null || user.LastSeenAt > DateTime.UtcNow - LastSeenResolution)
+            if (user is null)
                 return;
+
+            var emailChanged = !string.IsNullOrWhiteSpace(verifiedEmail) && user.Email != verifiedEmail;
+            if (!emailChanged && user.LastSeenAt > DateTime.UtcNow - LastSeenResolution)
+                return;
+
+            if (emailChanged)
+                user.Email = verifiedEmail!;
 
             user.LastSeenAt = DateTime.UtcNow;
             await dbContext.SaveChangesAsync(cancellationToken);

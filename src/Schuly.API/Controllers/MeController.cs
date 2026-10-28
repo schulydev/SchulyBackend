@@ -2,6 +2,7 @@ using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Schuly.Application.Commands.Me;
+using Schuly.Application.Commands.User;
 
 namespace Schuly.API.Controllers
 {
@@ -11,6 +12,26 @@ namespace Schuly.API.Controllers
     [Authorize]
     public class MeController(IMediator mediator) : ControllerBase
     {
+        [HttpPut("avatar")]
+        [Consumes("multipart/form-data")]
+        [RequestSizeLimit(SetMyAvatarCommandHandler.MaxBytes + 100_000)]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> SetAvatar(IFormFile file, CancellationToken cancellationToken)
+        {
+            await using var stream = file.OpenReadStream();
+            var result = await mediator.Send(new SetMyAvatarCommand(stream, file.ContentType, file.Length), cancellationToken);
+            return result.ToActionResult();
+        }
+
+        [HttpDelete("avatar")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<IActionResult> RemoveAvatar(CancellationToken cancellationToken)
+        {
+            var result = await mediator.Send(new RemoveMyAvatarCommand(), cancellationToken);
+            return result.ToActionResult();
+        }
+
         [HttpPost("schools")]
         [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

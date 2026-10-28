@@ -1,43 +1,42 @@
+import { HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { OidcSecurityService, StsConfigHttpLoader, StsConfigLoader } from 'angular-auth-oidc-client';
-import { map, take } from 'rxjs';
-import { AppService } from '../api';
+import { catchError, switchMap, throwError } from 'rxjs';
+import { AuthStore } from '../stores/auth.store';
 
-export const authLoader = {
-  provide: StsConfigLoader,
-  useFactory: (app: AppService) =>
-    new StsConfigHttpLoader(
-      app.apiAppGet().pipe(
-        map((config) => ({
-          authority: config.authority,
-          clientId: config.webClientId,
-          redirectUrl: `${location.origin}/callback`,
-          postLogoutRedirectUri: location.origin,
-          scope: 'openid profile email offline_access',
-          responseType: 'code',
-          silentRenew: true,
-          useRefreshToken: true,
-          renewTimeBeforeTokenExpiresInSeconds: 30,
-          secureRoutes: ['/api/'],
-        })),
-      ),
-    ),
-  deps: [AppService],
-};
+const withToken = (request: HttpRequest<unknown>, token: string | null) =>
+  token ? request.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : request;
 
-export const authGuard: CanActivateFn = () => {
-  const router = inject(Router);
-  return inject(OidcSecurityService).isAuthenticated$.pipe(
-    take(1),
-    map(({ isAuthenticated }) => isAuthenticated || router.createUrlTree(['/login'])),
+const needsToken = (url: string) =>
+  url.startsWith('/api/') ||
+  (url.startsWith('/auth/') &&
+    !/^\/auth\/(login|register|refresh|logout|password\/forgot|password\/reset|email\/verify|2fa\/verify)$/.test(
+      url,
+    ));
+
+export const authInterceptor: HttpInterceptorFn = (request, next) => {
+  if (!needsToken(request.url)) return next(request);
+
+  const auth = inject(AuthStore);
+  return next(withToken(request, auth.accessToken())).pipe(
+    catchError((error: unknown) => {
+      if (!(error instanceof HttpErrorResponse) || error.status !== 401)
+        return throwError(() => error);
+      return auth.refresh().pipe(
+        switchMap((token) => {
+          if (!token) {
+            auth.signedOutElsewhere();
+            return throwError(() => error);
+          }
+          return next(withToken(request, token));
+        }),
+      );
+    }),
   );
 };
 
-export const guestGuard: CanActivateFn = () => {
-  const router = inject(Router);
-  return inject(OidcSecurityService).isAuthenticated$.pipe(
-    take(1),
-    map(({ isAuthenticated }) => !isAuthenticated || router.createUrlTree(['/'])),
-  );
-};
+export const authGuard: CanActivateFn = () =>
+  inject(AuthStore).status() === 'signedIn' || inject(Router).createUrlTree(['/login']);
+
+export const guestGuard: CanActivateFn = () =>
+  inject(AuthStore).status() !== 'signedIn' || inject(Router).createUrlTree(['/']);

@@ -11,10 +11,10 @@ The solution (`Schuly.API.slnx`) is split into the following projects:
 
 | Project | Role |
 |---|---|
-| `Schuly.API` | Entry point. Controllers, OIDC wiring, OpenAPI/Scalar, startup migrations, plugin host registration. Owns the `Dockerfile`. |
+| `Schuly.API` | Entry point. Controllers, sign-in wiring and `/auth` endpoints, OpenAPI/Scalar, startup migrations, plugin host registration. Owns the `Dockerfile`. |
 | `Schuly.Application` | CQRS commands/queries + Mediator handlers, DTOs, mappers, authorization and pipeline behaviors. **Must not** reference Infrastructure. |
 | `Schuly.Domain` | Pure entities (`School`, `Class`, `Exam`, `Grade`, `Absence`, `AgendaEntry`, `ApplicationUser`, `SchoolUser`, `Teacher`, `SchoolSystem`, `SemesterReport`, `StudentDocument`, …). Each inherits `Base` (`Id`, `CreatedAt`, `UpdatedAt`). |
-| `Schuly.Infrastructure` | `SchulyDbContext`, OIDC/user services, storage and the plugin secrets vault, the plugin contract services (`Plugins/`), repositories. |
+| `Schuly.Infrastructure` | `SchulyDbContext` (including the sign-in tables), user services, storage and the plugin secrets vault, the plugin contract services (`Plugins/`), repositories. |
 | `Schuly.Tests` / `Schuly.Tests.Plugin` | Test projects (TUnit). |
 
 `Schuly.Plugin.Abstractions` is consumed as a **NuGet `PackageReference`**, not a
@@ -50,9 +50,10 @@ change. See [Configuration](setup/configuration.md#document-storage-s3) for the 
 The backend **proxies every byte itself**: clients never receive S3 URLs and never
 connect to the storage backend directly. Uploads go to
 `POST /api/students/{id}/documents` (multipart) and downloads come back from
-`GET /api/documents/{id}` as a file response. Avatars are the one exception - the
-database holds only a bare blob key, and a short-lived HMAC-signed capability URL is
-minted per access (see [Avatar URL signing](setup/configuration.md#avatar-url-signing)).
+`GET /api/documents/{id}` as a file response. Avatars are the one exception - they are
+uploaded with `PUT /api/me/avatar`, the database holds only a bare blob key, and a
+short-lived HMAC-signed capability URL under `/api/avatars/users/{id}` is minted per
+access (see [Avatar URL signing](setup/configuration.md#avatar-url-signing)).
 
 ## Adding an entity + endpoint
 

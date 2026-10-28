@@ -9,7 +9,7 @@ namespace Schuly.Infrastructure.Services
         /// Stamps <see cref="Schuly.Domain.ApplicationUser.LastSeenAt"/> to now, but at
         /// most once an hour, so a busy client does not write on every request.
         /// </summary>
-        Task TouchLastSeenAsync(string externalId, CancellationToken cancellationToken = default);
+        Task TouchLastSeenAsync(string externalId, string? verifiedEmail, CancellationToken cancellationToken = default);
         Task<Guid> GetCurrentUserIdAsync(CancellationToken cancellationToken = default);
 
         Task<IReadOnlyList<Guid>> GetCurrentUserSchoolUserIdsAsync(CancellationToken cancellationToken = default);

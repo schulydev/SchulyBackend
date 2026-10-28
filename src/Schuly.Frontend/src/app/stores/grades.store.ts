@@ -32,7 +32,6 @@ export interface ExamRow {
 }
 
 export const GradesStore = signalStore(
-  { providedIn: 'root' },
   withCollection<ExamDto>(() => {
     const api = inject(ExamsService);
     return () => api.apiExamsGet();
