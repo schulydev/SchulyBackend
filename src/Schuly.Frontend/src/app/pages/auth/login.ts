@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, input, signal } from '@angular/core';
 import { form, FormField, FormRoot, required } from '@angular/forms/signals';
 import { Router, RouterLink } from '@angular/router';
@@ -45,7 +46,9 @@ const CODE_LENGTH = 6;
     >
       @if (changed() && step() === 'credentials') {
         <div hlmAlert>
-          <p hlmAlertDescription>Your sign-in details changed, so you were signed out everywhere. Sign in again.</p>
+          <p hlmAlertDescription>
+            Your sign-in details changed, so you were signed out everywhere. Sign in again.
+          </p>
         </div>
       }
       <section hlmCard>
@@ -169,7 +172,11 @@ const CODE_LENGTH = 6;
       } @else {
         <p class="text-muted-foreground text-center text-sm">
           New to Schuly?
-          <a routerLink="/register" class="text-foreground font-medium underline-offset-4 hover:underline">Create an account</a>
+          <a
+            routerLink="/register"
+            class="text-foreground font-medium underline-offset-4 hover:underline"
+            >Create an account</a
+          >
         </p>
       }
     </app-auth-layout>
@@ -247,13 +254,11 @@ export class Login {
       await this.router.navigateByUrl('/');
     } catch (error) {
       this.codeModel.set({ code: '' });
+      const rateLimited = error instanceof HttpErrorResponse && error.status === 429;
       this.error.set(
-        authErrorMessage(
-          error,
-          this.usingRecoveryCode()
-            ? "That recovery code didn't work."
-            : "That code didn't match. Try the current one from your app.",
-        ),
+        this.usingRecoveryCode() || rateLimited
+          ? authErrorMessage(error, "That recovery code didn't work.")
+          : "That code didn't work. Wait for the next code in your app and enter that one.",
       );
     }
     return undefined;
