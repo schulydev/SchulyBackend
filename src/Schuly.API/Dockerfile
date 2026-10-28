@@ -4,8 +4,10 @@ WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
+FROM --platform=$BUILDPLATFORM oven/bun:1.3.5 AS bun
+
 FROM --platform=$BUILDPLATFORM node:24-slim AS frontend
-COPY --from=oven/bun:1.3.5 /usr/local/bin/bun /usr/local/bin/bun
+COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /frontend
 COPY Schuly.Frontend/package.json Schuly.Frontend/bun.lock ./
 RUN bun install --frozen-lockfile
