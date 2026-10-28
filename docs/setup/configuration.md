@@ -81,6 +81,7 @@ providers under Settings → Security in the web app.
 | `ExternalLogin:Providers:<key>:ClientId` / `ClientSecret` | The client the provider issued. Leave the secret out for a public client. |
 | `ExternalLogin:Providers:<key>:Scopes` | Defaults to `openid profile email`. |
 | `ExternalLogin:Providers:<key>:AllowSignUp` | Whether a first sign-in may create a new account. `false` by default: only accounts that linked the provider can use it. |
+| `ExternalLogin:Providers:<key>:TrustEmailVerified` | Whether the address this provider marks `email_verified` counts as the account's email when the account has no verified address of its own. Without it, accounts created through the provider have no email. Anything granted by email, such as `Auth:Administrators`, then goes to whoever the provider lets claim that address, so only turn this on for providers that really verify addresses. |
 | `ExternalLogin:Providers:<key>:LinkByVerifiedEmail` | Whether a first sign-in joins the account that already has the provider's verified address. Only turn this on for providers that really verify addresses. |
 | `ExternalLogin:AllowedReturnUrls` | Exact URLs a finished sign-in may return to (`ExternalLogin__AllowedReturnUrls__0`, `__1`, ...). |
 | `ExternalLogin:CallbackBaseUrl` | Public scheme and host of the server, when a proxy does not forward them. |
