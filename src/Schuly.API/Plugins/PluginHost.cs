@@ -113,6 +113,7 @@ namespace Schuly.API.Plugins
                     added++;
                 }
 
+                system.Source = PluginSource(loaded.Instance);
                 system.LoginMethod = d.LoginMethod;
                 system.PrivateAuthStrategy = d.PrivateAuthStrategy;
                 system.StatelessBasePath = d.StatelessBasePath;

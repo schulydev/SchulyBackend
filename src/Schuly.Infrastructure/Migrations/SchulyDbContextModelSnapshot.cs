@@ -696,6 +696,9 @@ namespace Schuly.Infrastructure.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Source")
+                        .HasColumnType("text");
+
                     b.Property<string>("StatelessBasePath")
                         .HasColumnType("text");
 

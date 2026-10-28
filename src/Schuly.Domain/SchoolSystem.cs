@@ -7,6 +7,8 @@ namespace Schuly.Domain
         public required string DisplayName { get; set; }
         public string? LogoUrl { get; set; }
 
+        public string? Source { get; set; }
+
         public string? PrivateAuthStrategy { get; set; }
 
         public string? StatelessBasePath { get; set; }
