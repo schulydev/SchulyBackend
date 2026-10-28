@@ -1,0 +1,5 @@
+**/bin
+**/obj
+Schuly.Frontend/node_modules
+Schuly.Frontend/.angular
+Schuly.Frontend/dist

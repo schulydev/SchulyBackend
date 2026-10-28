@@ -70,6 +70,7 @@ app.UseForwardedHeaders();
 
 app.UseExceptionHandler();
 
+app.UseDefaultFiles();
 app.UseStaticFiles();
 
 if (app.Environment.IsDevelopment())
@@ -84,6 +85,7 @@ app.UseRateLimiter();
 app.UseAuthorization();
 app.UseMiddleware<PluginScopeMiddleware>();
 app.MapControllers();
+app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/|openapi/|scalar).*$)}", "index.html").AllowAnonymous();
 await app.UseSchulyPluginsAsync();
 app.UseTickerQ();
 
