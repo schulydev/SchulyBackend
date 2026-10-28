@@ -1351,6 +1351,11 @@ namespace Schuly.Infrastructure.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
+                    b.Property<int>("LockoutStrikes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("NormalizedEmail")
                         .IsConcurrencyToken()
                         .HasMaxLength(256)
@@ -1522,6 +1527,29 @@ namespace Schuly.Infrastructure.Migrations
                     b.ToTable("ToamaisutaaRefreshTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Toamaisutaa.Abstractions.ToamaisutaaSignInThrottle", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("FailedAttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("FirstFailedAttemptAt")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("LockedOutUntil")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("UserId", "Source");
+
+                    b.ToTable("ToamaisutaaSignInThrottles", (string)null);
+                });
+
             modelBuilder.Entity("Toamaisutaa.Abstractions.ToamaisutaaTrustedDevice", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1647,6 +1675,9 @@ namespace Schuly.Infrastructure.Migrations
                     b.Property<long>("CreatedAt")
                         .HasColumnType("bigint");
 
+                    b.Property<long?>("DisabledAt")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("DisplayName")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -1707,6 +1738,11 @@ namespace Schuly.Infrastructure.Migrations
 
                     b.Property<long?>("LockedOutUntil")
                         .HasColumnType("bigint");
+
+                    b.Property<int>("LockoutStrikes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<byte[]>("SecretCiphertext")
                         .IsRequired()
@@ -2062,6 +2098,15 @@ namespace Schuly.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("Toamaisutaa.Abstractions.ToamaisutaaRefreshToken", b =>
+                {
+                    b.HasOne("Toamaisutaa.Abstractions.ToamaisutaaUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Toamaisutaa.Abstractions.ToamaisutaaSignInThrottle", b =>
                 {
                     b.HasOne("Toamaisutaa.Abstractions.ToamaisutaaUser", null)
                         .WithMany()

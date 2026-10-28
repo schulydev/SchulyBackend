@@ -34,9 +34,13 @@ import { SecurityStore } from '../../stores/security.store';
         @if (security.signInAgain() && !security.recoveryCodes()) {
           <div hlmAlert>
             <h4 hlmAlertTitle>{{ security.signInAgain() }}</h4>
-            <p hlmAlertDescription>For your safety, changing how you sign in ends every session, including this one.</p>
+            <p hlmAlertDescription>
+              For your safety, changing how you sign in ends every session, including this one.
+            </p>
           </div>
-          <button hlmBtn class="self-start" (click)="security.continueToSignIn()">Sign in again</button>
+          <button hlmBtn class="self-start" (click)="security.continueToSignIn()">
+            Sign in again
+          </button>
         }
         @if (security.notice()) {
           <div hlmAlert>
@@ -152,7 +156,20 @@ import { SecurityStore } from '../../stores/security.store';
             <p class="text-muted-foreground text-sm">
               {{ security.twoFactor()?.recoveryCodesRemaining ?? 0 }} recovery codes left.
             </p>
-            <form class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end" [formRoot]="disableForm">
+            <form
+              class="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+              [formRoot]="disableForm"
+            >
+              <div hlmField>
+                <label hlmFieldLabel for="disable-password">Current password</label>
+                <input
+                  hlmInput
+                  id="disable-password"
+                  type="password"
+                  autocomplete="current-password"
+                  [formField]="disableForm.password"
+                />
+              </div>
               <div hlmField>
                 <label hlmFieldLabel for="disable-code"
                   >Code from your app, or a recovery code</label
@@ -281,14 +298,24 @@ export class SecurityCard {
     },
   );
 
-  private readonly disableModel = signal({ proof: '' });
-  protected readonly disableForm = form(this.disableModel, (path) => required(path.proof), {
-    submission: {
-      action: async () => {
-        await this.security.disableTwoFactor(this.disableModel().proof.trim());
-        this.disableModel.set({ proof: '' });
-        return undefined;
+  private readonly disableModel = signal({ password: '', proof: '' });
+  protected readonly disableForm = form(
+    this.disableModel,
+    (path) => {
+      required(path.password);
+      required(path.proof);
+    },
+    {
+      submission: {
+        action: async () => {
+          await this.security.disableTwoFactor(
+            this.disableModel().proof.trim(),
+            this.disableModel().password,
+          );
+          this.disableModel.set({ password: '', proof: '' });
+          return undefined;
+        },
       },
     },
-  });
+  );
 }

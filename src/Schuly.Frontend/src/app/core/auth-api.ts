@@ -114,8 +114,8 @@ export class AuthApi {
     return this.http.post<{ recoveryCodes: string[] }>('/auth/2fa/confirm', { code });
   }
 
-  disableTwoFactor(proof: string): Observable<void> {
-    return this.http.post<void>('/auth/2fa/disable', { proof });
+  disableTwoFactor(proof: string, currentPassword: string): Observable<void> {
+    return this.http.post<void>('/auth/2fa/disable', { proof, currentPassword });
   }
 
   trustedDevices(): Observable<TrustedDevice[]> {
