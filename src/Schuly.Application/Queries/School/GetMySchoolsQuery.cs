@@ -29,6 +29,7 @@ namespace Schuly.Application.Queries.School
                     su.FirstName,
                     su.LastName,
                     su.School.LogoUrl,
+                    SchoolSystemKey = dbContext.SchoolSystems.Where(s => s.Source != null && s.Source == su.Source).Select(s => s.Key).FirstOrDefault(),
                     su.ProfilePictureUrl,
                 })
                 .ToListAsync(cancellationToken);
@@ -40,6 +41,7 @@ namespace Schuly.Application.Queries.School
                 Email = r.Email,
                 FullName = (r.FirstName + " " + r.LastName).Trim(),
                 LogoUrl = r.LogoUrl,
+                SchoolSystemKey = r.SchoolSystemKey,
                 ProfilePictureUrl = avatarSigner.ToPublicUrl(r.Id, r.ProfilePictureUrl),
             }).ToList();
 
