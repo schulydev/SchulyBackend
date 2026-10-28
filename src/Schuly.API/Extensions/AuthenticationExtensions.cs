@@ -23,6 +23,11 @@ namespace Schuly.API.Extensions
             services.AddToamaisutaaTwoFactor(configuration);
             services.AddToamaisutaaTrustedDevices(configuration);
             services.AddToamaisutaaExternalLogin(configuration);
+            services.PostConfigure<ToamaisutaaExternalLoginOptions>(options =>
+            {
+                foreach (var provider in options.Providers.Values.Where(p => string.IsNullOrWhiteSpace(p.IconUrl)))
+                    provider.IconUrl = BuiltInIcon(provider.Authority);
+            });
             services.AddToamaisutaaTokenCleanup();
 
             return services;
@@ -42,6 +47,15 @@ namespace Schuly.API.Extensions
             app.MapToamaisutaaExternalLoginEndpoints();
             return app;
         }
+
+        private static string? BuiltInIcon(string? authority) => Uri.TryCreate(authority, UriKind.Absolute, out var uri)
+            ? uri.Host.ToLowerInvariant() switch
+            {
+                "accounts.google.com" => "/sso-icons/google.png",
+                "login.microsoftonline.com" or "login.live.com" => "/sso-icons/microsoft.png",
+                _ => null,
+            }
+            : null;
 
         public static AuthenticationBuilder AddUserSync(this AuthenticationBuilder builder)
         {
