@@ -83,7 +83,7 @@ export class AppSidebar {
       items: [
         { title: 'Grades', url: '/grades', icon: 'lucideChartColumn' },
         { title: 'Exams', url: '/exams', icon: 'lucideClipboardList' },
-        { title: 'Agenda', url: '/agenda', icon: 'lucideCalendarDays' },
+        { title: 'Calendar', url: '/calendar', icon: 'lucideCalendarDays' },
         { title: 'Absences', url: '/absences', icon: 'lucideUserX' },
         { title: 'Documents', url: '/documents', icon: 'lucideFileText' },
       ],

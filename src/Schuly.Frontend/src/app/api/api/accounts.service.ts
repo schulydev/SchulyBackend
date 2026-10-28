@@ -37,14 +37,16 @@ export class AccountsService extends BaseService {
      * @endpoint get /api/plugins/microsoft/accounts/{accountId}/calendar
      * @param accountId 
      * @param top 
+     * @param start 
+     * @param end 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public apiPluginsMicrosoftAccountsAccountIdCalendarGet(accountId: string, top?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any>;
-    public apiPluginsMicrosoftAccountsAccountIdCalendarGet(accountId: string, top?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
-    public apiPluginsMicrosoftAccountsAccountIdCalendarGet(accountId: string, top?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
-    public apiPluginsMicrosoftAccountsAccountIdCalendarGet(accountId: string, top?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public apiPluginsMicrosoftAccountsAccountIdCalendarGet(accountId: string, top?: number, start?: string, end?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any>;
+    public apiPluginsMicrosoftAccountsAccountIdCalendarGet(accountId: string, top?: number, start?: string, end?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
+    public apiPluginsMicrosoftAccountsAccountIdCalendarGet(accountId: string, top?: number, start?: string, end?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
+    public apiPluginsMicrosoftAccountsAccountIdCalendarGet(accountId: string, top?: number, start?: string, end?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (accountId === null || accountId === undefined) {
             throw new Error('Required parameter accountId was null or undefined when calling apiPluginsMicrosoftAccountsAccountIdCalendarGet.');
         }
@@ -55,6 +57,24 @@ export class AccountsService extends BaseService {
             localVarQueryParameters,
             'top',
             <any>top,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'start',
+            <any>start,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'end',
+            <any>end,
             QueryParamStyle.Form,
             true,
         );

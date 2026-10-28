@@ -1,23 +1,14 @@
 import { computed, inject } from '@angular/core';
-import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import { AgendaEntryDto, AgendaEntryType, AgendasService } from '../api';
+import { signalStore, withComputed } from '@ngrx/signals';
+import { AgendaEntryDto, AgendasService } from '../api';
 import { dayKey, startOfToday } from '../core/dates';
 import { withCollection } from './with-collection';
-
-export type AgendaFilter = 'all' | AgendaEntryType;
-
-export interface AgendaDay {
-  key: string;
-  date: Date;
-  entries: AgendaEntryDto[];
-}
 
 export const AgendaStore = signalStore(
   withCollection<AgendaEntryDto>(() => {
     const api = inject(AgendasService);
     return () => api.apiAgendasGet();
   }),
-  withState<{ filter: AgendaFilter }>({ filter: 'all' }),
   withComputed((store) => {
     const upcoming = computed(() =>
       store
@@ -27,25 +18,9 @@ export const AgendaStore = signalStore(
     );
     return {
       upcoming,
-      today: computed(() => upcoming().filter((entry) => dayKey(new Date(entry.date)) === dayKey(startOfToday()))),
-      days: computed<AgendaDay[]>(() => {
-        const filter = store.filter();
-        const days = new Map<string, AgendaDay>();
-        for (const entry of upcoming()) {
-          if (filter !== 'all' && entry.entryType !== filter) continue;
-          const date = new Date(entry.date);
-          const key = dayKey(date);
-          const day = days.get(key) ?? { key, date, entries: [] };
-          day.entries.push(entry);
-          days.set(key, day);
-        }
-        return [...days.values()];
-      }),
+      today: computed(() =>
+        upcoming().filter((entry) => dayKey(new Date(entry.date)) === dayKey(startOfToday())),
+      ),
     };
   }),
-  withMethods((store) => ({
-    setFilter(filter: AgendaFilter): void {
-      patchState(store, { filter });
-    },
-  })),
 );

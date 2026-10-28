@@ -1,5 +1,4 @@
 .gitignore
-.openapi-generator-ignore
 README.md
 api.base.service.ts
 api.module.ts
@@ -12,6 +11,7 @@ api/applicationUsers.service.ts
 api/auth.service.ts
 api/authentication.service.ts
 api/avatars.service.ts
+api/calendar.service.ts
 api/class.service.ts
 api/examplePlugin.service.ts
 api/exams.service.ts
@@ -78,6 +78,9 @@ model/installPluginRequest.ts
 model/linkedAccountDto.ts
 model/loginRequest.ts
 model/logoutRequest.ts
+model/microsoftCalendarAccount.ts
+model/microsoftCalendarEvent.ts
+model/microsoftCalendarFeed.ts
 model/models.ts
 model/mySchoolDto.ts
 model/notificationPreferencesDto.ts

@@ -223,8 +223,8 @@ import { UserStore } from '../stores/user.store';
             <h3 hlmCardTitle>Coming up</h3>
             <p hlmCardDescription>Tests and events in your agenda</p>
             <div hlmCardAction>
-              <a hlmBtn variant="ghost" size="sm" routerLink="/agenda">
-                Agenda
+              <a hlmBtn variant="ghost" size="sm" routerLink="/calendar">
+                Calendar
                 <ng-icon name="lucideArrowRight" />
               </a>
             </div>
