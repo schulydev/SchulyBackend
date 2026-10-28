@@ -1,6 +1,6 @@
 # Architecture
 
-SchulyBackend is a clean-architecture solution with CQRS. Requests flow into thin
+SchulyServer is a clean-architecture solution with CQRS. Requests flow into thin
 controllers, which dispatch commands/queries through [Mediator](https://github.com/martinothamar/Mediator)
 to handlers in the application layer; persistence and external integrations live in
 infrastructure.

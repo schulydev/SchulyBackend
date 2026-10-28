@@ -2,7 +2,7 @@
 
 A from-zero walkthrough to stand up the Schuly backend **and the services it needs**
 on your own server, using the published GHCR images and the ready-made stack under
-[`deploy/`](https://github.com/schulydev/SchulyBackend/tree/main/deploy). Everything
+[`deploy/`](https://github.com/schulydev/SchulyServer/tree/main/deploy). Everything
 runs behind [Caddy](https://caddyserver.com/) with automatic HTTPS.
 
 For local development instead, see [Development](development.md). For image/release
@@ -48,8 +48,8 @@ Core migrations automatically on startup, and downloads the plugins declared in
 Clone the repo (or copy just its `deploy/` folder) onto the server and enter it:
 
 ```sh
-git clone https://github.com/schulydev/SchulyBackend.git
-cd SchulyBackend/deploy
+git clone https://github.com/schulydev/SchulyServer.git
+cd SchulyServer/deploy
 ```
 
 Everything below runs from `deploy/`, which looks like this before you've touched
@@ -153,7 +153,7 @@ drops cached school data for school users whose `LeaveDate` is further back than
 `Retention__MonthsAfterLeave` (6 months), and deletes accounts that have not made an
 authenticated request for `Retention__MonthsInactive` (12 months). Both thresholds, and
 the `Retention__Enabled` switch, live in
-[`config/backend.env`](https://github.com/schulydev/SchulyBackend/blob/main/deploy/config/backend.env).
+[`config/backend.env`](https://github.com/schulydev/SchulyServer/blob/main/deploy/config/backend.env).
 
 The sweep only touches the backend's own database and object storage. Keycloak users are
 never removed by it, so someone whose cached data expired can sign in again and resync.
@@ -165,8 +165,8 @@ the other config files, and read `${...}` values straight out of `.env`:
 
 | File | Holds |
 |---|---|
-| [`config/backend.env`](https://github.com/schulydev/SchulyBackend/blob/main/deploy/config/backend.env) | Backend settings - database connection, OIDC, S3, plugin paths. |
-| [`config/keycloak.env`](https://github.com/schulydev/SchulyBackend/blob/main/deploy/config/keycloak.env) | Keycloak settings - database, hostname, proxy headers, bootstrap admin, SMTP. |
+| [`config/backend.env`](https://github.com/schulydev/SchulyServer/blob/main/deploy/config/backend.env) | Backend settings - database connection, OIDC, S3, plugin paths. |
+| [`config/keycloak.env`](https://github.com/schulydev/SchulyServer/blob/main/deploy/config/keycloak.env) | Keycloak settings - database, hostname, proxy headers, bootstrap admin, SMTP. |
 
 You normally don't touch either; they exist so `compose.staging.yml` stays readable as a
 picture of the stack rather than a wall of environment variables.

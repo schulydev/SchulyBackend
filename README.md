@@ -1,4 +1,4 @@
-# <p align="center">SchulyBackend</p>
+# <p align="center">SchulyServer</p>
 <p align="center">
   <img src="./assets/app_icon.png" width="160" alt="Schuly Logo">
 </p> 
@@ -6,9 +6,9 @@
   <strong>ASP.NET Core backend powering the Schuly ecosystem</strong>
 </p>
 <p align="center">
-  <a href="https://github.com/schulydev/SchulyBackend/stargazers"><img src="https://img.shields.io/github/stars/schulydev/SchulyBackend?style=flat&color=3da8ff" alt="GitHub stars"/></a>
+  <a href="https://github.com/schulydev/SchulyServer/stargazers"><img src="https://img.shields.io/github/stars/schulydev/SchulyServer?style=flat&color=3da8ff" alt="GitHub stars"/></a>
   <a href="https://dotnet.microsoft.com/"><img src="https://img.shields.io/badge/.NET-10.0-3da8ff" alt=".NET"/></a>
-  <a href="https://docs.schuly.dev/SchulyBackend/"><img src="https://img.shields.io/badge/docs-docs.schuly.dev-3da8ff" alt="Documentation"/></a>
+  <a href="https://docs.schuly.dev/SchulyServer/"><img src="https://img.shields.io/badge/docs-docs.schuly.dev-3da8ff" alt="Documentation"/></a>
   <a href="https://schuly.dev"><img src="https://img.shields.io/badge/site-schuly.dev-3da8ff" alt="Website"/></a>
 </p>
 
@@ -34,22 +34,22 @@ dotnet run --urls=http://localhost:5033
 
 API reference (Scalar): `http://localhost:5033/scalar` · OpenAPI document: `http://localhost:5033/openapi/v1.json`
 
-The connection string and `Oidc:Authority` are both required - the API stops on startup without the first, and the OpenAPI document fails without the second. [Development setup](https://docs.schuly.dev/SchulyBackend/setup/development) walks through it properly.
+The connection string and `Oidc:Authority` are both required - the API stops on startup without the first, and the OpenAPI document fails without the second. [Development setup](https://docs.schuly.dev/SchulyServer/setup/development) walks through it properly.
 
 ## Documentation
 
-Full documentation lives at **[docs.schuly.dev/SchulyBackend](https://docs.schuly.dev/SchulyBackend/)**.
+Full documentation lives at **[docs.schuly.dev/SchulyServer](https://docs.schuly.dev/SchulyServer/)**.
 
 | Guide | What it covers |
 |---|---|
-| [Development setup](https://docs.schuly.dev/SchulyBackend/setup/development) | Run the API and its dependencies locally, and the tests. |
-| [Configuration](https://docs.schuly.dev/SchulyBackend/setup/configuration) | Every setting: connection string, OIDC, S3 storage, avatar signing, logging. |
-| [Self-hosting](https://docs.schuly.dev/SchulyBackend/setup/self-hosting) | Stand up the full stack (Caddy, Keycloak, Postgres, SeaweedFS) from published images. |
-| [Production](https://docs.schuly.dev/SchulyBackend/setup/production) | Image tags, releases, and deployment notes. |
-| [Architecture](https://docs.schuly.dev/SchulyBackend/architecture) | Projects, layering rules, request pipeline, document storage. |
-| [Plugin management](https://docs.schuly.dev/SchulyBackend/plugin-management) | How plugins are declared, downloaded, and managed at runtime. |
-| [Migrations](https://docs.schuly.dev/SchulyBackend/migrations) | Create and apply EF Core migrations. |
-| [Contributing](https://docs.schuly.dev/SchulyBackend/contributing) | Workflow, branch and PR conventions. |
+| [Development setup](https://docs.schuly.dev/SchulyServer/setup/development) | Run the API and its dependencies locally, and the tests. |
+| [Configuration](https://docs.schuly.dev/SchulyServer/setup/configuration) | Every setting: connection string, OIDC, S3 storage, avatar signing, logging. |
+| [Self-hosting](https://docs.schuly.dev/SchulyServer/setup/self-hosting) | Stand up the full stack (Caddy, Keycloak, Postgres, SeaweedFS) from published images. |
+| [Production](https://docs.schuly.dev/SchulyServer/setup/production) | Image tags, releases, and deployment notes. |
+| [Architecture](https://docs.schuly.dev/SchulyServer/architecture) | Projects, layering rules, request pipeline, document storage. |
+| [Plugin management](https://docs.schuly.dev/SchulyServer/plugin-management) | How plugins are declared, downloaded, and managed at runtime. |
+| [Migrations](https://docs.schuly.dev/SchulyServer/migrations) | Create and apply EF Core migrations. |
+| [Contributing](https://docs.schuly.dev/SchulyServer/contributing) | Workflow, branch and PR conventions. |
 
 ## School systems catalog
 
@@ -64,7 +64,7 @@ See [the plugin contract](https://docs.schuly.dev/SchulyPluginAbstractions/contr
 | Repo | Purpose |
 |---|---|
 | [**Schuly**](https://github.com/schulydev/Schuly) | Flutter mobile app |
-| [**SchulyBackend**](https://github.com/schulydev/SchulyBackend) | ASP.NET Core API backend *(this repo)* |
+| [**SchulyServer**](https://github.com/schulydev/SchulyServer) | ASP.NET Core API and web app *(this repo)* |
 | [**SchulyKeycloak**](https://github.com/schulydev/SchulyKeycloak) | Keycloak image + the `schuly` realm |
 | [**SchulyPluginAbstractions**](https://github.com/schulydev/SchulyPluginAbstractions) | Plugin contract (NuGet) |
 | [**SchulyPlugins**](https://github.com/schulydev/SchulyPlugins) | Official plugins monorepo |

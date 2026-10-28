@@ -1,4 +1,4 @@
-# Notes for Claude (and humans) - SchulyBackend
+# Notes for Claude (and humans) - SchulyServer
 
 ASP.NET Core 10 API. Clean architecture + CQRS via [Mediator](https://github.com/martinothamar/Mediator). EF Core on PostgreSQL. OIDC auth. Plugin host.
 
