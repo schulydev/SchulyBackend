@@ -18,7 +18,7 @@ namespace Schuly.API.Plugins
 {
     public sealed record LoadedPluginInfo(string Name, string Version);
 
-    public sealed class PluginHost(IServiceProvider rootProvider, IConfiguration configuration, ApplicationPartManager partManager, PluginEndpointDataSource endpointSource, PluginAssemblyMap assemblyMap, IPluginTaskScheduler scheduler, ILogger<PluginHost> logger) : IPluginEventDispatcher
+    public sealed class PluginHost(IServiceProvider rootProvider, IConfiguration configuration, ApplicationPartManager partManager, PluginEndpointDataSource endpointSource, PluginAssemblyMap assemblyMap, IPluginTaskScheduler scheduler, ILogger<PluginHost> logger) : IPluginEventDispatcher, IPluginTaskRunner
     {
         private readonly ConcurrentDictionary<string, LoadedPlugin> _loaded = new(StringComparer.OrdinalIgnoreCase);
         private readonly SemaphoreSlim _gate = new(1, 1);
@@ -326,7 +326,7 @@ namespace Schuly.API.Plugins
         {
             if (!_loaded.TryGetValue(pluginName, out var plugin))
             {
-                logger.LogWarning("Ticker fired for plugin task {Plugin}/{Task} but the plugin is not loaded", pluginName, taskName);
+                logger.LogWarning("Scheduled run fired for plugin task {Plugin}/{Task} but the plugin is not loaded", pluginName, taskName);
                 return;
             }
 

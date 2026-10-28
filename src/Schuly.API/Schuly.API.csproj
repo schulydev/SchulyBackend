@@ -30,9 +30,6 @@
     <PackageReference Include="Toamaisutaa.AspNetCore" Version="0.10.0" />
     <PackageReference Include="Toamaisutaa.Email.Smtp" Version="0.10.0" />
     <PackageReference Include="Toamaisutaa.OpenIdConnect" Version="0.10.0" />
-    <PackageReference Include="TickerQ" Version="10.4.0" />
-    <PackageReference Include="TickerQ.Dashboard" Version="10.4.0" />
-    <PackageReference Include="TickerQ.EntityFrameworkCore" Version="10.4.0" />
   </ItemGroup>
 
   <ItemGroup>

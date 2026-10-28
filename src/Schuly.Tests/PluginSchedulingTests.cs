@@ -1,14 +1,9 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Schuly.API.Extensions;
 using Schuly.API.Plugins;
-using Schuly.Infrastructure;
 using Schuly.Plugin.Abstractions;
 using Schuly.Tests.Plugin;
 using Schuly.Tests.TestHelpers;
-using TickerQ.Utilities;
 
 namespace Schuly.Tests
 {
@@ -131,24 +126,6 @@ namespace Schuly.Tests
 
             await Assert.That(syncRegistration.Cron).IsEqualTo("0 3 * * *");
             await Assert.That(cleanupRegistration.Cron).IsEqualTo("0 7 * * *");
-        }
-
-        // TickerFunctionProvider is static/global state populated by a module initializer the
-        // moment Schuly.API is touched, so this has to run alone: it is the one test that
-        // actually calls TickerFunctionProvider.Build(), and interference from a second call
-        // elsewhere in the same process would make the assertion meaningless.
-        [Test]
-        [NotInParallel]
-        public async Task Host_ticker_function_is_registered_by_the_source_generator()
-        {
-            var services = new ServiceCollection();
-            services.AddDbContext<SchulyDbContext>(options => options.UseNpgsql("Host=localhost;Database=schuly_test;Username=x;Password=y"));
-            services.AddSchulyTickerQ();
-
-            TickerFunctionProvider.Build();
-
-            await Assert.That(TickerFunctionProvider.IsBuilt).IsTrue();
-            await Assert.That(TickerFunctionProvider.TickerFunctions.ContainsKey("RunPluginTask")).IsTrue();
         }
     }
 }

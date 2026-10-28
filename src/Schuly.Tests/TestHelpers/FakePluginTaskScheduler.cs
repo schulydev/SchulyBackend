@@ -2,7 +2,7 @@ using Schuly.API.Plugins;
 
 namespace Schuly.Tests.TestHelpers
 {
-    // Records what PluginHost asked TickerQ to do, for the hot-swap tests to assert on,
+    // Records what PluginHost asked the scheduler to do, for the hot-swap tests to assert on,
     // without needing a real database.
     public sealed class FakePluginTaskScheduler : IPluginTaskScheduler
     {

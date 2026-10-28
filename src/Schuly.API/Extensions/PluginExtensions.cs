@@ -26,6 +26,7 @@ namespace Schuly.API.Extensions
 
             services.AddSingleton<PluginHost>();
             services.AddSingleton<IPluginEventDispatcher>(sp => sp.GetRequiredService<PluginHost>());
+            services.AddSingleton<IPluginTaskRunner>(sp => sp.GetRequiredService<PluginHost>());
             services.AddSingleton<PluginManager>();
 
             // Tag plugin controllers (added as ApplicationParts at runtime) with their

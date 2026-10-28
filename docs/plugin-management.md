@@ -21,16 +21,15 @@ manual DLL drops, no restart.
 
 A plugin declares a recurring job by registering an `IPluginBackgroundTask`: a name, a
 `PluginSchedule` (a cron expression plus optional retries and `RunOnStartup`), and an
-`ExecuteAsync` body. The backend never lets a plugin talk to TickerQ directly - it owns
-a single host-side ticker function that dispatches into the plugin's own DI scope by
-plugin and task name. That indirection exists because a plugin assembly is loaded at
-runtime into a collectible `AssemblyLoadContext`; a `[TickerFunction]` declared inside
-it would never be seen by TickerQ's source generator, which only runs at host compile
-time.
+`ExecuteAsync` body. The backend runs these on its own scheduler: it checks every second
+which tasks are due, resolves the task by plugin and task name inside the plugin's own
+DI scope, and retries a failed run as often as the schedule allows (30 seconds apart
+unless `RetryIntervals` says otherwise). A task never overlaps with itself; a run that
+is still going when the next one is due delays that run until it finishes.
 
-Every task's schedule is persisted to the main database (TickerQ's `ticker` schema),
-not held in memory, so the schedule, next run, and run history all survive a restart -
-and a run that was due during downtime is not silently skipped.
+Every task's cron, next run, last run and run counters are stored in the main database
+(`PluginTasks` table), so the history survives a restart - and a run that was due
+during downtime runs once right after the next start.
 
 An operator can override a task's cadence per plugin in
 `plugins-config/<AssemblyName>.yml`:
@@ -48,7 +47,7 @@ of the plugin's own default rather than taking the task offline. The same keys w
 `SCHULY_PLUGIN_<NAME>_` environment variables, like the rest of the plugin config.
 
 `GET /api/plugins/scheduler` reports each task's cron, last run, next run, and failure
-counts. The TickerQ dashboard is mounted at `/tickerq` in Development only.
+counts.
 
 ## Configuration
 

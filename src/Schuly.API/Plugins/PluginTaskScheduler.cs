@@ -1,15 +1,13 @@
+using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NCrontab;
+using Schuly.Domain;
 using Schuly.Infrastructure;
 using Schuly.Plugin.Abstractions;
-using TickerQ.Utilities;
-using TickerQ.Utilities.Entities;
-using TickerQ.Utilities.Enums;
-using TickerQ.Utilities.Interfaces.Managers;
 
 namespace Schuly.API.Plugins
 {
@@ -22,6 +20,11 @@ namespace Schuly.API.Plugins
         Task SyncAsync(string plugin, IReadOnlyList<PluginTaskRegistration> tasks, CancellationToken cancellationToken = default);
         Task RemoveAsync(string plugin, CancellationToken cancellationToken = default);
         Task<IReadOnlyList<PluginTaskStatus>> SnapshotAsync(CancellationToken cancellationToken = default);
+    }
+
+    public interface IPluginTaskRunner
+    {
+        Task RunTaskAsync(string pluginName, string taskName, CancellationToken cancellationToken = default);
     }
 
     // Resolves a task's effective schedule: the plugin's own PluginSchedule, with any
@@ -67,191 +70,215 @@ namespace Schuly.API.Plugins
         }
     }
 
-    public sealed class TickerQPluginTaskScheduler(IServiceScopeFactory scopeFactory, ILogger<TickerQPluginTaskScheduler> logger) : IPluginTaskScheduler, IHostedService
+    // Keeps every registered plugin task in memory and fires it from a one-second tick. Each
+    // task's schedule, last run and run counters are stored in the PluginTasks table.
+    public sealed class PluginTaskScheduler(IServiceScopeFactory scopeFactory, IServiceProvider services, ILogger<PluginTaskScheduler> logger) : BackgroundService, IPluginTaskScheduler
     {
-        // Must match the [TickerFunction] name on PluginTaskRunner.RunAsync.
-        private const string FunctionName = "RunPluginTask";
+        private static readonly TimeSpan Tick = TimeSpan.FromSeconds(1);
+        private static readonly TimeSpan DefaultRetryInterval = TimeSpan.FromSeconds(30);
 
-        // Plugin schedules are always 5-field (minute hour day-of-month month day-of-week),
-        // but TickerQ's CronScheduleCache parses every expression with NCrontab configured for
-        // seconds, i.e. it requires 6 fields (second minute hour day-of-month month day-of-week).
-        // Convert at the boundary in both directions rather than touching the abstractions package.
-        private static string ToTickerExpression(string cron)
+        private sealed class ScheduledTask(PluginTaskRegistration registration, CrontabSchedule schedule, DateTime nextRunAt)
         {
-            var fields = cron.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-            return fields.Length == 5 ? "0 " + string.Join(' ', fields) : cron.Trim();
+            public PluginTaskRegistration Registration { get; } = registration;
+            public CrontabSchedule Schedule { get; } = schedule;
+            public DateTime NextRunAt { get; set; } = nextRunAt;
+            public int Running;
         }
 
-        private static string ToPluginExpression(string expression)
-        {
-            var fields = expression.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-            return fields.Length == 6 ? string.Join(' ', fields[1..]) : expression;
-        }
+        private readonly ConcurrentDictionary<(string Plugin, string Task), ScheduledTask> _tasks = new();
 
-        // TickerQ only materialises TickerFunctionProvider.TickerFunctions (the registry the
-        // validator checks writes against) from its own IHostedService, which starts at host
-        // start. Schuly.API loads plugins - and calls SyncAsync/RemoveAsync - earlier than that,
-        // via UseSchulyPluginsAsync() before app.Run(). Any write attempted before TickerQ has
-        // built its registry fails validation and is dropped, so writes are queued here and
-        // only actually run once this scheduler's own StartAsync has fired, which the Program.cs
-        // hosted-service registration order guarantees happens after TickerQ's initializer.
-        private readonly object _gate = new();
-        private bool _ready;
-        private List<Func<CancellationToken, Task>> _pending = [];
+        public static CrontabSchedule? ParseCron(string cron) => CrontabSchedule.TryParse(cron.Replace('?', '*'));
 
-        private Task DispatchAsync(Func<CancellationToken, Task> operation, CancellationToken cancellationToken)
-        {
-            lock (_gate)
-            {
-                if (_ready)
-                    return operation(cancellationToken);
-
-                _pending.Add(operation);
-                return Task.CompletedTask;
-            }
-        }
-
-        public Task SyncAsync(string plugin, IReadOnlyList<PluginTaskRegistration> tasks, CancellationToken cancellationToken = default) =>
-            DispatchAsync(ct => SyncCoreAsync(plugin, tasks, ct), cancellationToken);
-
-        public Task RemoveAsync(string plugin, CancellationToken cancellationToken = default) =>
-            DispatchAsync(ct => RemoveCoreAsync(plugin, ct), cancellationToken);
-
-        public async Task StartAsync(CancellationToken cancellationToken)
-        {
-            List<Func<CancellationToken, Task>> pending;
-            lock (_gate)
-            {
-                pending = _pending;
-                _pending = [];
-                _ready = true;
-            }
-
-            foreach (var operation in pending)
-                await operation(cancellationToken);
-        }
-
-        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-        private async Task SyncCoreAsync(string plugin, IReadOnlyList<PluginTaskRegistration> tasks, CancellationToken cancellationToken)
+        public async Task SyncAsync(string plugin, IReadOnlyList<PluginTaskRegistration> tasks, CancellationToken cancellationToken = default)
         {
             try
             {
+                var now = DateTime.UtcNow;
                 using var scope = scopeFactory.CreateScope();
-                var cronManager = scope.ServiceProvider.GetRequiredService<ICronTickerManager<CronTickerEntity>>();
-                var timeManager = scope.ServiceProvider.GetRequiredService<ITimeTickerManager<TimeTickerEntity>>();
                 var db = scope.ServiceProvider.GetRequiredService<SchulyDbContext>();
-
-                var prefix = $"{plugin}/";
-                var existing = await db.Set<CronTickerEntity>()
-                    .Where(t => t.Function == FunctionName && t.Description.StartsWith(prefix))
-                    .ToListAsync(cancellationToken);
-
-                var keys = new HashSet<string>(StringComparer.Ordinal);
+                var existing = await db.PluginTasks.Where(t => t.PluginName == plugin).ToListAsync(cancellationToken);
+                var names = new HashSet<string>(StringComparer.Ordinal);
 
                 foreach (var registration in tasks)
                 {
-                    var key = $"{plugin}/{registration.Task}";
-                    keys.Add(key);
-
-                    var request = TickerHelper.CreateTickerRequest(new PluginTaskRequest(registration.Plugin, registration.Task));
-                    var retryIntervals = registration.RetryIntervals?.Select(i => (int)i.TotalSeconds).ToArray();
-                    var match = existing.FirstOrDefault(t => t.Description == key);
-
-                    if (match is not null)
+                    var schedule = ParseCron(registration.Cron);
+                    if (schedule is null)
                     {
-                        match.Expression = ToTickerExpression(registration.Cron);
-                        match.Request = request;
-                        match.Retries = registration.Retries;
-                        match.RetryIntervals = retryIntervals;
-                        match.IsEnabled = true;
-
-                        var updateResult = await cronManager.UpdateAsync(match, cancellationToken);
-                        if (!updateResult.IsSucceeded)
-                            logger.LogWarning(updateResult.Exception, "Failed to update scheduled ticker for plugin task {Key}", key);
+                        logger.LogWarning("Plugin {Plugin} task {Task}: cron '{Cron}' can't be scheduled", plugin, registration.Task, registration.Cron);
+                        continue;
                     }
-                    else
-                    {
-                        var entity = new CronTickerEntity
-                        {
-                            Function = FunctionName,
-                            Description = key,
-                            Expression = ToTickerExpression(registration.Cron),
-                            Request = request,
-                            Retries = registration.Retries,
-                            RetryIntervals = retryIntervals,
-                            IsEnabled = true,
-                        };
 
-                        var addResult = await cronManager.AddAsync(entity, cancellationToken);
-                        if (!addResult.IsSucceeded)
-                            logger.LogWarning(addResult.Exception, "Failed to add scheduled ticker for plugin task {Key}", key);
+                    names.Add(registration.Task);
+                    var row = existing.FirstOrDefault(t => t.TaskName == registration.Task);
+                    var missedRun = row is { NextRunAt: { } due } && due <= now && row.Cron == registration.Cron;
+                    var nextRunAt = registration.RunOnStartup || missedRun ? now : schedule.GetNextOccurrence(now);
+                    _tasks[(plugin, registration.Task)] = new ScheduledTask(registration, schedule, nextRunAt);
+
+                    if (row is null)
+                    {
+                        row = new PluginTask { PluginName = plugin, TaskName = registration.Task, Cron = registration.Cron };
+                        db.PluginTasks.Add(row);
                     }
+
+                    row.Cron = registration.Cron;
+                    row.NextRunAt = nextRunAt;
+                    row.UpdatedAt = now;
+                    if (row.LastStatus == "Running")
+                        row.LastStatus = "Cancelled";
                 }
 
-                foreach (var stale in existing.Where(t => !keys.Contains(t.Description)))
-                {
-                    var deleteResult = await cronManager.DeleteAsync(stale.Id, cancellationToken);
-                    if (!deleteResult.IsSucceeded)
-                        logger.LogWarning(deleteResult.Exception, "Failed to delete stale scheduled ticker {Description}", stale.Description);
-                }
+                foreach (var key in _tasks.Keys.Where(k => k.Plugin == plugin && !names.Contains(k.Task)))
+                    _tasks.TryRemove(key, out _);
 
-                foreach (var registration in tasks.Where(t => t.RunOnStartup))
-                {
-                    var key = $"{plugin}/{registration.Task}";
-                    var startup = new TimeTickerEntity
-                    {
-                        Function = FunctionName,
-                        Description = key,
-                        Request = TickerHelper.CreateTickerRequest(new PluginTaskRequest(registration.Plugin, registration.Task)),
-                        ExecutionTime = DateTime.UtcNow,
-                    };
-
-                    var addResult = await timeManager.AddAsync(startup, cancellationToken);
-                    if (!addResult.IsSucceeded)
-                        logger.LogWarning(addResult.Exception, "Failed to schedule startup run for plugin task {Key}", key);
-                }
+                db.PluginTasks.RemoveRange(existing.Where(t => !names.Contains(t.TaskName)));
+                await db.SaveChangesAsync(cancellationToken);
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to sync scheduled tickers for plugin {Plugin}", plugin);
+                logger.LogWarning(ex, "Failed to sync scheduled tasks for plugin {Plugin}", plugin);
             }
         }
 
-        private async Task RemoveCoreAsync(string plugin, CancellationToken cancellationToken)
+        public async Task RemoveAsync(string plugin, CancellationToken cancellationToken = default)
+        {
+            foreach (var key in _tasks.Keys.Where(k => k.Plugin == plugin))
+                _tasks.TryRemove(key, out _);
+
+            try
+            {
+                using var scope = scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<SchulyDbContext>();
+                db.PluginTasks.RemoveRange(await db.PluginTasks.Where(t => t.PluginName == plugin).ToListAsync(cancellationToken));
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to remove scheduled tasks for plugin {Plugin}", plugin);
+            }
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            using var timer = new PeriodicTimer(Tick);
+            try
+            {
+                while (await timer.WaitForNextTickAsync(stoppingToken))
+                    _ = RunDueAsync(DateTime.UtcNow, stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+
+        public Task RunDueAsync(DateTime now, CancellationToken cancellationToken = default)
+        {
+            var runs = new List<Task>();
+            foreach (var (key, task) in _tasks)
+            {
+                if (task.NextRunAt > now || Interlocked.CompareExchange(ref task.Running, 1, 0) != 0)
+                    continue;
+
+                task.NextRunAt = task.Schedule.GetNextOccurrence(now);
+                runs.Add(RunAsync(key, task, cancellationToken));
+            }
+
+            return Task.WhenAll(runs);
+        }
+
+        private async Task RunAsync((string Plugin, string Task) key, ScheduledTask task, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var startedAt = DateTime.UtcNow;
+                await UpdateRowAsync(key, row =>
+                {
+                    row.LastStatus = "Running";
+                    row.LastStartedAt = startedAt;
+                    row.NextRunAt = task.NextRunAt;
+                });
+
+                var (status, error) = await ExecuteWithRetriesAsync(key, task.Registration, cancellationToken);
+                var finishedAt = DateTime.UtcNow;
+
+                await UpdateRowAsync(key, row =>
+                {
+                    row.LastStatus = status;
+                    row.LastFinishedAt = finishedAt;
+                    row.LastDurationMs = (long)(finishedAt - startedAt).TotalMilliseconds;
+                    row.LastError = error?[..Math.Min(error.Length, 2000)];
+                    if (status == "Cancelled")
+                        return;
+
+                    row.TotalRuns++;
+                    if (status == "Failed")
+                    {
+                        row.TotalFailures++;
+                        row.ConsecutiveFailures++;
+                    }
+                    else
+                    {
+                        row.ConsecutiveFailures = 0;
+                    }
+                });
+            }
+            finally
+            {
+                Volatile.Write(ref task.Running, 0);
+            }
+        }
+
+        private async Task<(string Status, string? Error)> ExecuteWithRetriesAsync((string Plugin, string Task) key, PluginTaskRegistration registration, CancellationToken cancellationToken)
+        {
+            var runner = services.GetRequiredService<IPluginTaskRunner>();
+            for (var attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    await runner.RunTaskAsync(key.Plugin, key.Task, cancellationToken);
+                    return ("Success", null);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    return ("Cancelled", null);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Plugin task {Plugin}/{Task} failed (attempt {Attempt} of {Attempts})", key.Plugin, key.Task, attempt + 1, registration.Retries + 1);
+                    if (attempt >= registration.Retries)
+                        return ("Failed", ex.Message);
+                }
+
+                try
+                {
+                    await Task.Delay(RetryDelay(registration, attempt), cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    return ("Cancelled", null);
+                }
+            }
+        }
+
+        private static TimeSpan RetryDelay(PluginTaskRegistration registration, int attempt) =>
+            registration.RetryIntervals is { Count: > 0 } intervals ? intervals[Math.Min(attempt, intervals.Count - 1)] : DefaultRetryInterval;
+
+        private async Task UpdateRowAsync((string Plugin, string Task) key, Action<PluginTask> update)
         {
             try
             {
                 using var scope = scopeFactory.CreateScope();
-                var cronManager = scope.ServiceProvider.GetRequiredService<ICronTickerManager<CronTickerEntity>>();
-                var timeManager = scope.ServiceProvider.GetRequiredService<ITimeTickerManager<TimeTickerEntity>>();
                 var db = scope.ServiceProvider.GetRequiredService<SchulyDbContext>();
+                var row = await db.PluginTasks.FirstOrDefaultAsync(t => t.PluginName == key.Plugin && t.TaskName == key.Task);
+                if (row is null)
+                    return;
 
-                var prefix = $"{plugin}/";
-
-                var crons = await db.Set<CronTickerEntity>()
-                    .Where(t => t.Function == FunctionName && t.Description.StartsWith(prefix))
-                    .ToListAsync(cancellationToken);
-                foreach (var ticker in crons)
-                {
-                    var result = await cronManager.DeleteAsync(ticker.Id, cancellationToken);
-                    if (!result.IsSucceeded)
-                        logger.LogWarning(result.Exception, "Failed to delete scheduled ticker {Description} for plugin {Plugin}", ticker.Description, plugin);
-                }
-
-                var pendingTimers = await db.Set<TimeTickerEntity>()
-                    .Where(t => t.Function == FunctionName && t.Description.StartsWith(prefix) && (t.Status == TickerStatus.Idle || t.Status == TickerStatus.Queued))
-                    .ToListAsync(cancellationToken);
-                foreach (var ticker in pendingTimers)
-                {
-                    var result = await timeManager.DeleteAsync(ticker.Id, cancellationToken);
-                    if (!result.IsSucceeded)
-                        logger.LogWarning(result.Exception, "Failed to delete pending startup ticker {Description} for plugin {Plugin}", ticker.Description, plugin);
-                }
+                update(row);
+                row.UpdatedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync();
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to remove scheduled tickers for plugin {Plugin}", plugin);
+                logger.LogWarning(ex, "Failed to record the run of plugin task {Plugin}/{Task}", key.Plugin, key.Task);
             }
         }
 
@@ -259,83 +286,21 @@ namespace Schuly.API.Plugins
         {
             using var scope = scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<SchulyDbContext>();
+            var rows = await db.PluginTasks.AsNoTracking().OrderBy(t => t.PluginName).ThenBy(t => t.TaskName).ToListAsync(cancellationToken);
 
-            var tickers = await db.Set<CronTickerEntity>()
-                .AsNoTracking()
-                .Where(t => t.Function == FunctionName)
-                .ToListAsync(cancellationToken);
-
-            var tickerIds = tickers.Select(t => t.Id).ToList();
-
-            // TickerQ only retains a rolling window of occurrences, so the totals below are over retained history, not all time.
-            var occurrencesByTicker = (await db.Set<CronTickerOccurrenceEntity<CronTickerEntity>>()
-                .AsNoTracking()
-                .Where(o => tickerIds.Contains(o.CronTickerId))
-                .ToListAsync(cancellationToken))
-                .ToLookup(o => o.CronTickerId);
-
-            var now = DateTime.UtcNow;
-
-            return tickers
-                .Select(t => BuildStatus(t, occurrencesByTicker[t.Id], now))
-                .OrderBy(s => s.Plugin, StringComparer.Ordinal)
-                .ThenBy(s => s.Name, StringComparer.Ordinal)
-                .ToList();
+            return rows.Select(BuildStatus).ToList();
         }
 
-        private static PluginTaskStatus BuildStatus(CronTickerEntity ticker, IEnumerable<CronTickerOccurrenceEntity<CronTickerEntity>> occurrences, DateTime now)
+        private static PluginTaskStatus BuildStatus(PluginTask row)
         {
-            var separator = ticker.Description.IndexOf('/');
-            var plugin = separator >= 0 ? ticker.Description[..separator] : ticker.Description;
-            var name = separator >= 0 ? ticker.Description[(separator + 1)..] : string.Empty;
-
-            var schedule = ParseSchedule(ticker.Expression);
-            var orderedOccurrences = occurrences.OrderByDescending(o => o.ExecutionTime).ToList();
-
-            var lastStarted = orderedOccurrences.FirstOrDefault(o => o.Status != TickerStatus.Idle && o.Status != TickerStatus.Queued);
-            var lastStatus = lastStarted is null ? "Pending" : MapStatus(lastStarted.Status);
-            var lastStartedAt = lastStarted is null ? (DateTime?)null : lastStarted.LockedAt ?? lastStarted.ExecutionTime;
-            var lastFinishedAt = lastStarted?.ExecutedAt;
-            var lastDurationMs = lastStarted?.ExecutedAt is not null ? lastStarted.ElapsedTime : (long?)null;
-            var lastError = lastStarted?.Status == TickerStatus.Failed ? lastStarted.ExceptionMessage : null;
-
-            var nextMaterialised = orderedOccurrences
-                .Where(o => (o.Status == TickerStatus.Idle || o.Status == TickerStatus.Queued) && o.ExecutionTime > now)
-                .OrderBy(o => o.ExecutionTime)
-                .FirstOrDefault();
-            var nextRunAt = nextMaterialised?.ExecutionTime ?? schedule?.GetNextOccurrence(now);
-
-            var finished = orderedOccurrences.Where(o => o.ExecutedAt is not null).ToList();
-            var totalRuns = finished.Count;
-            var totalFailures = orderedOccurrences.Count(o => o.Status == TickerStatus.Failed);
-            var consecutiveFailures = finished.TakeWhile(o => o.Status == TickerStatus.Failed).Count();
-
             var intervalSeconds = 0d;
-            if (schedule is not null)
+            if (ParseCron(row.Cron) is { } schedule)
             {
-                var next1 = schedule.GetNextOccurrence(now);
-                var next2 = schedule.GetNextOccurrence(next1);
-                intervalSeconds = (next2 - next1).TotalSeconds;
+                var next1 = schedule.GetNextOccurrence(DateTime.UtcNow);
+                intervalSeconds = (schedule.GetNextOccurrence(next1) - next1).TotalSeconds;
             }
 
-            return new PluginTaskStatus(plugin, name, ToPluginExpression(ticker.Expression), intervalSeconds, lastStatus, lastStartedAt, lastFinishedAt, lastDurationMs, lastError, nextRunAt, totalRuns, totalFailures, consecutiveFailures);
+            return new PluginTaskStatus(row.PluginName, row.TaskName, row.Cron, intervalSeconds, row.LastStatus, row.LastStartedAt, row.LastFinishedAt, row.LastDurationMs, row.LastError, row.NextRunAt, row.TotalRuns, row.TotalFailures, row.ConsecutiveFailures);
         }
-
-        // Stored expressions are 6-field (seconds-first), but a row written by an older build
-        // may still be 5-field, so fall back to a plain parse for those.
-        private static CrontabSchedule? ParseSchedule(string expression) =>
-            CrontabSchedule.TryParse(expression, new CrontabSchedule.ParseOptions { IncludingSeconds = true }) ??
-            CrontabSchedule.TryParse(expression);
-
-        private static string MapStatus(TickerStatus status) => status switch
-        {
-            TickerStatus.Idle or TickerStatus.Queued => "Pending",
-            TickerStatus.InProgress => "Running",
-            TickerStatus.Done or TickerStatus.DueDone => "Success",
-            TickerStatus.Failed => "Failed",
-            TickerStatus.Cancelled => "Cancelled",
-            TickerStatus.Skipped => "Skipped",
-            _ => "Pending",
-        };
     }
 }

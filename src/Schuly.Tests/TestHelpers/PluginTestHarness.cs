@@ -11,7 +11,7 @@ using Schuly.Plugin.Abstractions;
 namespace Schuly.Tests.TestHelpers
 {
     // Shared TestServer harness for plugin host tests: spins up a minimal app with the
-    // plugin pipeline wired in and a FakePluginTaskScheduler standing in for TickerQ.
+    // plugin pipeline wired in and a FakePluginTaskScheduler standing in for the real scheduler.
     internal sealed class PluginTestHarness(WebApplication app, HttpClient client, PluginHost host, FakePluginTaskScheduler scheduler, string directory)
         : IAsyncDisposable
     {

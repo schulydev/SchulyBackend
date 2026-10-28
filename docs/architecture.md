@@ -72,7 +72,7 @@ The backend hosts plugins implementing `ISchulyPlugin` from
 plugins are downloaded at runtime from a registry into `/app/plugins`, each loaded
 into its own collectible `AssemblyLoadContext` with a child DI container, and can
 register controllers, minimal-API endpoints, and recurring background tasks -
-scheduled on TickerQ and dispatched back into the owning plugin's DI scope by name.
+run by the host's own scheduler and dispatched back into the owning plugin's DI scope by name.
 Plugin requests execute inside the owning plugin's DI scope via
 `PluginScopeMiddleware`. See [Plugin management](plugin-management.md) for the
 registry, hot-swap, background tasks, and admin endpoints.

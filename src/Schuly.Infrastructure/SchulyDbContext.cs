@@ -26,6 +26,7 @@ namespace Schuly.Infrastructure
         public DbSet<NotificationOutbox> NotificationOutbox { get; set; }
         public DbSet<VaultEntry> VaultEntries { get; set; }
         public DbSet<LinkedAccount> LinkedAccounts { get; set; }
+        public DbSet<PluginTask> PluginTasks { get; set; }
 
         public SchulyDbContext(DbContextOptions<SchulyDbContext> options) : base(options) { }
 
@@ -401,6 +402,17 @@ namespace Schuly.Infrastructure
                 entity.Property(v => v.PluginName).HasMaxLength(200).IsRequired();
                 entity.Property(v => v.Key).HasMaxLength(200).IsRequired();
                 entity.HasIndex(v => new { v.PluginName, v.Key }).IsUnique();
+            });
+
+            modelBuilder.Entity<PluginTask>(entity =>
+            {
+                entity.HasKey(t => t.Id);
+                entity.Property(t => t.PluginName).HasMaxLength(200).IsRequired();
+                entity.Property(t => t.TaskName).HasMaxLength(200).IsRequired();
+                entity.Property(t => t.Cron).HasMaxLength(100).IsRequired();
+                entity.Property(t => t.LastStatus).HasMaxLength(20).IsRequired();
+                entity.Property(t => t.LastError).HasMaxLength(2000);
+                entity.HasIndex(t => new { t.PluginName, t.TaskName }).IsUnique();
             });
         }
 
