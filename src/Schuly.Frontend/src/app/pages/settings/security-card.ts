@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { form, FormField, FormRoot, minLength, required } from '@angular/forms/signals';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmBadge } from '@spartan-ng/helm/badge';
@@ -28,7 +29,7 @@ import { SecurityStore } from '../../stores/security.store';
     <section hlmCard>
       <div hlmCardHeader>
         <h3 hlmCardTitle>Security</h3>
-        <p hlmCardDescription>Your password, two-factor authentication and remembered devices.</p>
+        <p hlmCardDescription>Your password, two-factor authentication, sign-in providers and remembered devices.</p>
       </div>
       <div hlmCardContent class="flex flex-col gap-6">
         @if (security.signInAgain() && !security.recoveryCodes()) {
@@ -212,6 +213,62 @@ import { SecurityStore } from '../../stores/security.store';
           }
         </div>
 
+        @if (security.providers().length || security.linked().length) {
+          <hlm-separator />
+          <div class="flex flex-col gap-3">
+            <span class="text-sm font-medium">Sign-in providers</span>
+            <ul class="divide-y rounded-lg border">
+              @for (provider of providerRows(); track provider.key) {
+                <li class="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                  <span>
+                    {{ provider.name }}
+                    @if (provider.linked) {
+                      <span hlmBadge variant="outline" class="ml-1">Linked</span>
+                    }
+                  </span>
+                  @if (provider.linked) {
+                    <button
+                      hlmBtn
+                      variant="outline"
+                      size="sm"
+                      [disabled]="security.busy()"
+                      (click)="security.unlinkProvider(provider.key, proof())"
+                    >
+                      Unlink
+                    </button>
+                  } @else {
+                    <button
+                      hlmBtn
+                      variant="outline"
+                      size="sm"
+                      [disabled]="security.busy()"
+                      (click)="security.linkProvider(provider.key, proof())"
+                    >
+                      Link
+                    </button>
+                  }
+                </li>
+              }
+            </ul>
+            <div hlmField>
+              <label hlmFieldLabel for="provider-proof">{{
+                security.twoFactor()?.enabled ? 'Code from your app' : 'Current password'
+              }}</label>
+              <input
+                hlmInput
+                id="provider-proof"
+                [type]="security.twoFactor()?.enabled ? 'text' : 'password'"
+                [attr.autocomplete]="security.twoFactor()?.enabled ? 'one-time-code' : 'current-password'"
+                [value]="proofValue()"
+                (input)="proofValue.set($any($event.target).value)"
+              />
+              <p hlmFieldDescription>
+                Needed to link or unlink. Unlinking signs you out everywhere.
+              </p>
+            </div>
+          </div>
+        }
+
         @if (security.devices().length) {
           <hlm-separator />
           <div class="flex flex-col gap-3">
@@ -249,6 +306,27 @@ import { SecurityStore } from '../../stores/security.store';
 })
 export class SecurityCard {
   protected readonly security = inject(SecurityStore);
+  protected readonly proofValue = signal('');
+  protected readonly providerRows = computed(() => {
+    const linked = this.security.linked();
+    const rows = this.security.providers().map((provider) => ({ key: provider.key, name: provider.display_name, linked: linked.some((login) => login.provider === provider.key) }));
+    const retired = linked.filter((login) => !rows.some((row) => row.key === login.provider)).map((login) => ({ key: login.provider, name: login.display_name ?? login.provider, linked: true }));
+    return [...rows, ...retired];
+  });
+
+  constructor() {
+    const query = inject(ActivatedRoute).snapshot.queryParamMap;
+    if (query.has('linked') || query.has('error')) {
+      this.security.linkFinished(query.get('linked'), query.get('error'), query.get('state'));
+      void inject(Router).navigate([], { queryParams: {}, replaceUrl: true });
+    }
+  }
+
+  protected proof(): { currentPassword?: string; code?: string } {
+    const value = this.proofValue().trim();
+    if (!value) return {};
+    return this.security.twoFactor()?.enabled ? { code: value } : { currentPassword: value };
+  }
   private readonly passwordModel = signal({ currentPassword: '', newPassword: '' });
   protected readonly passwordForm = form(
     this.passwordModel,

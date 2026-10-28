@@ -36,6 +36,24 @@ export interface TrustedDevice {
   isCurrent?: boolean;
 }
 
+export interface SignInProvider {
+  key: string;
+  display_name: string;
+  icon_url?: string | null;
+}
+
+export interface LinkedSignIn {
+  provider: string;
+  display_name?: string | null;
+  created_at: string;
+  last_sign_in_at?: string | null;
+}
+
+export interface SignInProof {
+  currentPassword?: string;
+  code?: string;
+}
+
 export function isChallenge(response: SignInResponse): response is ChallengeResponse {
   return 'two_factor_required' in response && response.two_factor_required === true;
 }
@@ -124,6 +142,26 @@ export class AuthApi {
 
   forgetAllDevices(): Observable<void> {
     return this.http.delete<void>('/auth/devices');
+  }
+
+  providers(): Observable<SignInProvider[]> {
+    return this.http.get<SignInProvider[]>('/auth/providers');
+  }
+
+  exchangeExternal(code: string, codeVerifier: string): Observable<SignInResponse> {
+    return this.http.post<SignInResponse>('/auth/external/exchange', { code, codeVerifier }, { headers: web });
+  }
+
+  linkedSignIns(): Observable<LinkedSignIn[]> {
+    return this.http.get<LinkedSignIn[]>('/auth/external/logins');
+  }
+
+  linkProvider(provider: string, returnUrl: string, state: string, proof: SignInProof): Observable<{ authorization_url: string }> {
+    return this.http.post<{ authorization_url: string }>(`/auth/external/${encodeURIComponent(provider)}/link`, { returnUrl, state, ...proof });
+  }
+
+  unlinkProvider(provider: string, proof: SignInProof): Observable<void> {
+    return this.http.delete<void>(`/auth/external/logins/${encodeURIComponent(provider)}`, { body: proof });
   }
 }
 

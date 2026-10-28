@@ -2,13 +2,16 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withHooks, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { toDataURL } from 'qrcode';
-import { AuthApi, TrustedDevice, TwoFactorStatus } from '../core/auth-api';
+import { AuthApi, LinkedSignIn, SignInProof, SignInProvider, TrustedDevice, TwoFactorStatus } from '../core/auth-api';
+import { externalErrors, newLinkState, returnUrl, takePending } from '../core/external-sign-in';
 import { AuthStore } from './auth.store';
 import { authErrorMessage } from './auth.store';
 
 interface SecurityState {
   twoFactor: TwoFactorStatus | null;
   devices: TrustedDevice[];
+  providers: SignInProvider[];
+  linked: LinkedSignIn[];
   setup: { secret: string; qr: string } | null;
   recoveryCodes: string[] | null;
   busy: boolean;
@@ -21,6 +24,8 @@ export const SecurityStore = signalStore(
   withState<SecurityState>({
     twoFactor: null,
     devices: [],
+    providers: [],
+    linked: [],
     setup: null,
     recoveryCodes: null,
     busy: false,
@@ -40,11 +45,13 @@ export const SecurityStore = signalStore(
       }
     };
     const load = async () => {
-      const [twoFactor, devices] = await Promise.all([
+      const [twoFactor, devices, providers] = await Promise.all([
         firstValueFrom(api.twoFactorStatus()),
         firstValueFrom(api.trustedDevices()),
+        firstValueFrom(api.providers()).catch(() => []),
       ]);
-      patchState(store, { twoFactor, devices });
+      const linked = providers.length ? await firstValueFrom(api.linkedSignIns()) : [];
+      patchState(store, { twoFactor, devices, providers, linked });
     };
 
     return {
@@ -83,6 +90,21 @@ export const SecurityStore = signalStore(
           await firstValueFrom(api.disableTwoFactor(proof, currentPassword));
           patchState(store, { signInAgain: 'Two-factor authentication is off. Sign in again.' });
         }, "That code or password didn't match."),
+      linkProvider: (provider: string, proof: SignInProof) =>
+        run(async () => {
+          const { authorization_url } = await firstValueFrom(api.linkProvider(provider, returnUrl('/settings'), newLinkState(), proof));
+          location.assign(authorization_url);
+        }, "That code or password didn't match."),
+      unlinkProvider: (provider: string, proof: SignInProof) =>
+        run(async () => {
+          await firstValueFrom(api.unlinkProvider(provider, proof));
+          patchState(store, { signInAgain: 'The provider is unlinked. Sign in again.' });
+        }, "That did not work. Check your code or password, and keep at least one way to sign in."),
+      linkFinished: (linked: string | null, failure: string | null, state: string | null) => {
+        const pending = takePending(state);
+        if (failure) patchState(store, { error: externalErrors[failure] ?? externalErrors['external_login_failed'] });
+        else if (linked && pending) patchState(store, { notice: 'The provider is linked. You can now sign in with it.' });
+      },
       forgetDevices: () =>
         run(async () => {
           await firstValueFrom(api.forgetAllDevices());

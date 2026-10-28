@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { form, FormField, FormRoot, required } from '@angular/forms/signals';
 import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
@@ -13,7 +13,11 @@ import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmInputGroupImports } from '@spartan-ng/helm/input-group';
 import { HlmInputOtpImports } from '@spartan-ng/helm/input-otp';
+import { HlmSeparator } from '@spartan-ng/helm/separator';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
+import { firstValueFrom } from 'rxjs';
+import { AuthApi, SignInProvider } from '../../core/auth-api';
+import { beginExternalSignIn, externalErrors, takePending } from '../../core/external-sign-in';
 import { AuthStore, authErrorMessage } from '../../stores/auth.store';
 import { AuthLayout } from './auth-layout';
 
@@ -35,6 +39,7 @@ const CODE_LENGTH = 6;
     HlmInput,
     HlmInputGroupImports,
     HlmInputOtpImports,
+    HlmSeparator,
     HlmSpinner,
     AuthLayout,
   ],
@@ -107,6 +112,30 @@ const CODE_LENGTH = 6;
                 Continue
               </button>
             </form>
+            @if (providers().length) {
+              <div class="my-4 flex items-center gap-3">
+                <hlm-separator class="flex-1" />
+                <span class="text-muted-foreground text-xs">or</span>
+                <hlm-separator class="flex-1" />
+              </div>
+              <div class="flex flex-col gap-2">
+                @for (provider of providers(); track provider.key) {
+                  <button
+                    hlmBtn
+                    variant="outline"
+                    size="lg"
+                    type="button"
+                    [disabled]="redirecting()"
+                    (click)="signInWith(provider.key)"
+                  >
+                    @if (provider.icon_url) {
+                      <img [src]="provider.icon_url" alt="" class="size-4" />
+                    }
+                    Continue with {{ provider.display_name }}
+                  </button>
+                }
+              </div>
+            }
           } @else {
             <form [formRoot]="codeForm" class="flex flex-col gap-4">
               @if (usingRecoveryCode()) {
@@ -182,8 +211,12 @@ const CODE_LENGTH = 6;
     </app-auth-layout>
   `,
 })
-export class Login {
+export class Login implements OnInit {
   readonly changed = input<string>();
+  readonly code = input<string>();
+  readonly state = input<string>();
+  readonly failure = input<string>(undefined, { alias: 'error' });
+  private readonly api = inject(AuthApi);
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
 
@@ -194,6 +227,8 @@ export class Login {
   protected readonly usingRecoveryCode = signal(false);
   protected readonly rememberDevice = signal(false);
   protected readonly error = signal<string | null>(null);
+  protected readonly providers = signal<SignInProvider[]>([]);
+  protected readonly redirecting = signal(false);
 
   private readonly credentialsModel = signal({ identifier: '', password: '' });
   protected readonly credentials = form(
@@ -209,6 +244,34 @@ export class Login {
   protected readonly codeForm = form(this.codeModel, (path) => required(path.code), {
     submission: { action: () => this.submitCode() },
   });
+
+  async ngOnInit(): Promise<void> {
+    const code = this.code();
+    const failure = this.failure();
+    if (code || failure) {
+      const pending = takePending(this.state() ?? null);
+      void this.router.navigate([], { queryParams: {}, replaceUrl: true });
+      if (failure) this.error.set(externalErrors[failure] ?? externalErrors['external_login_failed']);
+      else if (!pending) this.error.set(externalErrors['external_login_failed']);
+      else await this.finishExternal(code!, pending.verifier);
+    }
+    this.providers.set(await firstValueFrom(this.api.providers()).catch(() => []));
+  }
+
+  protected async signInWith(provider: string): Promise<void> {
+    this.redirecting.set(true);
+    await beginExternalSignIn(provider, '/login');
+  }
+
+  private async finishExternal(code: string, verifier: string): Promise<void> {
+    try {
+      const result = await this.auth.signInExternal(code, verifier);
+      if (result === 'challenge') this.step.set('code');
+      else await this.router.navigateByUrl('/');
+    } catch (error) {
+      this.error.set(authErrorMessage(error, externalErrors['external_login_failed']));
+    }
+  }
 
   protected codeHint(): string {
     return this.usingRecoveryCode()

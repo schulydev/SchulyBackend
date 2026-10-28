@@ -12,7 +12,7 @@ namespace Schuly.API.Extensions
 
         private static readonly HashSet<string> TokenIssuingPaths = new(StringComparer.OrdinalIgnoreCase)
         {
-            "/auth/login", "/auth/register", "/auth/refresh", "/auth/2fa/verify"
+            "/auth/login", "/auth/register", "/auth/refresh", "/auth/2fa/verify", "/auth/external/exchange"
         };
 
         public async Task InvokeAsync(HttpContext context)

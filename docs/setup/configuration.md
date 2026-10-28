@@ -32,13 +32,13 @@ in the Schuly database (migration `AddToamaisutaa`).
 
 Enabled features: password sign-in with self-registration, email verification,
 password reset by email, TOTP two-factor with recovery codes, "remember this device"
-(trusted devices), and expired-token cleanup. Passkeys, magic links, invitations,
-admin-created accounts and external OIDC providers are not enabled.
+(trusted devices), optional single sign-on through OIDC providers, and expired-token
+cleanup. Passkeys, magic links, invitations and admin-created accounts are not enabled.
 
 The endpoints live under `/auth`, for example `POST /auth/register`, `/auth/login`,
 `/auth/refresh`, `/auth/logout`, `/auth/password`, `/auth/password/forgot`,
 `/auth/password/reset`, `/auth/email`, `/auth/email/verify`, `/auth/2fa/*` and
-`/auth/devices`. The API under `/api/*` takes the access token as
+`/auth/devices`, `/auth/providers` and `/auth/external/*`. The API under `/api/*` takes the access token as
 `Authorization: Bearer`. Access tokens live 15 minutes. Refresh tokens rotate on
 every use.
 
@@ -64,6 +64,35 @@ that has it set up.
 Every account not listed in `Auth:Administrators` has no role. On the first valid
 token for an unknown user, the API creates the matching Schuly user (`AddUserSync` /
 `IUserService`).
+
+### Single sign-on (OIDC providers)
+
+Single sign-on is optional. Configure zero, one or several OIDC providers (Google,
+Microsoft, Authentik, Pocket ID, Keycloak, any issuer with a discovery document). With
+none configured, the web app and the mobile app show only the password form. Each
+provider shows up as a "Continue with ..." button, and signed-in users link or unlink
+providers under Settings → Security in the web app.
+
+| Key | Purpose |
+|---|---|
+| `ExternalLogin:Providers:<key>:DisplayName` | Button label. Defaults to the key. |
+| `ExternalLogin:Providers:<key>:IconUrl` | Optional icon shown on the button. |
+| `ExternalLogin:Providers:<key>:Authority` | The issuer, e.g. `https://accounts.google.com`. Must be `https://` outside Development. |
+| `ExternalLogin:Providers:<key>:ClientId` / `ClientSecret` | The client the provider issued. Leave the secret out for a public client. |
+| `ExternalLogin:Providers:<key>:Scopes` | Defaults to `openid profile email`. |
+| `ExternalLogin:Providers:<key>:AllowSignUp` | Whether a first sign-in may create a new account. `false` by default: only accounts that linked the provider can use it. |
+| `ExternalLogin:Providers:<key>:LinkByVerifiedEmail` | Whether a first sign-in joins the account that already has the provider's verified address. Only turn this on for providers that really verify addresses. |
+| `ExternalLogin:AllowedReturnUrls` | Exact URLs a finished sign-in may return to (`ExternalLogin__AllowedReturnUrls__0`, `__1`, ...). |
+| `ExternalLogin:CallbackBaseUrl` | Public scheme and host of the server, when a proxy does not forward them. |
+
+`AllowedReturnUrls` needs these entries:
+
+- `https://<API_HOST>/login`: sign-in in the web app
+- `https://<API_HOST>/settings`: linking a provider in the web app
+- `schuly://auth/callback`: sign-in in the mobile app (`schuly-dev://auth/callback` for the dev build)
+
+At each provider, register `https://<API_HOST>/auth/external/<key>/callback` as the
+redirect URI. The key is stored with every link, so don't rename it later.
 
 ### Email (SMTP)
 

@@ -22,6 +22,7 @@ namespace Schuly.API.Extensions
             services.AddToamaisutaaPasswordLogin(configuration);
             services.AddToamaisutaaTwoFactor(configuration);
             services.AddToamaisutaaTrustedDevices(configuration);
+            services.AddToamaisutaaExternalLogin(configuration);
             services.AddToamaisutaaTokenCleanup();
 
             return services;
@@ -38,6 +39,7 @@ namespace Schuly.API.Extensions
             app.MapToamaisutaaPasswordEndpoints();
             app.MapToamaisutaaTwoFactorEndpoints();
             app.MapToamaisutaaTrustedDeviceEndpoints();
+            app.MapToamaisutaaExternalLoginEndpoints();
             return app;
         }
 

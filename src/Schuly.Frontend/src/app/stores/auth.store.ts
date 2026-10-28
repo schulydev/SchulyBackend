@@ -60,6 +60,15 @@ export const AuthStore = signalStore(
         accept(response);
         return 'signedIn';
       },
+      async signInExternal(code: string, verifier: string): Promise<'signedIn' | 'challenge'> {
+        const response = await firstValueFrom(api.exchangeExternal(code, verifier));
+        if (isChallenge(response)) {
+          patchState(store, { challenge: response.challenge });
+          return 'challenge';
+        }
+        accept(response);
+        return 'signedIn';
+      },
       async verifyCode(code: string, rememberDevice: boolean): Promise<void> {
         const challenge = store.challenge();
         if (!challenge) throw new Error('No sign-in is waiting for a code.');
