@@ -11,6 +11,7 @@ namespace Schuly.Domain
         public required AbsenceType Type { get; set; }
         public required DateTime From { get; set; }
         public required DateTime Until { get; set; }
+        public bool? IsExcused { get; set; }
         public Guid SchoolUserId { get; set; }
         public SchoolUser? SchoolUser { get; set; }
     }

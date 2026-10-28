@@ -9,6 +9,7 @@ namespace Schuly.Application.Dtos
         public required AbsenceType Type { get; set; }
         public required DateTime From { get; set; }
         public required DateTime Until { get; set; }
+        public bool? IsExcused { get; set; }
         public Guid SchoolUserId { get; set; }
         public Guid? SchoolId { get; set; }
     }

@@ -14,7 +14,7 @@ namespace Schuly.Application.Mappers
                 Description = exam.Description,
                 Type = exam.Type,
                 Date = exam.Date,
-                ClassAverage = classAverages.TryGetValue(exam.Id, out var average) ? average : 0,
+                ClassAverage = exam.ReportedClassAverage ?? (classAverages.TryGetValue(exam.Id, out var average) ? average : 0),
                 ClassId = exam.ClassId,
                 SchoolId = exam.Class?.SchoolId,
                 Grades = exam.Grades.Select(g => g.ToDto()).ToList()

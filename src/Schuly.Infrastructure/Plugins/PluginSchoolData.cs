@@ -131,6 +131,8 @@ namespace Schuly.Infrastructure.Plugins
                     newExams[(cls, examName)] = exam;
                 }
                 exam.Date ??= record.ExamDate;
+                if (record.ClassAverage is { } classAverage)
+                    exam.ReportedClassAverage = classAverage;
 
                 if (!existing.TryGetValue(record.ExternalId, out var row))
                 {
@@ -148,6 +150,49 @@ namespace Schuly.Infrastructure.Plugins
 
             await db.SaveChangesAsync(cancellationToken);
             return new SyncResult(added, updated);
+        }
+
+        public async Task<SyncResult> SyncExamsAsync(Guid schoolUserId, IReadOnlyCollection<ExamRecord> exams, CancellationToken cancellationToken = default)
+        {
+            var student = await OwnedStudentAsync(schoolUserId, cancellationToken, withClasses: true);
+            var classes = await db.Classes.Where(c => c.SchoolId == student.SchoolId).ToDictionaryAsync(c => c.Name, StringComparer.Ordinal, cancellationToken);
+            var classIds = classes.Values.Select(c => c.Id).ToList();
+            var existing = (await db.Exams.Where(e => classIds.Contains(e.ClassId)).ToListAsync(cancellationToken))
+                .ToDictionary(e => (e.ClassId, e.Name));
+            var added = new Dictionary<(Class, string), Exam>();
+            var updated = 0;
+
+            foreach (var record in exams)
+            {
+                var subject = Clip(string.IsNullOrWhiteSpace(record.Subject) ? "Default" : record.Subject, 100)!;
+                if (!classes.TryGetValue(subject, out var cls))
+                {
+                    cls = new Class { Source = Source, Name = subject, SchoolId = student.SchoolId };
+                    db.Classes.Add(cls);
+                    classes[subject] = cls;
+                }
+                if (!student.Classes.Contains(cls))
+                    student.Classes.Add(cls);
+
+                var name = Clip(string.IsNullOrWhiteSpace(record.Name) ? subject : record.Name, 200)!;
+                var isNew = !existing.TryGetValue((cls.Id, name), out var exam) && !added.TryGetValue((cls, name), out exam);
+                if (isNew)
+                {
+                    exam = new Exam { Source = Source, Name = name, Type = ExamType.Classic, Date = record.Date, Class = cls };
+                    db.Exams.Add(exam);
+                    added[(cls, name)] = exam;
+                }
+
+                exam!.Date = record.Date;
+                if (record.Description is { } description)
+                    exam.Description = Clip(description, 1000);
+                if (record.ClassAverage is { } classAverage)
+                    exam.ReportedClassAverage = classAverage;
+                if (!isNew && IsModified(exam)) updated++;
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
+            return new SyncResult(added.Count, updated);
         }
 
         public async Task<SyncResult> SyncAbsencesAsync(Guid schoolUserId, IReadOnlyCollection<AbsenceRecord> absences, CancellationToken cancellationToken = default)
@@ -169,6 +214,7 @@ namespace Schuly.Infrastructure.Plugins
 
                 row.Reason = Clip(string.IsNullOrWhiteSpace(record.Reason) ? "Absent" : record.Reason, 500)!;
                 row.Type = record.IsLate ? AbsenceType.Delay : AbsenceType.Absence;
+                row.IsExcused = record.IsExcused ?? row.IsExcused;
                 row.From = from;
                 row.Until = until;
                 if (IsModified(row)) updated++;

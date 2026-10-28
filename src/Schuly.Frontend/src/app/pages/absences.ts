@@ -103,6 +103,11 @@ import { AbsenceFilter, AbsencesStore } from '../stores/absences.store';
                         [variant]="absence.type === 'Delay' ? 'secondary' : 'outline'"
                         >{{ absence.type === 'Delay' ? 'Delay' : 'Absence' }}</span
                       >
+                      @if (absence.isExcused === true) {
+                        <span hlmBadge variant="outline" class="ml-1">Excused</span>
+                      } @else if (absence.isExcused === false) {
+                        <span hlmBadge variant="destructive" class="ml-1">Unexcused</span>
+                      }
                     </td>
                     <td hlmTd class="text-muted-foreground max-w-28 truncate sm:max-w-xs">
                       {{ absence.reason || '-' }}

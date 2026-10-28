@@ -9,6 +9,7 @@ namespace Schuly.Domain
         public string? Description { get; set; }
         public ExamType Type { get; set; }
         public DateOnly? Date { get; set; }
+        public decimal? ReportedClassAverage { get; set; }
 
         public Guid ClassId { get; set; }
         public Class? Class { get; set; }

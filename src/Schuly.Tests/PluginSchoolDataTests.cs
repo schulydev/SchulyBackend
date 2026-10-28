@@ -149,6 +149,41 @@ namespace Schuly.Tests
         }
 
         [Test]
+        public async Task SyncExams_adds_an_upcoming_exam_that_a_later_grade_reuses()
+        {
+            const string db = nameof(SyncExams_adds_an_upcoming_exam_that_a_later_grade_reuses);
+            var (data, studentId) = await ProvisionedAsync(db);
+
+            var exams = await data.SyncExamsAsync(studentId, [new ExamRecord("Mathematik", "Test 3 (12.11.2026)", new DateOnly(2026, 11, 12)) { Description = "Kapitel 4" }]);
+            var again = await data.SyncExamsAsync(studentId, [new ExamRecord("Mathematik", "Test 3 (12.11.2026)", new DateOnly(2026, 11, 12)) { Description = "Kapitel 4" }]);
+            await data.SyncGradesAsync(studentId, [new GradeRecord("m-3", "Mathematik", "Test 3 (12.11.2026)", 5.0m, 1, new DateOnly(2026, 11, 12)) { ClassAverage = 4.6m }]);
+
+            await Assert.That(exams).IsEqualTo(new SyncResult(1, 0));
+            await Assert.That(again).IsEqualTo(new SyncResult(0, 0));
+            using var ctx = TestDb.NewContext(db);
+            var exam = await ctx.Exams.SingleAsync();
+            await Assert.That(exam.Description).IsEqualTo("Kapitel 4");
+            await Assert.That(exam.ReportedClassAverage).IsEqualTo(4.6m);
+            await Assert.That(await ctx.Grades.CountAsync(g => g.ExamId == exam.Id)).IsEqualTo(1);
+            var student = await ctx.SchoolUsers.Include(su => su.Classes).SingleAsync(su => su.Id == studentId);
+            await Assert.That(student.Classes.Single().Name).IsEqualTo("Mathematik");
+        }
+
+        [Test]
+        public async Task SyncAbsences_keeps_the_excused_state_when_a_source_does_not_report_it()
+        {
+            const string db = nameof(SyncAbsences_keeps_the_excused_state_when_a_source_does_not_report_it);
+            var (data, studentId) = await ProvisionedAsync(db);
+            var from = new DateTimeOffset(2026, 9, 10, 0, 0, 0, TimeSpan.Zero);
+
+            await data.SyncAbsencesAsync(studentId, [new AbsenceRecord("a-1", from, from.AddDays(1), "Krank") { IsExcused = true }]);
+            await data.SyncAbsencesAsync(studentId, [new AbsenceRecord("a-1", from, from.AddDays(1), "Krank")]);
+
+            using var ctx = TestDb.NewContext(db);
+            await Assert.That((await ctx.Absences.SingleAsync()).IsExcused).IsEqualTo(true);
+        }
+
+        [Test]
         public async Task SyncDocuments_keeps_the_stored_file_when_a_resync_has_none()
         {
             const string db = nameof(SyncDocuments_keeps_the_stored_file_when_a_resync_has_none);

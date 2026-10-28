@@ -68,6 +68,9 @@ namespace Schuly.Infrastructure.Migrations
                     b.Property<DateTime>("From")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool?>("IsExcused")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -315,6 +318,9 @@ namespace Schuly.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("ReportedClassAverage")
+                        .HasColumnType("numeric");
 
                     b.Property<string>("Source")
                         .HasMaxLength(200)

@@ -16,6 +16,7 @@ export interface AbsenceDto {
     type: AbsenceType;
     from: string;
     until: string;
+    isExcused?: boolean | null;
     schoolUserId?: string;
     schoolId?: string | null;
 }
