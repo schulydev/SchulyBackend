@@ -76,7 +76,7 @@ providers under Settings → Security in the web app.
 | Key | Purpose |
 |---|---|
 | `ExternalLogin:Providers:<key>:DisplayName` | Button label. Defaults to the key. |
-| `ExternalLogin:Providers:<key>:IconUrl` | Optional icon shown on the button. |
+| `ExternalLogin:Providers:<key>:IconUrl` | Icon shown on the button: any image URL, or a path the server serves. Google (`https://accounts.google.com`) and Microsoft (`login.microsoftonline.com`, `login.live.com`) authorities get their logo when this is empty. |
 | `ExternalLogin:Providers:<key>:Authority` | The issuer, e.g. `https://accounts.google.com`. Must be `https://` outside Development. |
 | `ExternalLogin:Providers:<key>:ClientId` / `ClientSecret` | The client the provider issued. Leave the secret out for a public client. |
 | `ExternalLogin:Providers:<key>:Scopes` | Defaults to `openid profile email`. |
