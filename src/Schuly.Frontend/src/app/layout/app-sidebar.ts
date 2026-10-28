@@ -21,7 +21,7 @@ interface NavItem {
         <ul hlmSidebarMenu>
           <li hlmSidebarMenuItem>
             <a hlmSidebarMenuButton routerLink="/" class="!p-1.5">
-              <img src="app_icon.png" alt="" class="size-5 rounded-sm" />
+              <img src="app_icon.png" alt="" class="size-5 shrink-0 rounded-sm group-data-[collapsible=icon]:size-4" />
               <span class="text-base font-semibold">Schuly</span>
             </a>
           </li>
