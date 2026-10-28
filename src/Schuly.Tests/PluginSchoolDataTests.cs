@@ -180,7 +180,7 @@ namespace Schuly.Tests
             await data.SyncAbsencesAsync(studentId, [new AbsenceRecord("a-1", from, from.AddDays(1), "Krank")]);
 
             using var ctx = TestDb.NewContext(db);
-            await Assert.That((await ctx.Absences.SingleAsync()).IsExcused).IsEqualTo(true);
+            await Assert.That((await ctx.Absences.SingleAsync()).IsExcused == true).IsTrue();
         }
 
         [Test]
