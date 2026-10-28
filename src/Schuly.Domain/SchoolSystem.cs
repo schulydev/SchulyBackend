@@ -38,5 +38,12 @@ namespace Schuly.Domain
         public string? DefaultValue { get; set; }
         public bool Required { get; set; } = true;
         public bool ReplacedByLinkedAccount { get; set; }
+        public List<SchoolSystemLoginFieldSuggestion> Suggestions { get; set; } = [];
+    }
+
+    public class SchoolSystemLoginFieldSuggestion
+    {
+        public required string Label { get; set; }
+        public required string Value { get; set; }
     }
 }

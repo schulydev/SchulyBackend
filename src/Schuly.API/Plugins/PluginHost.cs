@@ -128,6 +128,7 @@ namespace Schuly.API.Plugins
                     DefaultValue = f.DefaultValue,
                     Required = f.Required,
                     ReplacedByLinkedAccount = f.ReplacedByLinkedAccount,
+                    Suggestions = f.Suggestions.Select(s => new SchoolSystemLoginFieldSuggestion { Label = s.Label, Value = s.Value }).ToList(),
                 }).ToList();
             }
 

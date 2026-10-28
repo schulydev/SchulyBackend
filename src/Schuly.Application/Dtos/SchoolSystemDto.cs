@@ -27,5 +27,12 @@ namespace Schuly.Application.Dtos
         public string? DefaultValue { get; set; }
         public bool Required { get; set; } = true;
         public bool ReplacedByLinkedAccount { get; set; }
+        public List<LoginFieldSuggestionDto> Suggestions { get; set; } = [];
+    }
+
+    public class LoginFieldSuggestionDto
+    {
+        public required string Label { get; set; }
+        public required string Value { get; set; }
     }
 }

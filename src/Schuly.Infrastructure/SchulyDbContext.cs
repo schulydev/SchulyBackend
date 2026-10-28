@@ -100,7 +100,11 @@ namespace Schuly.Infrastructure
 
                 // Field descriptors are a small, always-loaded-together list — store
                 // them as JSON on the row rather than a separate table.
-                entity.OwnsMany(s => s.LoginFields, b => b.ToJson());
+                entity.OwnsMany(s => s.LoginFields, b =>
+                {
+                    b.ToJson();
+                    b.OwnsMany(f => f.Suggestions);
+                });
             });
 
             modelBuilder.Entity<SchoolUser>(entity =>

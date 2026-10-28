@@ -41,7 +41,8 @@ namespace Schuly.Application.Mappers
                 Placeholder = field.Placeholder,
                 DefaultValue = field.DefaultValue,
                 Required = field.Required,
-                ReplacedByLinkedAccount = field.ReplacedByLinkedAccount
+                ReplacedByLinkedAccount = field.ReplacedByLinkedAccount,
+                Suggestions = (field.Suggestions ?? []).Select(s => new LoginFieldSuggestionDto { Label = s.Label, Value = s.Value }).ToList()
             };
         }
 
@@ -55,7 +56,8 @@ namespace Schuly.Application.Mappers
                 Placeholder = field.Placeholder,
                 DefaultValue = field.DefaultValue,
                 Required = field.Required,
-                ReplacedByLinkedAccount = field.ReplacedByLinkedAccount
+                ReplacedByLinkedAccount = field.ReplacedByLinkedAccount,
+                Suggestions = field.Suggestions.Select(s => new SchoolSystemLoginFieldSuggestion { Label = s.Label, Value = s.Value }).ToList()
             };
         }
     }
