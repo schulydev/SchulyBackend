@@ -32,8 +32,6 @@ services:
     image: ghcr.io/pianonic/schulwareapi:latest
     container_name: schuly-schulware-dev
     restart: unless-stopped
-    init: true
-    ipc: host
     environment:
       - PYTHONUNBUFFERED=1
       - SCHULNETZ_CLIENT_ID=ppyybShnMerHdtBQ
