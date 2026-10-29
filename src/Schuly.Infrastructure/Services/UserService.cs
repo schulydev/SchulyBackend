@@ -1,20 +1,13 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Schuly.Domain;
 
 namespace Schuly.Infrastructure.Services
 {
-    public class UserService(IOidcService oidcService, SchulyDbContext dbContext, IHttpContextAccessor httpContextAccessor) : IUserService
+    public class UserService(IOidcService oidcService, SchulyDbContext dbContext) : IUserService
     {
         private static readonly TimeSpan LastSeenResolution = TimeSpan.FromHours(1);
 
         private Guid? _cachedCurrentUserId;
-
-        public bool IsCurrentUserAdmin() =>
-            httpContextAccessor.HttpContext?.User.IsAdministrator() ?? false;
-
-        public bool IsCurrentUserTeacher() =>
-            httpContextAccessor.HttpContext?.User.IsTeacher() ?? false;
 
         public async Task<bool> ExistsAsync(string externalId, CancellationToken cancellationToken = default)
         {
@@ -65,25 +58,6 @@ namespace Schuly.Infrastructure.Services
                 .Where(su => su.ApplicationUserId == currentUserId)
                 .Select(su => su.Id)
                 .ToListAsync(cancellationToken);
-        }
-
-        public async Task<bool> CanManageClassAsync(Guid classId, CancellationToken cancellationToken = default)
-        {
-            if (IsCurrentUserAdmin())
-                return true;
-
-            var currentUserId = await GetCurrentUserIdAsync(cancellationToken);
-
-            var teacherIds = await dbContext.Teachers
-                .Where(t => t.ApplicationUserId == currentUserId)
-                .Select(t => t.Id)
-                .ToListAsync(cancellationToken);
-
-            if (teacherIds.Count == 0)
-                return false;
-
-            return await dbContext.Classes
-                .AnyAsync(c => c.Id == classId && c.Teachers.Any(t => teacherIds.Contains(t.Id)), cancellationToken);
         }
 
         public async Task SyncCurrentUserAsync(CancellationToken cancellationToken = default)

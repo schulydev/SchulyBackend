@@ -16,22 +16,14 @@ namespace Schuly.Application.Queries.School
     {
         public async ValueTask<Result<SchoolDto>> Handle(GetSchoolQuery query, CancellationToken cancellationToken)
         {
+            var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
+
             var school = await dbContext.Schools
                 .AsNoTracking()
-                .SingleOrDefaultAsync(s => s.Id == query.SchoolId, cancellationToken);
+                .SingleOrDefaultAsync(s => s.Id == query.SchoolId && s.SchoolUsers.Any(su => su.ApplicationUserId == userId), cancellationToken);
 
             if (school == null)
-                return Result<SchoolDto>.Failure($"School with ID '{query.SchoolId}' not found");
-
-            if (!userService.IsCurrentUserAdmin())
-            {
-                var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
-                var belongs = await dbContext.SchoolUsers
-                    .AsNoTracking()
-                    .AnyAsync(su => su.ApplicationUserId == userId && su.SchoolId == query.SchoolId, cancellationToken);
-                if (!belongs)
-                    return Result<SchoolDto>.Failure($"School with ID '{query.SchoolId}' not found");
-            }
+                return Result<SchoolDto>.NotFound($"School with ID '{query.SchoolId}' not found");
 
             return Result<SchoolDto>.Success(school.ToDto());
         }

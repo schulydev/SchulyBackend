@@ -17,6 +17,7 @@ namespace Schuly.API.Extensions
         private static IActionResult Error(ResultStatus status, string? error) => status switch
         {
             ResultStatus.Forbidden => new ObjectResult(error) { StatusCode = StatusCodes.Status403Forbidden },
+            ResultStatus.NotFound => new NotFoundObjectResult(error),
             ResultStatus.Conflict => new ObjectResult(error) { StatusCode = StatusCodes.Status409Conflict },
             _ => new BadRequestObjectResult(error),
         };

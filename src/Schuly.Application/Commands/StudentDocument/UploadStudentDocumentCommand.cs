@@ -15,14 +15,11 @@ namespace Schuly.Application.Commands.StudentDocument
     {
         public async ValueTask<Result<Guid>> Handle(UploadStudentDocumentCommand command, CancellationToken ct)
         {
-            if (!userService.IsCurrentUserAdmin())
-            {
-                var currentUserId = await userService.GetCurrentUserIdAsync(ct);
-                var owned = await db.SchoolUsers
-                    .AnyAsync(su => su.Id == command.SchoolUserId && su.ApplicationUserId == currentUserId, ct);
-                if (!owned)
-                    return Result<Guid>.Forbidden();
-            }
+            var currentUserId = await userService.GetCurrentUserIdAsync(ct);
+            var owned = await db.SchoolUsers
+                .AnyAsync(su => su.Id == command.SchoolUserId && su.ApplicationUserId == currentUserId, ct);
+            if (!owned)
+                return Result<Guid>.NotFound("SchoolUser not found");
 
             var blob = await storage.UploadAsync(command.Content, command.FileName, command.ContentType, ct);
 

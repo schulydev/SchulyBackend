@@ -14,9 +14,9 @@ namespace Schuly.API.Controllers
         [HttpGet("api/documents")]
         [ProducesResponseType(typeof(List<StudentDocumentDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> List([FromQuery] Guid? schoolUserId, CancellationToken ct)
+        public async Task<IActionResult> List(CancellationToken ct)
         {
-            var result = await mediator.Send(new GetStudentDocumentsQuery(schoolUserId), ct);
+            var result = await mediator.Send(new GetStudentDocumentsQuery(), ct);
             return result.ToActionResult();
         }
 
@@ -60,15 +60,6 @@ namespace Schuly.API.Controllers
                 download.Stream.Content,
                 download.Stream.ContentType ?? "application/octet-stream",
                 download.FileName);
-        }
-
-        [HttpPost("api/documents/reencrypt")]
-        [Authorize(Roles = "Administrator")]
-        [ProducesResponseType(typeof(ReencryptStudentDocumentsResult), StatusCodes.Status200OK)]
-        public async Task<IActionResult> Reencrypt(CancellationToken ct)
-        {
-            var result = await mediator.Send(new ReencryptStudentDocumentsCommand(), ct);
-            return result.ToActionResult();
         }
     }
 }

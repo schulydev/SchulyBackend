@@ -16,16 +16,13 @@ namespace Schuly.Application.Queries.Teacher
     {
         public async ValueTask<Result<List<TeacherDto>>> Handle(GetTeachersQuery query, CancellationToken cancellationToken)
         {
-            var isAdmin = userService.IsCurrentUserAdmin();
-            IQueryable<Domain.Teacher> dbQuery = dbContext.Teachers.AsNoTracking().Include(t => t.School);
+            var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
 
-            if (!isAdmin)
-            {
-                var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
-                dbQuery = dbQuery.Where(t => t.ApplicationUserId == userId);
-            }
-
-            var teachers = await dbQuery.ToListAsync(cancellationToken);
+            var teachers = await dbContext.Teachers
+                .AsNoTracking()
+                .Include(t => t.School)
+                .Where(t => t.ApplicationUserId == userId)
+                .ToListAsync(cancellationToken);
             return Result<List<TeacherDto>>.Success(teachers.ToDto());
         }
     }

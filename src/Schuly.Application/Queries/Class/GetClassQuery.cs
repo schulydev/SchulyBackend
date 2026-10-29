@@ -16,26 +16,19 @@ namespace Schuly.Application.Queries.Class
     {
         public async ValueTask<Result<ClassDto>> Handle(GetClassQuery query, CancellationToken cancellationToken)
         {
-            var isAdmin = userService.IsCurrentUserAdmin();
-            IReadOnlyList<Guid> myIds = isAdmin ? [] : await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
 
             var dbQuery = dbContext.Classes
                 .AsNoTracking()
                 .AsSplitQuery()
-                .Where(c => c.Id == query.ClassId);
-
-            if (!isAdmin)
-            {
-                var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
-                dbQuery = dbQuery.Where(c => c.Students.Any(su => myIds.Contains(su.Id)) || c.Teachers.Any(t => t.ApplicationUserId == userId));
-            }
+                .Where(c => c.Id == query.ClassId && c.Students.Any(su => myIds.Contains(su.Id)));
 
             var classEntity = await dbQuery
-                .IncludeRoster(isAdmin, myIds)
+                .IncludeRoster(myIds)
                 .SingleOrDefaultAsync(cancellationToken);
 
             if (classEntity == null)
-                return Result<ClassDto>.Failure($"Class with ID '{query.ClassId}' not found");
+                return Result<ClassDto>.NotFound($"Class with ID '{query.ClassId}' not found");
 
             var averages = await dbContext.Grades.ToClassAveragesAsync(classEntity.Exams.Select(e => e.Id).ToList(), cancellationToken);
             var dto = classEntity.ToDto(averages);

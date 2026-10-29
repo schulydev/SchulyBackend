@@ -21,12 +21,9 @@ namespace Schuly.Application.Commands.Absence
             if (UtcDateTime.Normalize(command.From) > UtcDateTime.Normalize(command.Until))
                 return Result.Failure("From must not be after Until");
 
-            if (!userService.IsCurrentUserAdmin())
-            {
-                var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
-                if (!myIds.Contains(command.SchoolUserId))
-                    return Result.Forbidden();
-            }
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+            if (!myIds.Contains(command.SchoolUserId))
+                return Result.Forbidden();
 
             await dbContext.Absences.AddAsync(new Domain.Absence
             {

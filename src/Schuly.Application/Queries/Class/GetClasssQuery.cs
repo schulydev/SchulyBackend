@@ -16,19 +16,12 @@ namespace Schuly.Application.Queries.Class
     {
         public async ValueTask<Result<List<ClassDto>>> Handle(GetClassesQuery query, CancellationToken cancellationToken)
         {
-            var isAdmin = userService.IsCurrentUserAdmin();
-            IReadOnlyList<Guid> myIds = isAdmin ? [] : await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
 
-            var dbQuery = dbContext.Classes.AsNoTracking().AsSplitQuery();
-
-            if (!isAdmin)
-            {
-                var userId = await userService.GetCurrentUserIdAsync(cancellationToken);
-                dbQuery = dbQuery.Where(c => c.Students.Any(su => myIds.Contains(su.Id)) || c.Teachers.Any(t => t.ApplicationUserId == userId));
-            }
+            var dbQuery = dbContext.Classes.AsNoTracking().AsSplitQuery().Where(c => c.Students.Any(su => myIds.Contains(su.Id)));
 
             var classes = await dbQuery
-                .IncludeRoster(isAdmin, myIds)
+                .IncludeRoster(myIds)
                 .ToListAsync(cancellationToken);
 
             var averages = await dbContext.Grades.ToClassAveragesAsync(classes.SelectMany(c => c.Exams).Select(e => e.Id).ToList(), cancellationToken);

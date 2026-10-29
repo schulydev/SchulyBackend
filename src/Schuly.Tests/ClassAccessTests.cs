@@ -49,7 +49,7 @@ namespace Schuly.Tests
             var (alice, _, _) = Seed(nameof(Student_sees_only_enrolled_classes_with_only_their_own_grades_and_absences));
             using var ctx = TestDb.NewContext(nameof(Student_sees_only_enrolled_classes_with_only_their_own_grades_and_absences));
 
-            var handler = new CQ.GetClassesQueryHandler(ctx, new FakeUserService(false, alice), new FakeAvatarUrlSigner());
+            var handler = new CQ.GetClassesQueryHandler(ctx, new FakeUserService(alice), new FakeAvatarUrlSigner());
             var result = await handler.Handle(new CQ.GetClassesQuery(), CancellationToken.None);
 
             await Assert.That(result.IsSuccess).IsTrue();
@@ -66,24 +66,10 @@ namespace Schuly.Tests
             var (alice, _, classB) = Seed(nameof(Reading_a_class_the_student_is_not_enrolled_in_returns_not_found));
             using var ctx = TestDb.NewContext(nameof(Reading_a_class_the_student_is_not_enrolled_in_returns_not_found));
 
-            var handler = new CQ.GetClassQueryHandler(ctx, new FakeUserService(false, alice), new FakeAvatarUrlSigner());
+            var handler = new CQ.GetClassQueryHandler(ctx, new FakeUserService(alice), new FakeAvatarUrlSigner());
             var result = await handler.Handle(new CQ.GetClassQuery(classB), CancellationToken.None);
 
             await Assert.That(result.IsSuccess).IsFalse();
-        }
-
-        [Test]
-        public async Task Admin_sees_all_classes_and_all_grades()
-        {
-            Seed(nameof(Admin_sees_all_classes_and_all_grades));
-            using var ctx = TestDb.NewContext(nameof(Admin_sees_all_classes_and_all_grades));
-
-            var handler = new CQ.GetClassesQueryHandler(ctx, new FakeUserService(true), new FakeAvatarUrlSigner());
-            var result = await handler.Handle(new CQ.GetClassesQuery(), CancellationToken.None);
-
-            await Assert.That(result.Value!.Count).IsEqualTo(2);
-            var classA = result.Value!.Single(c => c.Name == "A");
-            await Assert.That(classA.Students.Sum(s => s.Grades.Count)).IsEqualTo(2);
         }
 
         [Test]
@@ -92,7 +78,7 @@ namespace Schuly.Tests
             var (alice, _, _) = Seed(nameof(Class_roster_does_not_leak_classmate_pii));
             using var ctx = TestDb.NewContext(nameof(Class_roster_does_not_leak_classmate_pii));
 
-            var handler = new CQ.GetClassesQueryHandler(ctx, new FakeUserService(false, alice), new FakeAvatarUrlSigner());
+            var handler = new CQ.GetClassesQueryHandler(ctx, new FakeUserService(alice), new FakeAvatarUrlSigner());
             var result = await handler.Handle(new CQ.GetClassesQuery(), CancellationToken.None);
 
             await Assert.That(result.IsSuccess).IsTrue();
@@ -105,35 +91,5 @@ namespace Schuly.Tests
             await Assert.That(json).DoesNotContain("2001-02-02");
         }
 
-        [Test]
-        public async Task Linked_teacher_sees_a_class_they_teach_but_are_not_enrolled_in()
-        {
-            var someGuid = Guid.NewGuid();
-            var schoolId = Guid.NewGuid();
-
-            var classC = new Class { Name = "C", SchoolId = schoolId };
-            var teacher = new Teacher
-            {
-                Id = Guid.NewGuid(),
-                SchoolId = schoolId,
-                FirstName = "T",
-                LastName = "Eacher",
-                Code = "TEA",
-                ApplicationUserId = someGuid,
-                Classes = { classC },
-            };
-
-            using var ctx = TestDb.NewContext(nameof(Linked_teacher_sees_a_class_they_teach_but_are_not_enrolled_in));
-            ctx.Classes.Add(classC);
-            ctx.Teachers.Add(teacher);
-            ctx.SaveChanges();
-
-            var handler = new CQ.GetClassesQueryHandler(ctx, new FakeUserService(false) { IsTeacher = true, CurrentUserId = someGuid }, new FakeAvatarUrlSigner());
-            var result = await handler.Handle(new CQ.GetClassesQuery(), CancellationToken.None);
-
-            await Assert.That(result.IsSuccess).IsTrue();
-            await Assert.That(result.Value!.Count).IsEqualTo(1);
-            await Assert.That(result.Value!.Single().Id).IsEqualTo(classC.Id);
-        }
     }
 }

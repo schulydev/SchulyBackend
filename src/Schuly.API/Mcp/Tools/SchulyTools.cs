@@ -91,8 +91,9 @@ namespace Schuly.API.Mcp.Tools
         [McpAccess(McpArea.Grades, McpAccessLevel.Read)]
         public async Task<string> ListSemesterReports([Description("Only reports of this school profile.")] Guid? schoolUserId = null, CancellationToken ct = default)
         {
-            var reports = Unwrap(await mediator.Send(new GetSemesterReportsQuery(schoolUserId), ct));
+            var reports = Unwrap(await mediator.Send(new GetSemesterReportsQuery(), ct));
             return Serialize(reports
+                .Where(r => schoolUserId is null || r.SchoolUserId == schoolUserId)
                 .OrderByDescending(r => r.SchoolYearStart).ThenByDescending(r => r.SemesterHalf)
                 .Select(r => new { semester = $"{r.SchoolYearStart}/{r.SchoolYearStart + 1} semester {r.SemesterHalf}", r.ClassName, r.PromotionDecision, r.GradeAverage, r.InsufficientGradeCount, r.DeficiencyPoints, r.ExcusedAbsences, r.UnexcusedAbsences, subjects = r.Subjects.Select(s => new { s.SubjectName, s.Grade, s.Marker }) }));
         }

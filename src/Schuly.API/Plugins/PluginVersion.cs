@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace Schuly.API.Plugins
 {
     /// <summary>
-    /// Guards the admin-supplied plugin version: it becomes part of a download URL, a
+    /// Guards the configured plugin version: it becomes part of a download URL, a
     /// file name under the plugins directory and a value in plugins.yml, so only a
     /// strict semver (or the literal "latest") is allowed through.
     /// </summary>

@@ -31,25 +31,12 @@ namespace Schuly.Tests
             var aliceId = Seed(nameof(Student_sees_the_weighted_class_average_over_all_grades_while_seeing_only_their_own_grade));
             using var ctx = TestDb.NewContext(nameof(Student_sees_the_weighted_class_average_over_all_grades_while_seeing_only_their_own_grade));
 
-            var handler = new GetExamsQueryHandler(ctx, new FakeUserService(false, aliceId));
+            var handler = new GetExamsQueryHandler(ctx, new FakeUserService(aliceId));
             var result = await handler.Handle(new GetExamsQuery(), CancellationToken.None);
 
             await Assert.That(result.IsSuccess).IsTrue();
             var exam = result.Value!.Single();
             await Assert.That(exam.Grades.Count).IsEqualTo(1);
-            await Assert.That(exam.ClassAverage).IsEqualTo(5.0m);
-        }
-
-        [Test]
-        public async Task Admin_sees_the_same_weighted_class_average()
-        {
-            Seed(nameof(Admin_sees_the_same_weighted_class_average));
-            using var ctx = TestDb.NewContext(nameof(Admin_sees_the_same_weighted_class_average));
-
-            var handler = new GetExamsQueryHandler(ctx, new FakeUserService(true));
-            var result = await handler.Handle(new GetExamsQuery(), CancellationToken.None);
-
-            var exam = result.Value!.Single();
             await Assert.That(exam.ClassAverage).IsEqualTo(5.0m);
         }
     }

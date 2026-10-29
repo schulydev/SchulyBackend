@@ -22,21 +22,19 @@ namespace Schuly.Application.Commands.Absence
             if (UtcDateTime.Normalize(command.From) > UtcDateTime.Normalize(command.Until))
                 return Result.Failure("From must not be after Until");
 
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+
             var absence = await dbContext.Absences
-                .SingleOrDefaultAsync(a => a.Id == command.AbsenceId, cancellationToken);
+                .SingleOrDefaultAsync(a => a.Id == command.AbsenceId && myIds.Contains(a.SchoolUserId), cancellationToken);
 
             if (absence == null)
-                return Result.Failure($"Absence with ID '{command.AbsenceId}' not found");
+                return Result.NotFound($"Absence with ID '{command.AbsenceId}' not found");
 
             if (ManualEdit.RefuseSynced(absence) is { } synced)
                 return synced;
 
-            if (!userService.IsCurrentUserAdmin())
-            {
-                var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
-                if (!myIds.Contains(absence.SchoolUserId) || !myIds.Contains(command.SchoolUserId))
-                    return Result.Forbidden();
-            }
+            if (!myIds.Contains(command.SchoolUserId))
+                return Result.Forbidden();
 
             absence.Reason = command.Reason;
             absence.Type = command.Type;

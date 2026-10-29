@@ -13,7 +13,7 @@ namespace Schuly.Tests
         private static async Task<Guid> MySchoolAsync(string db, Guid userId)
         {
             using var ctx = TestDb.NewContext(db);
-            var result = await new CreateMySchoolCommandHandler(ctx, new FakeUserService(false) { CurrentUserId = userId })
+            var result = await new CreateMySchoolCommandHandler(ctx, new FakeUserService() { CurrentUserId = userId })
                 .Handle(new CreateMySchoolCommand("Home School", "Alex", "Muster"), CancellationToken.None);
             await Assert.That(result.IsSuccess).IsTrue();
             return result.Value;
@@ -40,7 +40,7 @@ namespace Schuly.Tests
         {
             const string db = nameof(Adding_grades_creates_the_subject_and_exam_once_and_enrols_the_student);
             var studentId = await MySchoolAsync(db, Guid.NewGuid());
-            var me = new FakeUserService(false, studentId);
+            var me = new FakeUserService(studentId);
 
             using (var ctx = TestDb.NewContext(db))
                 await new AddMyGradeCommandHandler(ctx, me).Handle(new AddMyGradeCommand(studentId, "Mathematik", "Test 1", 5.5m, 1, new DateOnly(2026, 10, 9)), CancellationToken.None);
@@ -62,7 +62,7 @@ namespace Schuly.Tests
             var otherStudent = await MySchoolAsync(db, Guid.NewGuid());
             using var ctx = TestDb.NewContext(db);
 
-            var result = await new AddMyGradeCommandHandler(ctx, new FakeUserService(false, Guid.NewGuid()))
+            var result = await new AddMyGradeCommandHandler(ctx, new FakeUserService(Guid.NewGuid()))
                 .Handle(new AddMyGradeCommand(otherStudent, "Mathematik", "Test 1", 5m, 1, null), CancellationToken.None);
 
             await Assert.That(result.Status).IsEqualTo(ResultStatus.Forbidden);
@@ -81,7 +81,7 @@ namespace Schuly.Tests
                 ctx.Grades.Add(new Grade { Id = gradeId, Exam = exam, SchoolUserId = studentId, Score = 5, Weighting = 1, Source = "Schuly.Plugin.Schulware", ExternalId = "m-1" });
                 await ctx.SaveChangesAsync();
             }
-            var me = new FakeUserService(false, studentId);
+            var me = new FakeUserService(studentId);
 
             using var edit = TestDb.NewContext(db);
             var update = await new UpdateMyGradeCommandHandler(edit, me).Handle(new UpdateMyGradeCommand(gradeId, 6, 1), CancellationToken.None);
@@ -97,7 +97,7 @@ namespace Schuly.Tests
         {
             const string db = nameof(Deleting_the_last_grade_of_a_hand_made_exam_removes_the_exam);
             var studentId = await MySchoolAsync(db, Guid.NewGuid());
-            var me = new FakeUserService(false, studentId);
+            var me = new FakeUserService(studentId);
             Guid gradeId;
             using (var ctx = TestDb.NewContext(db))
                 gradeId = (await new AddMyGradeCommandHandler(ctx, me).Handle(new AddMyGradeCommand(studentId, "Englisch", "Vocab", 5m, 1, null), CancellationToken.None)).Value;
@@ -118,7 +118,7 @@ namespace Schuly.Tests
             using var ctx = TestDb.NewContext(db);
             var local = new DateTime(2026, 10, 23, 8, 0, 0, DateTimeKind.Unspecified);
 
-            var result = await new CreateAbsenceCommandHandler(ctx, new FakeUserService(false, studentId))
+            var result = await new CreateAbsenceCommandHandler(ctx, new FakeUserService(studentId))
                 .Handle(new CreateAbsenceCommand("Sick", AbsenceType.Absence, local, local, studentId), CancellationToken.None);
 
             await Assert.That(result.IsSuccess).IsFalse();
@@ -138,7 +138,7 @@ namespace Schuly.Tests
             }
 
             using var edit = TestDb.NewContext(db);
-            var result = await new RemoveAbsenceCommandHandler(edit, new FakeUserService(false, studentId)).Handle(new RemoveAbsenceCommand(absence.Id), CancellationToken.None);
+            var result = await new RemoveAbsenceCommandHandler(edit, new FakeUserService(studentId)).Handle(new RemoveAbsenceCommand(absence.Id), CancellationToken.None);
 
             await Assert.That(result.Status).IsEqualTo(ResultStatus.Forbidden);
         }

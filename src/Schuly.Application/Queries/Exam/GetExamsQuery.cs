@@ -16,11 +16,10 @@ namespace Schuly.Application.Queries.Exam
     {
         public async ValueTask<Result<List<ExamDto>>> Handle(GetExamsQuery query, CancellationToken cancellationToken)
         {
-            var isAdmin = userService.IsCurrentUserAdmin();
-            IReadOnlyList<Guid> myIds = isAdmin ? [] : await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
 
             var exams = await dbContext.Exams
-                .ApplyVisibility(isAdmin, myIds)
+                .ApplyVisibility(myIds)
                 .ToListAsync(cancellationToken);
 
             var averages = await dbContext.Grades.ToClassAveragesAsync(exams.Select(e => e.Id).ToList(), cancellationToken);

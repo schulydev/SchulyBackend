@@ -1,37 +1,21 @@
 using Mediator;
-using Microsoft.AspNetCore.Http;
 using Schuly.Application.Authorization;
-using Schuly.Domain;
-using Schuly.Domain.Enums;
 using System.Reflection;
 
 namespace Schuly.Application.Behaviors
 {
-    public class AuthorizationBehavior<TRequest, TResponse>(IHttpContextAccessor httpContextAccessor) : IPipelineBehavior<TRequest, TResponse>
+    public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
         where TRequest : notnull, IMessage
     {
-        public async ValueTask<TResponse> Handle(TRequest request, MessageHandlerDelegate<TRequest, TResponse> next, CancellationToken cancellationToken)
+        public ValueTask<TResponse> Handle(TRequest request, MessageHandlerDelegate<TRequest, TResponse> next, CancellationToken cancellationToken)
         {
             var type = request.GetType();
-            var rolesAttribute = type.GetCustomAttribute<AuthorizedRolesAttribute>();
-            var allowAuthenticated = type.GetCustomAttribute<AllowAuthenticatedAttribute>();
 
-            if (rolesAttribute is null && allowAuthenticated is null)
+            if (type.GetCustomAttribute<AllowAuthenticatedAttribute>() is null)
                 throw new InvalidOperationException(
-                    $"Missing authorization attribute on {type.Name}. Add [AuthorizedRoles(...)] or [AllowAuthenticated].");
+                    $"Missing authorization attribute on {type.Name}. Add [AllowAuthenticated].");
 
-            if (allowAuthenticated is not null)
-                return await next(request, cancellationToken);
-
-            var currentUserRole = GetCurrentUserRole();
-            if (!rolesAttribute!.Roles.Contains(currentUserRole) && currentUserRole != Roles.Administrator)
-                throw new UnauthorizedAccessException(
-                    $"User with role {currentUserRole} is not authorized to perform this action. Required roles: {string.Join(", ", rolesAttribute.Roles)}.");
-
-            return await next(request, cancellationToken);
+            return next(request, cancellationToken);
         }
-
-        private Roles GetCurrentUserRole() =>
-            httpContextAccessor.HttpContext?.User.GetPrimaryRole() ?? Roles.Student;
     }
 }

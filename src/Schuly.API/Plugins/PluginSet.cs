@@ -28,8 +28,8 @@ namespace Schuly.API.Plugins
         public void Write(IEnumerable<DesiredPlugin> plugins)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("# Desired Schuly plugin set. Reconciled on startup and by the");
-            sb.AppendLine("# /api/plugins admin endpoints. version: a pinned semver or 'latest'.");
+            sb.AppendLine("# Desired Schuly plugin set. Reconciled on startup.");
+            sb.AppendLine("# version: a pinned semver or 'latest'.");
             sb.AppendLine("plugins:");
             foreach (var p in plugins.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase))
             {

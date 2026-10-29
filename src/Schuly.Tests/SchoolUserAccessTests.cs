@@ -46,62 +46,20 @@ namespace Schuly.Tests
         }
 
         [Test]
-        public async Task Teacher_school_scope_comes_from_the_teachers_table()
+        public async Task A_user_only_gets_their_own_school_users()
         {
-            var (teacherUserId, teacherSelf, student, outsider) = Seed(nameof(Teacher_school_scope_comes_from_the_teachers_table));
-            using var ctx = TestDb.NewContext(nameof(Teacher_school_scope_comes_from_the_teachers_table));
+            var (teacherUserId, teacherSelf, student, outsider) = Seed(nameof(A_user_only_gets_their_own_school_users));
+            using var ctx = TestDb.NewContext(nameof(A_user_only_gets_their_own_school_users));
 
-            var handler = new SUQ.GetSchoolUsersQueryHandler(ctx, new FakeUserService(false) { IsTeacher = true, CurrentUserId = teacherUserId }, new FakeAvatarUrlSigner());
+            var handler = new SUQ.GetSchoolUsersQueryHandler(ctx, new FakeUserService() { CurrentUserId = teacherUserId }, new FakeAvatarUrlSigner());
             var result = await handler.Handle(new SUQ.GetSchoolUsersQuery(), CancellationToken.None);
 
-            await Assert.That(result.IsSuccess).IsTrue();
-            await Assert.That(result.Value!.Count).IsEqualTo(2);
-            await Assert.That(result.Value!.Any(su => su.Id == teacherSelf)).IsTrue();
-            await Assert.That(result.Value!.Any(su => su.Id == student)).IsTrue();
-            await Assert.That(result.Value!.Any(su => su.Id == outsider)).IsFalse();
-        }
-
-        [Test]
-        public async Task Teacher_gets_no_pii_grades_or_absences_for_other_users()
-        {
-            var (teacherUserId, teacherSelf, student, _) = Seed(nameof(Teacher_gets_no_pii_grades_or_absences_for_other_users));
-            using var ctx = TestDb.NewContext(nameof(Teacher_gets_no_pii_grades_or_absences_for_other_users));
-
-            var handler = new SUQ.GetSchoolUsersQueryHandler(ctx, new FakeUserService(false) { IsTeacher = true, CurrentUserId = teacherUserId }, new FakeAvatarUrlSigner());
-            var result = await handler.Handle(new SUQ.GetSchoolUsersQuery(), CancellationToken.None);
-
-            var other = result.Value!.Single(su => su.Id == student);
-            await Assert.That(other.PrivateEmail).IsNull();
-            await Assert.That(other.PhoneNumber).IsNull();
-            await Assert.That(other.Street).IsNull();
-            await Assert.That(other.City).IsNull();
-            await Assert.That(other.Zip).IsNull();
-            await Assert.That(other.Birthday).IsNull();
-            await Assert.That(other.ApplicationUserId).IsNull();
-            await Assert.That(other.Grades.Count).IsEqualTo(0);
-            await Assert.That(other.Absences.Count).IsEqualTo(0);
-
-            var mine = result.Value!.Single(su => su.Id == teacherSelf);
+            await Assert.That(result.Value!.Count).IsEqualTo(1);
+            var mine = result.Value!.Single();
+            await Assert.That(mine.Id).IsEqualTo(teacherSelf);
             await Assert.That(mine.PrivateEmail).IsEqualTo("teacher.private@example.com");
-            await Assert.That(mine.ApplicationUserId).IsEqualTo(teacherUserId);
             await Assert.That(mine.Grades.Count).IsEqualTo(1);
-        }
-
-        [Test]
-        public async Task Administrator_gets_full_data_for_every_school_user()
-        {
-            var (_, _, student, _) = Seed(nameof(Administrator_gets_full_data_for_every_school_user));
-            using var ctx = TestDb.NewContext(nameof(Administrator_gets_full_data_for_every_school_user));
-
-            var handler = new SUQ.GetSchoolUsersQueryHandler(ctx, new FakeUserService(true), new FakeAvatarUrlSigner());
-            var result = await handler.Handle(new SUQ.GetSchoolUsersQuery(), CancellationToken.None);
-
-            await Assert.That(result.Value!.Count).IsEqualTo(3);
-            var dto = result.Value!.Single(su => su.Id == student);
-            await Assert.That(dto.PrivateEmail).IsEqualTo("student.private@example.com");
-            await Assert.That(dto.Street).IsEqualTo("Student Street 3");
-            await Assert.That(dto.Grades.Count).IsEqualTo(1);
-            await Assert.That(dto.Absences.Count).IsEqualTo(1);
+            await Assert.That(result.Value!.Any(su => su.Id == student || su.Id == outsider)).IsFalse();
         }
     }
 }

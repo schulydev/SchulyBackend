@@ -17,19 +17,13 @@ namespace Schuly.Application.Queries.StudentDocument
     {
         public async ValueTask<Result<DocumentDownload>> Handle(OpenStudentDocumentQuery query, CancellationToken ct)
         {
+            var currentUserId = await userService.GetCurrentUserIdAsync(ct);
+
             var doc = await db.StudentDocuments
                 .AsNoTracking()
-                .Include(d => d.SchoolUser)
-                .SingleOrDefaultAsync(d => d.Id == query.DocumentId, ct);
+                .SingleOrDefaultAsync(d => d.Id == query.DocumentId && d.SchoolUser!.ApplicationUserId == currentUserId, ct);
             if (doc is null)
-                return Result<DocumentDownload>.Failure("Document not found");
-
-            if (!userService.IsCurrentUserAdmin())
-            {
-                var currentUserId = await userService.GetCurrentUserIdAsync(ct);
-                if (doc.SchoolUser?.ApplicationUserId != currentUserId)
-                    return Result<DocumentDownload>.Forbidden();
-            }
+                return Result<DocumentDownload>.NotFound("Document not found");
 
             if (string.IsNullOrWhiteSpace(doc.FileUrl))
                 return Result<DocumentDownload>.Failure("Document has no stored file");

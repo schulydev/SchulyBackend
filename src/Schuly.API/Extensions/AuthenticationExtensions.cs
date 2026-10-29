@@ -17,8 +17,6 @@ namespace Schuly.API.Extensions
             services.AddToamaisutaaBearer(configuration).AddUserSync();
             services.AddToamaisutaaEntityFrameworkStores<SchulyDbContext>();
 
-            services.AddScoped<IUserRoleProvider, UserRoleProvider>();
-
             services.AddToamaisutaaSmtpEmail(configuration);
             services.AddSingleton<IEmailVerificationEmailTemplate, SchulyEmailVerificationEmailTemplate>();
             services.AddToamaisutaaSmtpEmailVerification();

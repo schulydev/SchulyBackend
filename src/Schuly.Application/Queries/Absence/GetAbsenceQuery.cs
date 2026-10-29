@@ -16,20 +16,15 @@ namespace Schuly.Application.Queries.Absence
     {
         public async ValueTask<Result<AbsenceDto>> Handle(GetAbsenceQuery query, CancellationToken cancellationToken)
         {
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+
             var absence = await dbContext.Absences
                 .AsNoTracking()
                 .Include(a => a.SchoolUser)
-                .SingleOrDefaultAsync(a => a.Id == query.AbsenceId, cancellationToken);
+                .SingleOrDefaultAsync(a => a.Id == query.AbsenceId && myIds.Contains(a.SchoolUserId), cancellationToken);
 
             if (absence == null)
-                return Result<AbsenceDto>.Failure($"Absence with ID '{query.AbsenceId}' not found");
-
-            if (!userService.IsCurrentUserAdmin())
-            {
-                var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
-                if (!myIds.Contains(absence.SchoolUserId))
-                    return Result<AbsenceDto>.Forbidden();
-            }
+                return Result<AbsenceDto>.NotFound($"Absence with ID '{query.AbsenceId}' not found");
 
             return Result<AbsenceDto>.Success(absence.ToDto());
         }

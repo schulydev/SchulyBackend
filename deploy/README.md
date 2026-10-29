@@ -28,9 +28,7 @@ registry - no DLL baked into the image).
    same value in `config/seaweedfs/s3-config.json` (`S3_ACCESS_KEY` too).
    `LOCAL_LOGIN_SIGNING_KEY` and `TWO_FACTOR_ENCRYPTION_KEY` must be generated base64
    32-byte keys (`openssl rand -base64 32`) and must stay stable - a new signing key
-   signs everybody out, a new encryption key breaks two-factor. Set `ADMIN_EMAIL` to
-   your own address; that account gets the `Administrator` role once you register
-   with it. The `SMTP_*` block is the mail server for email verification and
+   signs everybody out, a new encryption key breaks two-factor. The `SMTP_* block is the mail server for email verification and
    password reset.
    `VAULT_MASTER_KEY` must be a real generated base64 32-byte key
    (`openssl rand -base64 32`) and must never change afterwards - the backend
@@ -46,10 +44,9 @@ registry - no DLL baked into the image).
 
 - `https://${API_HOST}/api/app/school-systems` → anonymous catalog (proves the API
   is up).
-- Register with `ADMIN_EMAIL` (`POST https://${API_HOST}/auth/register`, or through
+- Register an account (`POST https://${API_HOST}/auth/register`, or through
   the web app at `https://${API_HOST}`), then sign in.
-- Loaded plugins: `GET https://${API_HOST}/api/plugins` (after an `Administrator`
-  login). Manage at runtime with `POST /api/plugins/install`, `DELETE /api/plugins/{name}`.
+- Plugins are declared in `plugins.yml`; the backend log lists what was loaded.
 - Point the Schuly app at `https://${API_HOST}`; it signs in against the backend's
   `/auth` endpoints.
 

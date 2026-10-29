@@ -94,7 +94,7 @@ namespace Schuly.API.Plugins
             var db = hostScope.ServiceProvider.GetRequiredService<SchulyDbContext>();
             var existing = await db.SchoolSystems.ToDictionaryAsync(s => s.Key, ct);
 
-            // Name, logo, enabled and order stay as an admin set them; how to log in follows the plugin.
+            // Name, logo, enabled and order stay as seeded or edited in the database; how to log in follows the plugin.
             var added = 0;
             foreach (var d in descriptors)
             {

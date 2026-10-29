@@ -18,13 +18,11 @@ namespace Schuly.Application.Commands.Me
             if (MyGrade.Invalid(command.Score, command.Weight) is { } invalid)
                 return Result.Failure(invalid);
 
-            var grade = await dbContext.Grades.SingleOrDefaultAsync(g => g.Id == command.GradeId, cancellationToken);
-            if (grade is null)
-                return Result.Failure($"Grade with ID '{command.GradeId}' not found");
-
             var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
-            if (!myIds.Contains(grade.SchoolUserId))
-                return Result.Forbidden();
+
+            var grade = await dbContext.Grades.SingleOrDefaultAsync(g => g.Id == command.GradeId && myIds.Contains(g.SchoolUserId), cancellationToken);
+            if (grade is null)
+                return Result.NotFound($"Grade with ID '{command.GradeId}' not found");
             if (ManualEdit.RefuseSynced(grade) is { } synced)
                 return synced;
 
