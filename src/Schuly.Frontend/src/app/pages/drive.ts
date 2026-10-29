@@ -1,3 +1,5 @@
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { Component, ElementRef, computed, inject, signal, viewChildren } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
@@ -23,6 +25,7 @@ import { LoadMore } from '../shared/load-more';
 import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
 import { MicrosoftProblem } from '../shared/microsoft-problem';
 import { SearchField } from '../shared/search-field';
+import { MicrosoftAccountsStore } from '../stores/microsoft-accounts.store';
 import { DriveKind, DriveStore } from '../stores/microsoft.store';
 
 const kindIcons: Record<DriveKind, string> = {
@@ -174,7 +177,7 @@ function formatSize(bytes: number): string {
         <app-empty-state icon="lucideHardDrive" title="This folder is empty" description="Files and folders from OneDrive appear here." />
       }
 
-      <app-file-viewer [file]="viewing()" (closed)="viewing.set(null)" />
+      <app-file-viewer [file]="viewing()" [files]="viewerFiles()" (closed)="viewing.set(null)" />
 
       <app-load-more
         label="Load more files"
@@ -189,6 +192,8 @@ function formatSize(bytes: number): string {
 })
 export class Drive {
   protected readonly store = inject(DriveStore);
+  private readonly accounts = inject(MicrosoftAccountsStore);
+  private readonly http = inject(HttpClient);
 
   protected readonly viewing = signal<ViewerFile | null>(null);
   protected readonly query = signal('');
@@ -231,17 +236,34 @@ export class Drive {
   /** Fetches the pre-authenticated download link as a blob; the viewer shows PDFs, images and text and offers a download for the rest. */
   protected view(): void {
     const entry = this.current();
-    const url = entry?.download;
-    if (!entry || !url) return;
-    this.viewing.set({
-      name: entry.name,
-      load: async () => {
-        const response = await fetch(url, { credentials: 'omit', referrerPolicy: 'no-referrer' });
-        if (!response.ok) throw new Error('download failed');
-        return response.blob();
-      },
-    });
+    if (!entry?.download) return;
+    this.viewing.set(this.viewerFiles().find((f) => f.key === this.keyOf(entry)) ?? null);
   }
+
+  private keyOf(entry: { id: string; modified: string | null }): string {
+    return `drive:${this.accounts.selectedId()}:${entry.id}:${entry.modified ?? ''}`;
+  }
+
+  /** The files of the current folder (no folders) for the viewer; Office formats also get the server-side PDF rendering. */
+  protected readonly viewerFiles = computed<ViewerFile[]>(() => {
+    const account = this.accounts.selectedId();
+    if (!account) return [];
+    return this.filtered()
+      .filter((e) => !e.isFolder && e.download)
+      .map((entry) => {
+        const url = entry.download as string;
+        return {
+          name: entry.name,
+          key: this.keyOf(entry),
+          load: async () => {
+            const response = await fetch(url, { credentials: 'omit', referrerPolicy: 'no-referrer' });
+            if (!response.ok) throw new Error('download failed');
+            return response.blob();
+          },
+          pdf: () => firstValueFrom(this.http.get(`/api/plugins/microsoft/accounts/${encodeURIComponent(account)}/files/${encodeURIComponent(entry.id)}/pdf`, { responseType: 'blob' })),
+        };
+      });
+  });
 
   protected select(id: string): void {
     this.selectedId.set(id);

@@ -10,6 +10,8 @@ import { filter, map, startWith } from 'rxjs';
 import { AbsencesStore } from '../stores/absences.store';
 import { AgendaStore } from '../stores/agenda.store';
 import { MicrosoftAccountsStore } from '../stores/microsoft-accounts.store';
+import { MicrosoftPdfConverter } from '../stores/microsoft-pdf-converter';
+import { PDF_CONVERTER } from '../shared/file-viewer';
 import { ConnectionsStore } from '../stores/connections.store';
 import { ClassesStore } from '../stores/classes.store';
 import { DocumentsStore } from '../stores/documents.store';
@@ -22,7 +24,7 @@ import { AppSidebar } from './app-sidebar';
 @Component({
   selector: 'app-layout',
   imports: [HlmSidebarImports, HlmButton, HlmSeparator, NgIcon, RouterOutlet, AppSidebar],
-  providers: [provideIcons({ lucideMoon, lucideSun }), UserStore, ClassesStore, GradesStore, AgendaStore, AbsencesStore, DocumentsStore, SecurityStore, MicrosoftAccountsStore, ConnectionsStore],
+  providers: [provideIcons({ lucideMoon, lucideSun }), UserStore, ClassesStore, GradesStore, AgendaStore, AbsencesStore, DocumentsStore, SecurityStore, MicrosoftAccountsStore, ConnectionsStore, { provide: PDF_CONVERTER, useClass: MicrosoftPdfConverter }],
   styles: `
     [hlmSidebarWrapper] {
       --sidebar-width: calc(var(--spacing) * 64);
