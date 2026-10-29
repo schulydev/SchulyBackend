@@ -71,6 +71,8 @@ export interface MailAttachment {
   contentType: string;
   size: number;
   inline: boolean;
+  /** The Content-ID a `cid:` reference in the body points at, normalised (see `normalizeCid`). */
+  contentId: string | null;
 }
 
 interface GraphAttachment {
@@ -79,7 +81,42 @@ interface GraphAttachment {
   contentType?: string | null;
   size?: number | null;
   isInline?: boolean | null;
+  contentId?: string | null;
 }
+
+/** A Content-ID or `cid:` reference in one comparable form: no `cid:` prefix, URL-decoded, no angle brackets, lower case. */
+export function normalizeCid(value: string | null | undefined): string {
+  let v = (value ?? '').trim().replace(/^cid:/i, '');
+  try {
+    v = decodeURIComponent(v);
+  } catch {
+    // A stray "%" stays as it is.
+  }
+  return v.trim().replace(/^<|>$/g, '').trim().toLowerCase();
+}
+
+/** Whether a body references inline parts. Graph reports `hasAttachments: false` for mails whose only attachments are inline images. */
+export const referencesInlineParts = (body: string): boolean => /\bcid:/i.test(body);
+
+const INLINE_IMAGE_MAX = 10 * 1024 * 1024;
+const INLINE_TOTAL_MAX = 25 * 1024 * 1024;
+
+/** The image type from the magic bytes (png, jpeg, gif, webp, bmp); anything else, svg included, is null and never inlined. */
+export function imageTypeOf(bytes: Uint8Array): string | null {
+  const at = (sig: number[], offset = 0) => sig.every((b, i) => bytes[offset + i] === b);
+  if (at([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image/png';
+  if (at([0xff, 0xd8, 0xff])) return 'image/jpeg';
+  if (at([0x47, 0x49, 0x46, 0x38])) return 'image/gif';
+  if (at([0x52, 0x49, 0x46, 0x46]) && at([0x57, 0x45, 0x42, 0x50], 8)) return 'image/webp';
+  if (at([0x42, 0x4d])) return 'image/bmp';
+  return null;
+}
+
+const toDataUrl = (bytes: Uint8Array, type: string): string => {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return `data:${type};base64,${btoa(binary)}`;
+};
 
 export interface OutgoingMail {
   to: string[];
@@ -267,6 +304,8 @@ export class MailClient {
   readonly detailLoading = signal(false);
   readonly detailProblem = signal<'unavailable' | 'failed' | null>(null);
   readonly attachments = signal<MailAttachment[]>([]);
+  /** Inline images of the open message: normalised Content-ID -> data: URL (the body iframe's CSP allows data: images only). */
+  readonly inlineImages = signal<Record<string, string>>({});
 
   readonly mainFolders = computed(() => this.folders().filter((f) => f.group === 'main'));
   readonly moreFolders = computed(() => this.folders().filter((f) => f.group === 'more'));
@@ -335,10 +374,12 @@ export class MailClient {
     const hit = swrCache.get<MailDetail>(key);
     this.detailProblem.set(null);
     this.attachments.set([]);
+    this.inlineImages.set({});
+    const wantsAttachments = (d: MailDetail | undefined) => !!d && (d.hasAttachments || (d.html && referencesInlineParts(d.body)));
     if (hit) {
       this.detail.set(hit.data);
       this.detailLoading.set(false);
-      if (hit.data.hasAttachments) void this.loadAttachments(id, seq);
+      if (wantsAttachments(hit.data)) void this.loadAttachments(id, seq);
     } else {
       this.detail.set(null);
       this.detailLoading.set(true);
@@ -350,7 +391,7 @@ export class MailClient {
       swrCache.set(key, detail);
       this.detail.set(detail);
       this.detailLoading.set(false);
-      if (detail.hasAttachments && !hit?.data.hasAttachments) void this.loadAttachments(id, seq);
+      if (wantsAttachments(detail) && !wantsAttachments(hit?.data)) void this.loadAttachments(id, seq);
     } catch (error) {
       if (seq !== this.openSeq) return;
       this.detailLoading.set(false);
@@ -364,6 +405,7 @@ export class MailClient {
     this.detailLoading.set(false);
     this.detailProblem.set(null);
     this.attachments.set([]);
+    this.inlineImages.set({});
   }
 
   /** Warms the cache for a message the user is about to open (hover or focus). */
@@ -385,20 +427,44 @@ export class MailClient {
     try {
       const items = await firstValueFrom(this.http.get<GraphAttachment[]>(`${base}/${encodeURIComponent(id)}/attachments`));
       if (seq !== this.openSeq || !Array.isArray(items)) return;
-      this.attachments.set(
-        items
-          .filter((a) => a.id)
-          .map((a) => ({
-            id: a.id!,
-            name: safeFileName(a.name ?? ''),
-            contentType: (a.contentType ?? '').toLowerCase(),
-            size: a.size ?? 0,
-            inline: a.isInline === true,
-          })),
-      );
+      const attachments = items
+        .filter((a) => a.id)
+        .map((a) => ({
+          id: a.id!,
+          name: safeFileName(a.name ?? ''),
+          contentType: (a.contentType ?? '').toLowerCase(),
+          size: a.size ?? 0,
+          inline: a.isInline === true,
+          contentId: a.contentId ? normalizeCid(a.contentId) : null,
+        }));
+      this.attachments.set(attachments);
+      const body = this.detail()?.body ?? '';
+      if (referencesInlineParts(body)) void this.loadInlineImages(id, seq, attachments, body);
     } catch {
       // The message still reads fine without its attachment list.
     }
+  }
+
+  /** Fetches the images the body references by `cid:` (verified by their magic bytes, capped) and hands them to the body as data: URLs. */
+  private async loadInlineImages(id: string, seq: number, attachments: MailAttachment[], body: string): Promise<void> {
+    const referenced = new Set(Array.from(body.matchAll(/cid:([^"'\s>)]+)/gi), (m) => normalizeCid(m[1])));
+    const wanted = attachments.filter((a) => a.contentId && referenced.has(a.contentId) && a.size <= INLINE_IMAGE_MAX && !a.contentType.includes('svg'));
+    let total = 0;
+    const images: Record<string, string> = {};
+    await Promise.all(
+      wanted.map(async (a) => {
+        try {
+          const bytes = new Uint8Array(await (await this.fetchAttachment(id, a)).arrayBuffer());
+          const type = imageTypeOf(bytes);
+          total += bytes.length;
+          if (!type || bytes.length > INLINE_IMAGE_MAX || total > INLINE_TOTAL_MAX) return;
+          images[a.contentId!] = toDataUrl(bytes, type);
+        } catch {
+          // A missing inline image only leaves its alt text.
+        }
+      }),
+    );
+    if (seq === this.openSeq && Object.keys(images).length) this.inlineImages.set(images);
   }
 
   /** Images and PDFs can be viewed in the app; the viewer re-checks the bytes before rendering anything. */
