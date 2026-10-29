@@ -40,6 +40,12 @@ services:
     environment:
       PYTHONUNBUFFERED: "1"
 
+  schulymicrosoft:
+    image: ghcr.io/schulydev/schulymicrosoft:latest
+    restart: unless-stopped
+    environment:
+      PYTHONUNBUFFERED: "1"
+
   backend:
     image: ghcr.io/schulydev/schuly:${SCHULY_VERSION:-latest}
     restart: unless-stopped

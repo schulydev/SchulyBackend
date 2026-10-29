@@ -1,0 +1,3 @@
+# Config for the Microsoft plugin. Points at the SchulyMicrosoft service in this stack.
+MicrosoftApi:
+  BaseUrl: http://schulymicrosoft:8010

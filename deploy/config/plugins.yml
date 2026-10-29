@@ -3,3 +3,5 @@
 plugins:
   - name: Schuly.Plugin.Schulware
     version: latest
+  - name: Schuly.Plugin.Microsoft
+    version: latest
