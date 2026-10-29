@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideCalendarDays, lucideChartColumn, lucideClipboardList, lucideFileText, lucideLayoutDashboard, lucideSettings, lucideUserX } from '@ng-icons/lucide';
+import { lucideCalendarDays, lucideChartColumn, lucideClipboardList, lucideFileText, lucideLayoutDashboard, lucideMail, lucideMessagesSquare, lucideNotebook, lucideSettings, lucideUserX } from '@ng-icons/lucide';
 import { HlmSidebarImports } from '@spartan-ng/helm/sidebar';
+import { MicrosoftAccountsStore } from '../stores/microsoft-accounts.store';
 import { NavUser } from './nav-user';
 
 interface NavItem {
@@ -14,7 +15,7 @@ interface NavItem {
 @Component({
   selector: 'app-sidebar',
   imports: [HlmSidebarImports, NgIcon, RouterLink, RouterLinkActive, NavUser],
-  providers: [provideIcons({ lucideLayoutDashboard, lucideChartColumn, lucideClipboardList, lucideCalendarDays, lucideUserX, lucideFileText, lucideSettings })],
+  providers: [provideIcons({ lucideLayoutDashboard, lucideChartColumn, lucideClipboardList, lucideCalendarDays, lucideUserX, lucideFileText, lucideMail, lucideMessagesSquare, lucideNotebook, lucideSettings })],
   template: `
     <hlm-sidebar collapsible="icon">
       <div hlmSidebarHeader class="border-b">
@@ -28,7 +29,7 @@ interface NavItem {
         </ul>
       </div>
       <div hlmSidebarContent>
-        @for (group of groups; track group.label) {
+        @for (group of groups(); track group.label) {
           <div hlmSidebarGroup>
             <div hlmSidebarGroupLabel>{{ group.label }}</div>
             <div hlmSidebarGroupContent>
@@ -73,7 +74,23 @@ interface NavItem {
   `,
 })
 export class AppSidebar {
-  protected readonly groups: { label: string; items: NavItem[] }[] = [
+  private readonly microsoft = inject(MicrosoftAccountsStore);
+
+  private readonly microsoftGroup = {
+    label: 'Microsoft 365',
+    items: [
+      { title: 'Mail', url: '/mail', icon: 'lucideMail' },
+      { title: 'Teams', url: '/teams', icon: 'lucideMessagesSquare' },
+      { title: 'OneNote', url: '/onenote', icon: 'lucideNotebook' },
+    ],
+  };
+
+  protected readonly groups = computed<{ label: string; items: NavItem[] }[]>(() => [
+    ...this.schoolGroups,
+    ...(this.microsoft.hasAccounts() ? [this.microsoftGroup] : []),
+  ]);
+
+  private readonly schoolGroups: { label: string; items: NavItem[] }[] = [
     {
       label: 'Home',
       items: [{ title: 'Overview', url: '/', icon: 'lucideLayoutDashboard' }],

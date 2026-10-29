@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { patchState, signalStore, withHooks, withMethods, withState } from '@ngrx/signals';
 import { catchError, firstValueFrom, of } from 'rxjs';
-import { LinkedAccountDto, LinkedAccountsService } from '../api';
+import { MicrosoftAccountsStore } from './microsoft-accounts.store';
 
 export type ConnectionSource = 'schulware' | 'odaorg' | 'microsoft';
 
@@ -45,7 +45,7 @@ const host = (url?: string | null): string | null => {
 
 export const ConnectionsStore = signalStore(
   withState<ConnectionsState>({ connections: [], loading: false, busy: false, error: null }),
-  withMethods((store, http = inject(HttpClient), linked = inject(LinkedAccountsService)) => {
+  withMethods((store, http = inject(HttpClient), microsoft = inject(MicrosoftAccountsStore)) => {
     const loadPlugin = async (source: (typeof pluginSources)[number]): Promise<Connection[]> => {
       const accounts = await firstValueFrom(
         http.get<PluginAccount[]>(source.path).pipe(catchError(() => of([] as PluginAccount[]))),
@@ -63,12 +63,8 @@ export const ConnectionsStore = signalStore(
       });
     };
     const loadMicrosoft = async (): Promise<Connection[]> => {
-      const accounts = await firstValueFrom(
-        linked
-          .apiMeLinkedAccountsGet('microsoft')
-          .pipe(catchError(() => of([] as LinkedAccountDto[]))),
-      );
-      return (Array.isArray(accounts) ? accounts : []).flatMap((account) =>
+      await microsoft.load();
+      return microsoft.accounts().flatMap((account) =>
         account.id
           ? [
               {
@@ -95,7 +91,7 @@ export const ConnectionsStore = signalStore(
         patchState(store, { busy: true, error: null });
         try {
           if (connection.source === 'microsoft') {
-            await firstValueFrom(linked.apiMeLinkedAccountsIdDelete(connection.id));
+            await microsoft.remove(connection.id);
           } else {
             const path = pluginSources.find((s) => s.source === connection.source)!.path;
             await firstValueFrom(http.delete(`${path}/${connection.id}`));
