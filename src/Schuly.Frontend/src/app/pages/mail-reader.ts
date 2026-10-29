@@ -170,7 +170,7 @@ const formatSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 /
       }
 
       @if (detail(); as d) {
-        <app-mail-body class="min-h-96" [body]="d.body" [html]="d.html" />
+        <app-mail-body class="min-h-96" [body]="d.body" [html]="d.html" [inline]="client.inlineImages()" />
       } @else if (client.detailLoading()) {
         <div class="flex flex-col gap-2" aria-hidden="true">
           <hlm-skeleton class="h-4 w-full" />

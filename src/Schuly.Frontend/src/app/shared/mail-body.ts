@@ -3,6 +3,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideImage } from '@ng-icons/lucide';
+import { normalizeCid } from '../stores/mail-client';
 
 const REMOVED = 'script, iframe, frame, frameset, object, embed, applet, form, link, meta, base, noscript, template, svg script';
 
@@ -13,8 +14,11 @@ interface Prepared {
   remote: boolean;
 }
 
-/** Strips everything active from a message and notes whether it points at remote images. The iframe's sandbox and CSP are the real guard; this is a second layer. */
-function prepare(source: string, isHtml: boolean): Prepared {
+/**
+ * Strips everything active from a message and notes whether it points at remote images. The iframe's sandbox and CSP are the real guard; this is a second layer.
+ * `cid:` images are swapped for the data: URLs in `inline` (normalised Content-ID -> data URL); ones without a match lose their src so only the alt text shows.
+ */
+export function prepareMailBody(source: string, isHtml: boolean, inline: Record<string, string> = {}): Prepared {
   if (!isHtml) return { html: `<pre>${escapeHtml(source)}</pre>`, remote: false };
   const doc = new DOMParser().parseFromString(source, 'text/html');
   doc.querySelectorAll(REMOVED).forEach((el) => el.remove());
@@ -27,6 +31,11 @@ function prepare(source: string, isHtml: boolean): Prepared {
       }
     }
     if (el.tagName === 'A') el.setAttribute('rel', 'noopener noreferrer');
+    if (el.tagName === 'IMG' && /^\s*cid:/i.test(el.getAttribute('src') ?? '')) {
+      const url = inline[normalizeCid(el.getAttribute('src'))];
+      if (url && url.startsWith('data:image/')) el.setAttribute('src', url);
+      else el.removeAttribute('src');
+    }
   }
   const remote =
     doc.querySelectorAll('img[src^="http"], img[srcset], [background^="http"], image').length > 0 ||
@@ -65,11 +74,13 @@ export class MailBody {
 
   readonly body = input.required<string>();
   readonly html = input(true);
+  /** Inline images by normalised Content-ID, as data: URLs. */
+  readonly inline = input<Record<string, string>>({});
 
   protected readonly showImages = linkedSignal<string, boolean>({ source: this.body, computation: () => false });
   protected readonly prepared = computed(() => {
     this.body();
-    return prepare(this.body(), this.html());
+    return prepareMailBody(this.body(), this.html(), this.inline());
   });
 
   protected readonly doc = computed(() => {
