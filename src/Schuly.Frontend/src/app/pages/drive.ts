@@ -19,7 +19,6 @@ import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { EmptyState } from '../shared/empty-state';
 import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
 import { MicrosoftProblem } from '../shared/microsoft-problem';
-import { PageHeader } from '../shared/page-header';
 import { SearchField } from '../shared/search-field';
 import { DriveKind, DriveStore } from '../stores/microsoft.store';
 
@@ -48,7 +47,7 @@ function formatSize(bytes: number): string {
 
 @Component({
   selector: 'app-drive',
-  imports: [HlmBreadcrumbImports, HlmButton, HlmSkeletonImports, NgIcon, EmptyState, MicrosoftAccountPicker, MicrosoftProblem, PageHeader, SearchField],
+  imports: [HlmBreadcrumbImports, HlmButton, HlmSkeletonImports, NgIcon, EmptyState, MicrosoftAccountPicker, MicrosoftProblem, SearchField],
   providers: [
     provideIcons({
       lucideDownload,
@@ -69,49 +68,47 @@ function formatSize(bytes: number): string {
     <div class="flex flex-col gap-4 p-4 lg:p-6">
       <app-microsoft-account-picker />
 
-      <app-page-header>
-        @if (!store.problem()) {
-          <app-search-field [(value)]="query" label="Search files" placeholder="Search files" />
-        }
-      </app-page-header>
-
       @if (!store.problem()) {
-        <nav hlmBreadcrumb aria-label="Folder path">
-          <ol hlmBreadcrumbList>
-            <li hlmBreadcrumbItem>
-              @if (trail().length) {
-                <button type="button" class="hover:text-foreground rounded-sm transition-colors" (click)="go(0)">Drive</button>
-              } @else {
-                <span hlmBreadcrumbPage>Drive</span>
-              }
-            </li>
-            @for (name of trail(); track $index; let last = $last) {
-              <li hlmBreadcrumbSeparator></li>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <nav hlmBreadcrumb aria-label="Folder path" class="min-w-0 flex-1">
+            <ol hlmBreadcrumbList>
               <li hlmBreadcrumbItem>
-                @if (last) {
-                  <span hlmBreadcrumbPage>{{ name }}</span>
+                @if (trail().length) {
+                  <button type="button" class="hover:text-foreground rounded-sm transition-colors" (click)="go(0)">Drive</button>
                 } @else {
-                  <button type="button" class="hover:text-foreground rounded-sm transition-colors" (click)="go($index + 1)">{{ name }}</button>
+                  <span hlmBreadcrumbPage>Drive</span>
                 }
               </li>
-            }
-          </ol>
-        </nav>
-
-        <div class="flex items-center gap-1" role="toolbar" aria-label="File actions">
-          <button hlmBtn variant="ghost" size="sm" [disabled]="!current()" (click)="open()">
-            <ng-icon [name]="current()?.isFolder ? 'lucideFolder' : 'lucideSquareArrowOutUpRight'" aria-hidden="true" />
-            {{ current()?.isFolder ? 'Open folder' : 'Open in OneDrive' }}
-            @if (current() && !current()?.isFolder) {
-              <span class="sr-only">(opens in a new tab)</span>
-            }
-          </button>
-          @if (current()?.download; as url) {
-            <a hlmBtn variant="ghost" size="sm" [href]="url" download>
-              <ng-icon name="lucideDownload" aria-hidden="true" />
-              Download
-            </a>
-          }
+              @for (name of trail(); track $index; let last = $last) {
+                <li hlmBreadcrumbSeparator></li>
+                <li hlmBreadcrumbItem>
+                  @if (last) {
+                    <span hlmBreadcrumbPage>{{ name }}</span>
+                  } @else {
+                    <button type="button" class="hover:text-foreground rounded-sm transition-colors" (click)="go($index + 1)">{{ name }}</button>
+                  }
+                </li>
+              }
+            </ol>
+          </nav>
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1" role="toolbar" aria-label="File actions">
+              <button hlmBtn variant="ghost" size="sm" [disabled]="!current()" (click)="open()">
+                <ng-icon [name]="current()?.isFolder ? 'lucideFolder' : 'lucideSquareArrowOutUpRight'" aria-hidden="true" />
+                {{ current()?.isFolder ? 'Open folder' : 'Open in OneDrive' }}
+                @if (current() && !current()?.isFolder) {
+                  <span class="sr-only">(opens in a new tab)</span>
+                }
+              </button>
+              @if (current()?.download; as url) {
+                <a hlmBtn variant="ghost" size="sm" [href]="url" download>
+                  <ng-icon name="lucideDownload" aria-hidden="true" />
+                  Download
+                </a>
+              }
+            </div>
+            <app-search-field [(value)]="query" label="Search files" placeholder="Search files" />
+          </div>
         </div>
       }
 
