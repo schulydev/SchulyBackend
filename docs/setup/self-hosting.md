@@ -159,6 +159,7 @@ configuration. The Microsoft plugin talks to the `schulymicrosoft` service throu
 `MicrosoftApi.BaseUrl` in `Schuly.Plugin.Microsoft.yml`; it refuses to start without
 that setting. To run without Microsoft 365, drop the plugin from `plugins.yml` and the
 `schulymicrosoft` service from the compose file.
+The absence reasons offered per school are configured under `AbsenceReasons` in `Schuly.Plugin.Schulware.yml`, keyed by the host of the school's Schulnetz URL.
 Each plugin also **provides its own school-system catalog entry** - the system the
 app shows in its picker (Schulware contributes `schulnetz`, OdaOrg `odaorg`) - so
 installing a plugin adds its system automatically, with no catalog config. The
