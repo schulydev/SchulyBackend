@@ -189,6 +189,13 @@ namespace Schuly.Tests.TestHelpers
             builder.Services.AddAuthorizationBuilder().SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
 
             var app = builder.Build();
+            // Stands in for the ForwardedHeaders middleware: it resolves the client IP before the rate limiter runs.
+            app.Use((context, next) =>
+            {
+                if (context.Request.Headers.TryGetValue("X-Test-Ip", out var ip))
+                    context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(ip.ToString());
+                return next();
+            });
             app.UseRouting();
             app.UseAuthentication();
             app.UseRateLimiter();
@@ -202,9 +209,11 @@ namespace Schuly.Tests.TestHelpers
 
         public IReadOnlyList<string> LogLines => _logs.Lines.ToList();
 
-        public HttpRequestMessage Request(HttpMethod method, string url, Guid? user, object? body = null, string? client = null)
+        public HttpRequestMessage Request(HttpMethod method, string url, Guid? user, object? body = null, string? client = null, string? ip = null)
         {
             var request = new HttpRequestMessage(method, url);
+            if (ip is not null)
+                request.Headers.Add("X-Test-Ip", ip);
             if (user is { } u)
                 request.Headers.Add("X-Test-User", u.ToString());
             if (client is not null)
@@ -214,8 +223,8 @@ namespace Schuly.Tests.TestHelpers
             return request;
         }
 
-        public Task<HttpResponseMessage> Send(HttpMethod method, string url, Guid? user, object? body = null, string? client = null) =>
-            Client.SendAsync(Request(method, url, user, body, client));
+        public Task<HttpResponseMessage> Send(HttpMethod method, string url, Guid? user, object? body = null, string? client = null, string? ip = null) =>
+            Client.SendAsync(Request(method, url, user, body, client, ip));
 
         public async Task<(HttpResponseMessage Response, JsonElement Json)> Json(HttpMethod method, string url, Guid? user, object? body = null, string? client = null)
         {
