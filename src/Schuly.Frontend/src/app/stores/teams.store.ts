@@ -25,6 +25,8 @@ export interface ChatSummary {
   webUrl?: string | null;
   /** The chat's own picture, when the data carries one. */
   imageUrl?: string | null;
+  /** True when the server has a picture for the chat at `chats/{chatId}/photo`. */
+  hasImage?: boolean | null;
   lastUpdatedDateTime?: string | null;
   members?: ChatMember[] | null;
   viewpoint?: { lastMessageReadDateTime?: string | null } | null;
@@ -181,6 +183,7 @@ export const TeamsStore = signalStore(
           id: c.id,
           title: c.topic || people.map((m) => m.displayName).join(', ') || 'Chat',
           image: c.imageUrl || null,
+          hasImage: !!c.hasImage,
           kind: (c.chatType && chatKinds[c.chatType]) || null,
           oneOnOne: c.chatType === 'oneOnOne',
           people: people.map((m) => ({ id: m.userId ?? null, name: m.displayName ?? '' })),
@@ -212,6 +215,23 @@ export const TeamsStore = signalStore(
         photoActive++;
         photoQueue.shift()!();
       }
+    };
+    const queuePhoto = (key: string, url: string) => {
+      if (photoRequested.has(key)) return;
+      photoRequested.add(key);
+      photoQueue.push(() => {
+        firstValueFrom(http.get(url, { params: { size: 64 }, responseType: 'blob' }))
+          .then((blob) => {
+            const objectUrl = blob.size > 0 ? URL.createObjectURL(blob) : null;
+            patchState(store, { photos: { ...store.photos(), [key]: objectUrl } });
+          })
+          .catch(() => patchState(store, { photos: { ...store.photos(), [key]: null } }))
+          .finally(() => {
+            photoActive--;
+            pumpPhotos();
+          });
+      });
+      pumpPhotos();
     };
 
     let nextLocal = 0;
@@ -418,27 +438,17 @@ export const TeamsStore = signalStore(
       requestPhoto(userId: string): void {
         const accountId = accounts.selectedId();
         if (!accountId || !userId) return;
-        const key = `${accountId}:${userId}`;
-        if (photoRequested.has(key)) return;
-        photoRequested.add(key);
-        photoQueue.push(() => {
-          firstValueFrom(
-            http.get(`${base(accountId)}/photos/${encodeURIComponent(userId)}`, {
-              params: { size: 64 },
-              responseType: 'blob',
-            }),
-          )
-            .then((blob) => {
-              const url = blob.size > 0 ? URL.createObjectURL(blob) : null;
-              patchState(store, { photos: { ...store.photos(), [key]: url } });
-            })
-            .catch(() => patchState(store, { photos: { ...store.photos(), [key]: null } }))
-            .finally(() => {
-              photoActive--;
-              pumpPhotos();
-            });
-        });
-        pumpPhotos();
+        queuePhoto(`${accountId}:${userId}`, `${base(accountId)}/photos/${encodeURIComponent(userId)}`);
+      },
+      /** A chat's own picture, loaded and cached exactly like member photos (same queue, same auth, same blob URLs). */
+      requestChatImage(chatId: string): void {
+        const accountId = accounts.selectedId();
+        if (!accountId || !chatId) return;
+        queuePhoto(`${accountId}:chat:${chatId}`, `${base(accountId)}/chats/${encodeURIComponent(chatId)}/photo`);
+      },
+      chatImageFor: (chatId: string | null | undefined): string | null => {
+        const accountId = accounts.selectedId();
+        return accountId && chatId ? (store.photos()[`${accountId}:chat:${chatId}`] ?? null) : null;
       },
       photoFor: (userId: string | null | undefined): string | null => {
         const accountId = accounts.selectedId();

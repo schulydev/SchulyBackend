@@ -73,7 +73,7 @@ const CHAT_POLL_MS = 60_000;
                       @if (chat.id === store.openId()) {
                         <span class="bg-primary absolute inset-y-2 start-0 w-0.75 rounded-e-full" aria-hidden="true"></span>
                       }
-                      <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" [image]="chat.image" />
+                      <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" [image]="chat.image" [imageAvailable]="chat.hasImage" [chatId]="chat.id" />
                       <span class="block min-w-0 flex-1 overflow-hidden">
                         <span class="flex min-w-0 items-baseline gap-2">
                           <span class="min-w-0 flex-1 truncate text-sm" [class]="chat.unread ? 'text-foreground font-bold' : 'font-medium'">
@@ -123,7 +123,7 @@ const CHAT_POLL_MS = 60_000;
           (widthChange)="listWidth.set($event)"
         />
 
-        <section class="min-w-0 flex-1 flex-col overflow-hidden lg:border-s max-lg:w-full" [class]="store.openId() ? 'flex' : 'hidden lg:flex'" aria-label="Conversation">
+        <section class="min-w-0 flex-1 flex-col overflow-hidden max-lg:w-full" [class]="store.openId() ? 'flex' : 'hidden lg:flex'" aria-label="Conversation">
           @if (store.openId()) {
             <app-teams-conversation (back)="close()" />
           } @else {

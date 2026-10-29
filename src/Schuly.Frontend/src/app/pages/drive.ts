@@ -2,6 +2,7 @@ import { Component, ElementRef, computed, inject, signal, viewChildren } from '@
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideDownload,
+  lucideEye,
   lucideFile,
   lucideFileArchive,
   lucideFileSpreadsheet,
@@ -17,6 +18,7 @@ import { HlmBreadcrumbImports } from '@spartan-ng/helm/breadcrumb';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { EmptyState } from '../shared/empty-state';
+import { FileViewer, ViewerFile } from '../shared/file-viewer';
 import { LoadMore } from '../shared/load-more';
 import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
 import { MicrosoftProblem } from '../shared/microsoft-problem';
@@ -48,10 +50,11 @@ function formatSize(bytes: number): string {
 
 @Component({
   selector: 'app-drive',
-  imports: [HlmBreadcrumbImports, HlmButton, HlmSkeletonImports, NgIcon, EmptyState, LoadMore, MicrosoftAccountPicker, MicrosoftProblem, SearchField],
+  imports: [HlmBreadcrumbImports, HlmButton, HlmSkeletonImports, NgIcon, EmptyState, FileViewer, LoadMore, MicrosoftAccountPicker, MicrosoftProblem, SearchField],
   providers: [
     provideIcons({
       lucideDownload,
+      lucideEye,
       lucideFile,
       lucideFileArchive,
       lucideFileSpreadsheet,
@@ -101,6 +104,14 @@ function formatSize(bytes: number): string {
                   <span class="sr-only">(opens in a new tab)</span>
                 }
               </button>
+              @if (current(); as file) {
+                @if (!file.isFolder && file.download) {
+                  <button hlmBtn variant="ghost" size="sm" type="button" (click)="view()">
+                    <ng-icon name="lucideEye" aria-hidden="true" />
+                    View
+                  </button>
+                }
+              }
               @if (current()?.download; as url) {
                 <a hlmBtn variant="ghost" size="sm" [href]="url" download>
                   <ng-icon name="lucideDownload" aria-hidden="true" />
@@ -163,6 +174,8 @@ function formatSize(bytes: number): string {
         <app-empty-state icon="lucideHardDrive" title="This folder is empty" description="Files and folders from OneDrive appear here." />
       }
 
+      <app-file-viewer [file]="viewing()" (closed)="viewing.set(null)" />
+
       <app-load-more
         label="Load more files"
         [hasMore]="store.hasMore()"
@@ -177,6 +190,7 @@ function formatSize(bytes: number): string {
 export class Drive {
   protected readonly store = inject(DriveStore);
 
+  protected readonly viewing = signal<ViewerFile | null>(null);
   protected readonly query = signal('');
   protected readonly trail = signal<string[]>([]);
   protected readonly selectedId = signal<string | null>(null);
@@ -212,6 +226,21 @@ export class Drive {
       return entry.childCount === null ? 'Folder' : `${entry.childCount} ${entry.childCount === 1 ? 'item' : 'items'} · Folder`;
     }
     return `${formatSize(entry.size)} · ${entry.extension ? entry.extension.toUpperCase() : 'File'}`;
+  }
+
+  /** Fetches the pre-authenticated download link as a blob; the viewer shows PDFs, images and text and offers a download for the rest. */
+  protected view(): void {
+    const entry = this.current();
+    const url = entry?.download;
+    if (!entry || !url) return;
+    this.viewing.set({
+      name: entry.name,
+      load: async () => {
+        const response = await fetch(url, { credentials: 'omit', referrerPolicy: 'no-referrer' });
+        if (!response.ok) throw new Error('download failed');
+        return response.blob();
+      },
+    });
   }
 
   protected select(id: string): void {

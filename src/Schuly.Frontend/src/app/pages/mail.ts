@@ -1,15 +1,21 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChildren } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideArchive,
+  lucideChevronDown,
+  lucideChevronRight,
   lucideFileText,
   lucideFlag,
   lucideFolder,
   lucideInbox,
   lucideMail,
   lucideMailX,
+  lucideMessagesSquare,
   lucidePaperclip,
   lucidePenSquare,
+  lucideRefreshCw,
+  lucideRss,
   lucideSend,
   lucideTrash2,
 } from '@ng-icons/lucide';
@@ -39,6 +45,10 @@ const FOLDER_ICONS: Record<FolderKind, string> = {
   deleted: 'lucideTrash2',
   junk: 'lucideMailX',
   outbox: 'lucideSend',
+  history: 'lucideMessagesSquare',
+  rss: 'lucideRss',
+  sync: 'lucideRefreshCw',
+  system: 'lucideFolder',
   other: 'lucideFolder',
 };
 
@@ -53,6 +63,7 @@ interface Composing {
     HlmButton,
     HlmSkeletonImports,
     NgIcon,
+    NgTemplateOutlet,
     EmptyState,
     ListTime,
     LoadMore,
@@ -66,14 +77,19 @@ interface Composing {
   providers: [
     provideIcons({
       lucideArchive,
+      lucideChevronDown,
+      lucideChevronRight,
       lucideFileText,
       lucideFlag,
       lucideFolder,
       lucideInbox,
       lucideMail,
       lucideMailX,
+      lucideMessagesSquare,
       lucidePaperclip,
       lucidePenSquare,
+      lucideRefreshCw,
+      lucideRss,
       lucideSend,
       lucideTrash2,
     }),
@@ -100,10 +116,33 @@ interface Composing {
             <ng-icon name="lucidePenSquare" aria-hidden="true" />
             New message
           </button>
-          @for (f of client.folders(); track f.key) {
+          @for (f of client.mainFolders(); track f.key) {
+            <ng-container *ngTemplateOutlet="folderButton; context: { $implicit: f }" />
+          }
+          @if (client.moreFolders().length) {
+            <button
+              type="button"
+              class="hover:bg-muted/60 focus-visible:outline-ring text-muted-foreground flex shrink-0 items-center gap-3 rounded-md px-3 py-2 text-sm focus-visible:outline-2 focus-visible:-outline-offset-2"
+              aria-controls="mail-more-folders"
+              [attr.aria-expanded]="moreOpen()"
+              (click)="moreOpen.set(!moreOpen())"
+            >
+              <ng-icon [name]="moreOpen() ? 'lucideChevronDown' : 'lucideChevronRight'" class="shrink-0 text-base" aria-hidden="true" />
+              <span class="min-w-0 flex-1 truncate text-left">More</span>
+            </button>
+            <div id="mail-more-folders" class="contents" [hidden]="!moreOpen()">
+              @if (moreOpen()) {
+                @for (f of client.moreFolders(); track f.key) {
+                  <ng-container *ngTemplateOutlet="folderButton; context: { $implicit: f }" />
+                }
+              }
+            </div>
+          }
+          <ng-template #folderButton let-f>
             <button
               type="button"
               class="hover:bg-muted/60 aria-[current=true]:bg-muted aria-[current=true]:font-semibold focus-visible:outline-ring relative flex shrink-0 items-center gap-3 rounded-md px-3 py-2 text-sm focus-visible:outline-2 focus-visible:-outline-offset-2"
+              [style.margin-inline-start.rem]="f.depth * 1.25"
               [attr.aria-current]="f.key === mail.folder() ? 'true' : null"
               (click)="chooseFolder(f.key)"
               (pointerenter)="mail.prefetch({ folder: f.key })"
@@ -112,7 +151,7 @@ interface Composing {
               @if (f.key === mail.folder()) {
                 <span class="bg-primary absolute inset-y-1.5 start-0 w-0.75 rounded-e-full max-lg:hidden" aria-hidden="true"></span>
               }
-              <ng-icon [name]="icons[f.kind]" class="shrink-0 text-base" aria-hidden="true" />
+              <ng-icon [name]="iconOf(f.kind)" class="shrink-0 text-base" aria-hidden="true" />
               <span class="min-w-0 flex-1 truncate text-left">{{ f.name }}</span>
               @if (f.unread) {
                 <span class="text-muted-foreground shrink-0 text-xs tabular-nums">
@@ -120,7 +159,7 @@ interface Composing {
                 </span>
               }
             </button>
-          }
+          </ng-template>
         </nav>
         <app-split-handle
           label="Resize folder list"
@@ -253,7 +292,7 @@ interface Composing {
         />
 
         <section
-          class="min-w-0 flex-1 flex-col overflow-hidden lg:border-s"
+          class="min-w-0 flex-1 flex-col overflow-hidden"
           [class]="selected() || composing() ? 'flex' : 'hidden lg:flex'"
           aria-label="Message"
         >
@@ -278,10 +317,11 @@ export class Mail {
   private readonly accounts = inject(MicrosoftAccountsStore);
   private readonly injector = inject(Injector);
 
-  protected readonly icons = FOLDER_ICONS;
+  protected readonly iconOf = (kind: FolderKind): string => FOLDER_ICONS[kind];
   protected readonly foldersWidth = persistedNumber('schuly.mail.folders', 224);
   protected readonly listWidth = persistedNumber('schuly.mail.list', 384);
   protected readonly letters = (name: string) => initials(name) || '?';
+  protected readonly moreOpen = signal(false);
   protected readonly query = signal('');
   protected readonly selectedId = signal<string | null>(null);
   protected readonly composing = signal<Composing | null>(null);
@@ -310,6 +350,12 @@ export class Mail {
     effect(() => {
       this.accounts.selectedId();
       untracked(() => void this.client.loadFolders());
+    });
+    // Inbox is the default; fall back to it when the remembered folder is not in this mailbox.
+    effect(() => {
+      const folders = this.client.folders();
+      const current = this.mail.folder();
+      if (this.client.foldersLive() && !folders.some((f) => f.key === current)) untracked(() => this.mail.setFolder('inbox'));
     });
   }
 

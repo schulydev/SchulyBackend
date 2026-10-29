@@ -22,12 +22,12 @@ const PHOTO_CANDIDATES = 4;
   selector: 'app-chat-avatar',
   imports: [HlmAvatarImports, PersonAvatar],
   template: `
-    @if (image(); as src) {
-      <hlm-avatar size="lg" aria-hidden="true">
+    @if (chatImage(); as src) {
+      <hlm-avatar [size]="main()" aria-hidden="true">
         <img [src]="src" alt="" width="40" height="40" loading="lazy" decoding="async" class="size-full rounded-full object-cover" />
       </hlm-avatar>
     } @else if (shown().length === 2) {
-      <span class="relative block size-10 shrink-0" aria-hidden="true">
+      <span class="relative block shrink-0" [class]="compact() ? 'size-8' : 'size-10'" aria-hidden="true">
         <app-person-avatar class="absolute top-0 left-0" size="sm" [userId]="shown()[0].id" [name]="shown()[0].name" />
         <app-person-avatar
           class="ring-background absolute right-0 bottom-0 rounded-full ring-2"
@@ -38,7 +38,7 @@ const PHOTO_CANDIDATES = 4;
       </span>
     } @else {
       <span aria-hidden="true">
-        <app-person-avatar size="lg" [userId]="shown()[0]?.id ?? null" [name]="shown()[0]?.name ?? title()" />
+        <app-person-avatar [size]="main()" [userId]="shown()[0]?.id ?? null" [name]="shown()[0]?.name ?? title()" />
       </span>
     }
   `,
@@ -53,6 +53,15 @@ export class ChatAvatar {
   readonly oneOnOne = input(false);
   readonly title = input('');
   readonly image = input<string | null>(null);
+  /** The data says the chat has its own picture, served at `chats/{chatId}/photo` like member photos. */
+  readonly imageAvailable = input(false);
+  readonly chatId = input<string | null>(null);
+  readonly size = input<'default' | 'compact'>('default');
+
+  protected readonly compact = computed(() => this.size() === 'compact');
+  protected readonly main = computed<'default' | 'lg'>(() => (this.compact() ? 'default' : 'lg'));
+  /** An explicit image URL wins; otherwise the authenticated chat photo once loaded. Null falls back to member photos. */
+  protected readonly chatImage = computed(() => this.image() || (this.imageAvailable() ? this.store.chatImageFor(this.chatId()) : null));
 
   private readonly visible = signal(false);
 
@@ -90,7 +99,10 @@ export class ChatAvatar {
     });
     // The store de-duplicates requests per (account, user).
     effect(() => {
-      if (!this.visible() || this.image()) return;
+      if (!this.visible()) return;
+      const chatId = this.chatId();
+      if (this.imageAvailable() && !this.image() && chatId) this.store.requestChatImage(chatId);
+      if (this.chatImage()) return;
       for (const p of this.others().slice(0, PHOTO_CANDIDATES)) if (p.id) this.store.requestPhoto(p.id);
     });
   }

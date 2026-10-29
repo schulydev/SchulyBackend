@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideDownload, lucideFileText } from '@ng-icons/lucide';
+import { lucideDownload, lucideEye, lucideFileText } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmButton } from '@spartan-ng/helm/button';
@@ -9,12 +9,14 @@ import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import { EmptyState } from '../shared/empty-state';
+import { FileViewer, ViewerFile } from '../shared/file-viewer';
+import { StudentDocumentDto } from '../api';
 import { DocumentsStore } from '../stores/documents.store';
 
 @Component({
   selector: 'app-documents',
-  imports: [HlmAlertImports, HlmTableImports, HlmBadge, HlmButton, HlmSkeletonImports, HlmSpinner, NgIcon, DatePipe, EmptyState],
-  providers: [provideIcons({ lucideDownload, lucideFileText })],
+  imports: [HlmAlertImports, HlmTableImports, HlmBadge, HlmButton, HlmSkeletonImports, HlmSpinner, NgIcon, DatePipe, EmptyState, FileViewer],
+  providers: [provideIcons({ lucideDownload, lucideEye, lucideFileText })],
   template: `
     <div class="flex flex-col gap-4 p-4 lg:p-6">
       @if (documents.downloadError()) {
@@ -38,12 +40,12 @@ import { DocumentsStore } from '../stores/documents.store';
                   <th hlmTh class="hidden sm:table-cell">Category</th>
                   <th hlmTh class="hidden md:table-cell">Added</th>
                   <th hlmTh class="hidden lg:table-cell">Follow-up</th>
-                  <th hlmTh class="w-12"><span class="sr-only">Download</span></th>
+                  <th hlmTh class="w-24"><span class="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody hlmTBody>
                 @for (document of documents.sorted(); track document.id) {
-                  <tr hlmTr>
+                  <tr hlmTr [class.cursor-pointer]="!!document.fileName" (click)="view(document)">
                     <td hlmTd>
                       <div class="font-medium">{{ document.title }}</div>
                       @if (document.comment) {
@@ -68,13 +70,22 @@ import { DocumentsStore } from '../stores/documents.store';
                         >
                       }
                     </td>
-                    <td hlmTd>
+                    <td hlmTd class="whitespace-nowrap">
                       @if (document.fileName) {
                         <button
                           hlmBtn
                           variant="ghost"
                           size="icon-sm"
-                          (click)="documents.download(document)"
+                          (click)="view(document); $event.stopPropagation()"
+                          [attr.aria-label]="'View ' + document.title"
+                        >
+                          <ng-icon name="lucideEye" />
+                        </button>
+                        <button
+                          hlmBtn
+                          variant="ghost"
+                          size="icon-sm"
+                          (click)="documents.download(document); $event.stopPropagation()"
                           [disabled]="documents.isDownloading(document.id)"
                           [attr.aria-busy]="documents.isDownloading(document.id)"
                           [attr.aria-label]="
@@ -104,8 +115,15 @@ import { DocumentsStore } from '../stores/documents.store';
         />
       }
     </div>
+    <app-file-viewer [file]="viewing()" (closed)="viewing.set(null)" />
   `,
 })
 export class Documents {
   protected readonly documents = inject(DocumentsStore);
+  protected readonly viewing = signal<ViewerFile | null>(null);
+
+  protected view(document: StudentDocumentDto): void {
+    if (!document.fileName) return;
+    this.viewing.set({ name: document.fileName ?? document.title ?? 'document', load: () => this.documents.fetchBlob(document) });
+  }
 }

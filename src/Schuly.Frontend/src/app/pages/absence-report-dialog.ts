@@ -130,7 +130,7 @@ const emptyModel = (): ReportModel => {
             @if (reports.accounts().length > 1) {
               <div hlmField>
                 <label hlmFieldLabel for="absence-account">School</label>
-                <hlm-select [value]="accountId()" (valueChange)="accountId.set($event ?? '')">
+                <hlm-select [value]="accountId()" [itemToString]="accountLabel" (valueChange)="accountId.set($event ?? '')">
                   <hlm-select-trigger buttonId="absence-account" class="w-full">
                     <hlm-select-value />
                   </hlm-select-trigger>
@@ -228,6 +228,7 @@ const emptyModel = (): ReportModel => {
                 [disabled]="reasonsLoading()"
                 [attr.aria-busy]="reasonsLoading()"
                 [value]="model().reasonChoice || noReason"
+                [itemToString]="reasonLabel"
                 (valueChange)="setReasonChoice($event === noReason ? '' : ($event ?? ''))"
               >
                 <hlm-select-trigger buttonId="absence-reason-choice" class="w-full">
@@ -313,6 +314,11 @@ export class AbsenceReportDialog {
   protected readonly reasonsLoading = signal(false);
   protected readonly otherReason = OTHER_REASON;
   protected readonly noReason = NO_REASON;
+
+  /** The trigger shows the selected item's label, never its raw value. */
+  protected readonly reasonLabel = (value: string): string =>
+    value === NO_REASON ? 'No reason' : value === OTHER_REASON ? 'Other…' : value;
+  protected readonly accountLabel = (id: string): string => this.reports.accounts().find((a) => a.id === id)?.title ?? id;
 
   protected readonly open = signal(false);
   protected readonly error = signal<string | null>(null);
