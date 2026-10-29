@@ -13,6 +13,7 @@ namespace Schuly.Tests
             new ConfigurationBuilder()
                 .AddInMemoryCollection(administrators.Select((a, i) => new KeyValuePair<string, string?>($"Auth:Administrators:{i}", a)))
                 .AddInMemoryCollection([new KeyValuePair<string, string?>("Avatar:SigningKey", "test-signing-key")])
+                .AddInMemoryCollection([new KeyValuePair<string, string?>("ExternalLogin:Providers:gaggaoid:TrustEmailVerified", "true"), new KeyValuePair<string, string?>("ExternalLogin:Providers:selfserve:TrustEmailVerified", "false")])
                 .Build();
 
         [Test]
@@ -81,11 +82,23 @@ namespace Schuly.Tests
             await Assert.That(roles).IsEmpty();
         }
 
-        private static ToamaisutaaExternalLogin ExternalLogin(ToamaisutaaUser user, bool verified) => new()
+        [Test]
+        public async Task A_provider_without_TrustEmailVerified_is_no_proof()
+        {
+            var db = TestDb.NewContext(Guid.NewGuid().ToString());
+            var user = new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com" };
+            db.Set<ToamaisutaaExternalLogin>().Add(ExternalLogin(user, verified: true, provider: "selfserve"));
+            await db.SaveChangesAsync();
+            var provider = new UserRoleProvider(Config("admin@example.com"), db);
+
+            await Assert.That(await provider.GetRolesAsync(user)).IsEmpty();
+        }
+
+        private static ToamaisutaaExternalLogin ExternalLogin(ToamaisutaaUser user, bool verified, string provider = "gaggaoid") => new()
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
-            ProviderKey = "gaggaoid",
+            ProviderKey = provider,
             Subject = Guid.NewGuid().ToString(),
             Email = user.Email,
             EmailVerified = verified,
