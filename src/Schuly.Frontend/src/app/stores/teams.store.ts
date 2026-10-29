@@ -71,6 +71,17 @@ interface TeamsState {
   messagesLoading: boolean;
   messagesProblem: MicrosoftProblem | null;
   pending: PendingMessage[];
+  /** Requested page sizes; they grow with "load more" and the background refreshes keep them. */
+  chatsTop: number;
+  chatsMore: boolean;
+  chatsLoadingMore: boolean;
+  chatsMoreFailed: boolean;
+  chatsLoadedMore: { count: number } | null;
+  messagesTop: number;
+  messagesMore: boolean;
+  messagesLoadingMore: boolean;
+  messagesMoreFailed: boolean;
+  messagesLoadedMore: { count: number } | null;
   /** Object URL per `${accountId}:${userId}`; null means the user has no photo. */
   photos: Record<string, string | null>;
 }
@@ -98,6 +109,27 @@ export function bodyText(body?: ChatBody | null): string {
 
 const chatKinds: Record<string, string> = { oneOnOne: 'Chat', group: 'Group', meeting: 'Meeting' };
 const MAX_PHOTO_REQUESTS = 4;
+const CHATS_PAGE = 25;
+const CHATS_MAX = 200;
+const MESSAGES_PAGE = 30;
+const MESSAGES_MAX = 300;
+
+const firstPages = {
+  chatsTop: CHATS_PAGE,
+  chatsMore: false,
+  chatsLoadingMore: false,
+  chatsMoreFailed: false,
+  chatsLoadedMore: null,
+};
+const firstMessagePages = {
+  messagesTop: MESSAGES_PAGE,
+  messagesMore: false,
+  messagesLoadingMore: false,
+  messagesMoreFailed: false,
+  messagesLoadedMore: null,
+};
+
+type LoadMode = 'initial' | 'silent' | 'more';
 
 export const TeamsStore = signalStore(
   withState<TeamsState>({
@@ -110,6 +142,8 @@ export const TeamsStore = signalStore(
     messagesLoading: false,
     messagesProblem: null,
     pending: [],
+    ...firstPages,
+    ...firstMessagePages,
     photos: {},
   }),
   withComputed((store, accounts = inject(MicrosoftAccountsStore)) => {
@@ -174,44 +208,85 @@ export const TeamsStore = signalStore(
     };
 
     let nextLocal = 0;
+    // A response is dropped when a newer request for the same list started after it.
+    let chatsSeq = 0;
+    let messagesSeq = 0;
 
-    async function loadChats(silent = false): Promise<void> {
+    async function fetchChats(mode: LoadMode): Promise<void> {
       const accountId = accounts.selectedId();
       if (!accountId) return;
-      if (!silent) patchState(store, { chatsLoading: true, problem: null });
+      const seq = ++chatsSeq;
+      const top = store.chatsTop();
+      if (mode === 'initial') patchState(store, { chatsLoading: true, problem: null });
       try {
-        const items = await firstValueFrom(http.get<ChatSummary[]>(`${base(accountId)}/chats`, { params: { top: 25 } }));
-        if (accounts.selectedId() !== accountId) return;
-        patchState(store, { chats: Array.isArray(items) ? items : [], chatsLoading: false, problem: null });
+        const items = await firstValueFrom(http.get<ChatSummary[]>(`${base(accountId)}/chats`, { params: { top } }));
+        if (accounts.selectedId() !== accountId || seq !== chatsSeq) return;
+        const chats = Array.isArray(items) ? items : [];
+        patchState(store, {
+          chats,
+          chatsLoading: false,
+          problem: null,
+          chatsMore: chats.length >= top && top < CHATS_MAX,
+          chatsLoadingMore: false,
+          chatsMoreFailed: false,
+          chatsLoadedMore: mode === 'more' ? { count: Math.max(0, chats.length - store.chats().length) } : store.chatsLoadedMore(),
+        });
       } catch (error) {
-        if (accounts.selectedId() !== accountId) return;
-        // A failed background refresh keeps what is on screen.
-        if (!silent || !store.chats().length) patchState(store, { chatsLoading: false, problem: problemOf(error) });
+        if (accounts.selectedId() !== accountId || seq !== chatsSeq) return;
+        if (mode === 'more' || store.chatsLoadingMore()) {
+          // Keep the list and let the user retry; the page size goes back to what is shown.
+          patchState(store, {
+            chatsLoadingMore: false,
+            chatsMoreFailed: true,
+            chatsTop: Math.max(CHATS_PAGE, store.chats().length),
+          });
+        } else if (mode === 'initial' || !store.chats().length) {
+          // A failed background refresh keeps what is on screen.
+          patchState(store, { chatsLoading: false, problem: problemOf(error) });
+        }
       }
     }
 
-    async function loadMessages(silent: boolean): Promise<void> {
+    const loadChats = (silent = false) => fetchChats(silent ? 'silent' : 'initial');
+
+    async function fetchMessages(mode: LoadMode): Promise<void> {
       const accountId = accounts.selectedId();
       const chatId = store.openId();
       if (!accountId || !chatId) return;
-      if (!silent) patchState(store, { messagesLoading: true, messagesProblem: null });
+      const seq = ++messagesSeq;
+      const top = store.messagesTop();
+      if (mode === 'initial') patchState(store, { messagesLoading: true, messagesProblem: null });
       try {
         const items = await firstValueFrom(
-          http.get<ChatMessage[]>(`${chatUrl(accountId, chatId)}/messages`, { params: { top: 30 } }),
+          http.get<ChatMessage[]>(`${chatUrl(accountId, chatId)}/messages`, { params: { top } }),
         );
-        if (accounts.selectedId() !== accountId || store.openId() !== chatId) return;
+        if (accounts.selectedId() !== accountId || store.openId() !== chatId || seq !== messagesSeq) return;
+        const messages = (Array.isArray(items) ? items : []).slice().reverse();
         patchState(store, {
-          messages: (Array.isArray(items) ? items : []).slice().reverse(),
+          messages,
           messagesLoading: false,
           messagesProblem: null,
+          messagesMore: messages.length >= top && top < MESSAGES_MAX,
+          messagesLoadingMore: false,
+          messagesMoreFailed: false,
+          messagesLoadedMore:
+            mode === 'more' ? { count: Math.max(0, messages.length - store.messages().length) } : store.messagesLoadedMore(),
         });
       } catch (error) {
-        if (accounts.selectedId() !== accountId || store.openId() !== chatId) return;
-        if (!silent || !store.messages().length) {
+        if (accounts.selectedId() !== accountId || store.openId() !== chatId || seq !== messagesSeq) return;
+        if (mode === 'more' || store.messagesLoadingMore()) {
+          patchState(store, {
+            messagesLoadingMore: false,
+            messagesMoreFailed: true,
+            messagesTop: Math.max(MESSAGES_PAGE, store.messages().length),
+          });
+        } else if (mode === 'initial' || !store.messages().length) {
           patchState(store, { messagesLoading: false, messagesProblem: problemOf(error) });
         }
       }
     }
+
+    const loadMessages = (silent: boolean) => fetchMessages(silent ? 'silent' : 'initial');
 
     async function markRead(): Promise<void> {
       const accountId = accounts.selectedId();
@@ -257,12 +332,36 @@ export const TeamsStore = signalStore(
     return {
       loadChats,
       refreshMessages: () => loadMessages(true),
+      /** Asks for one more page of chats; the list on screen stays until the longer one arrives. */
+      loadMoreChats(): void {
+        if (!store.chatsMore() || store.chatsLoadingMore() || store.chatsLoading()) return;
+        patchState(store, {
+          chatsTop: Math.min(store.chatsTop() + CHATS_PAGE, CHATS_MAX),
+          chatsLoadingMore: true,
+          chatsMoreFailed: false,
+        });
+        void fetchChats('more');
+      },
+      /** Asks for older messages of the open chat. */
+      loadOlderMessages(): void {
+        if (!store.messagesMore() || store.messagesLoadingMore() || store.messagesLoading()) return;
+        patchState(store, {
+          messagesTop: Math.min(store.messagesTop() + MESSAGES_PAGE, MESSAGES_MAX),
+          messagesLoadingMore: true,
+          messagesMoreFailed: false,
+        });
+        void fetchMessages('more');
+      },
       async open(chatId: string): Promise<void> {
-        patchState(store, { openId: chatId, messages: [], messagesProblem: null });
+        messagesSeq++;
+        patchState(store, { openId: chatId, messages: [], messagesProblem: null, ...firstMessagePages });
         await loadMessages(false);
         if (store.openId() === chatId && !store.messagesProblem()) await markRead();
       },
-      close: () => patchState(store, { openId: null, messages: [], messagesProblem: null, messagesLoading: false }),
+      close: () => {
+        messagesSeq++;
+        patchState(store, { openId: null, messages: [], messagesProblem: null, messagesLoading: false, ...firstMessagePages });
+      },
       markRead,
       send(text: string): void {
         const chatId = store.openId();
@@ -337,6 +436,8 @@ export const TeamsStore = signalStore(
           messages: [],
           messagesProblem: null,
           pending: [],
+          ...firstPages,
+          ...firstMessagePages,
         }),
     };
   }),

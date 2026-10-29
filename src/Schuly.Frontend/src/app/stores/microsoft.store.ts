@@ -55,7 +55,7 @@ export interface DriveItem {
 }
 
 export const MailStore = signalStore(
-  withMicrosoftResource<MailMessage>('mail', { folder: 'inbox', top: 25, unread: false }),
+  withMicrosoftResource<MailMessage>('mail', { folder: 'inbox', unread: false }, { pageSize: 25, max: 500 }),
   withComputed((store) => ({
     messages: computed(() =>
       store.items().map((m) => ({
@@ -160,7 +160,7 @@ const kindOf = (item: DriveItem, name: string): DriveKind => {
 };
 
 export const DriveStore = signalStore(
-  withMicrosoftResource<DriveItem>('files', { path: 'root', top: 100 }),
+  withMicrosoftResource<DriveItem>('files', { path: 'root' }, { pageSize: 100, max: 1000 }),
   withComputed((store) => ({
     entries: computed(() =>
       store

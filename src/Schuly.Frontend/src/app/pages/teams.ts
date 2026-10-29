@@ -7,6 +7,7 @@ import { dayKey } from '../core/dates';
 import { ChatAvatar } from '../shared/chat-avatar';
 import { EmptyState } from '../shared/empty-state';
 import { ListTime } from '../shared/list-time';
+import { LoadMore } from '../shared/load-more';
 import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
 import { MicrosoftProblem } from '../shared/microsoft-problem';
 import { SearchField } from '../shared/search-field';
@@ -18,7 +19,7 @@ const CHAT_POLL_MS = 60_000;
 
 @Component({
   selector: 'app-teams',
-  imports: [DatePipe, HlmSkeletonImports, NgIcon, ChatAvatar, EmptyState, ListTime, MicrosoftAccountPicker, MicrosoftProblem, SearchField, TeamsConversation],
+  imports: [DatePipe, HlmSkeletonImports, NgIcon, ChatAvatar, EmptyState, ListTime, LoadMore, MicrosoftAccountPicker, MicrosoftProblem, SearchField, TeamsConversation],
   providers: [provideIcons({ lucideMessagesSquare }), TeamsStore],
   template: `
     <div class="flex h-[calc(100svh-var(--header-height,3.0625rem))] min-h-0 flex-col">
@@ -33,6 +34,9 @@ const CHAT_POLL_MS = 60_000;
           @if (!store.problem()) {
             <div class="p-3">
               <app-search-field class="[&_hlm-input-group]:w-full" [(value)]="query" label="Search chats" placeholder="Search chats" />
+              @if (query().trim() && store.chatsMore()) {
+                <p class="text-muted-foreground mt-2 text-xs">Searching loaded items only. Scroll to load more.</p>
+              }
             </div>
           }
 
@@ -56,7 +60,7 @@ const CHAT_POLL_MS = 60_000;
                 <h2 class="text-muted-foreground px-4 pt-4 pb-1 text-xs font-medium">
                   {{ group.label ?? (group.date | date: 'EEE, d MMM') }}
                 </h2>
-                <ul class="px-2">
+                <ul class="px-2" [attr.aria-busy]="store.chatsLoadingMore()">
                   @for (chat of group.chats; track chat.id) {
                     <li>
                       <button
@@ -95,6 +99,14 @@ const CHAT_POLL_MS = 60_000;
             } @else {
               <app-empty-state icon="lucideMessagesSquare" title="No chats yet" description="Your recent Teams chats appear here." />
             }
+            <app-load-more
+              label="Load more chats"
+              [hasMore]="store.chatsMore()"
+              [loading]="store.chatsLoadingMore()"
+              [failed]="store.chatsMoreFailed()"
+              [loaded]="store.chatsLoadedMore()"
+              (more)="store.loadMoreChats()"
+            />
           </div>
         </section>
 
