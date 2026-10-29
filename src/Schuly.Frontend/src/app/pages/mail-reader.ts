@@ -21,7 +21,7 @@ import {
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
-import { initials } from '../core/initials';
+import { SenderAvatar } from '../shared/sender-avatar';
 import { FileViewer, ViewerFile } from '../shared/file-viewer';
 import { MailBody } from '../shared/mail-body';
 import { ActionResult, MailAttachment, MailClient } from '../stores/mail-client';
@@ -46,7 +46,7 @@ const formatSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 /
 /** The reading pane: toolbar, header, attachments and the sandboxed body. Falls back to the list preview when the server cannot return full messages. */
 @Component({
   selector: 'app-mail-reader',
-  imports: [DatePipe, HlmButton, HlmDropdownMenuImports, HlmSkeletonImports, NgIcon, MailBody, FileViewer],
+  imports: [DatePipe, HlmButton, HlmDropdownMenuImports, HlmSkeletonImports, NgIcon, MailBody, FileViewer, SenderAvatar],
   providers: [
     provideIcons({
       lucideArrowLeft,
@@ -67,42 +67,41 @@ const formatSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 /
     }),
   ],
   template: `
-    <div role="toolbar" aria-label="Message actions" class="flex min-h-14 shrink-0 flex-wrap items-center gap-1 border-b px-4 py-1 lg:px-6">
-      <button hlmBtn variant="ghost" size="sm" type="button" class="lg:hidden" (click)="back.emit()">
-        <ng-icon name="lucideArrowLeft" aria-hidden="true" />
+    <div role="toolbar" aria-label="Message actions" class="flex h-10 shrink-0 items-center gap-0.5 overflow-x-auto border-b px-2 lg:px-3">
+      <button hlmBtn variant="ghost" size="icon-sm" type="button" class="lg:hidden" title="Back to list" (click)="back.emit()">
+        <ng-icon name="lucideArrowLeft" class="text-base" aria-hidden="true" />
         <span class="sr-only">Back to list</span>
       </button>
-      <button hlmBtn variant="ghost" size="sm" type="button" [disabled]="!detail()" (click)="compose.emit('reply')">
-        <ng-icon name="lucideReply" aria-hidden="true" />
-        <span class="@max-3xl:sr-only">Reply</span>
+      <button hlmBtn variant="ghost" size="icon-sm" type="button" title="Reply" [disabled]="!detail()" (click)="compose.emit('reply')">
+        <ng-icon name="lucideReply" class="text-base" aria-hidden="true" />
+        <span class="sr-only">Reply</span>
       </button>
-      <button hlmBtn variant="ghost" size="sm" type="button" [disabled]="!detail()" (click)="compose.emit('replyAll')">
-        <ng-icon name="lucideReplyAll" aria-hidden="true" />
-        <span class="@max-3xl:sr-only">Reply all</span>
+      <button hlmBtn variant="ghost" size="icon-sm" type="button" title="Reply all" [disabled]="!detail()" (click)="compose.emit('replyAll')">
+        <ng-icon name="lucideReplyAll" class="text-base" aria-hidden="true" />
+        <span class="sr-only">Reply all</span>
       </button>
-      <button hlmBtn variant="ghost" size="sm" type="button" [disabled]="!detail()" (click)="compose.emit('forward')">
-        <ng-icon name="lucideForward" aria-hidden="true" />
-        <span class="@max-3xl:sr-only">Forward</span>
+      <button hlmBtn variant="ghost" size="icon-sm" type="button" title="Forward" [disabled]="!detail()" (click)="compose.emit('forward')">
+        <ng-icon name="lucideForward" class="text-base" aria-hidden="true" />
+        <span class="sr-only">Forward</span>
       </button>
-      <button hlmBtn variant="ghost" size="sm" type="button" (click)="remove()">
-        <ng-icon name="lucideTrash2" aria-hidden="true" />
-        <span class="@max-3xl:sr-only">Delete</span>
+      <span class="bg-border mx-1 h-5 w-px shrink-0" aria-hidden="true"></span>
+      <button hlmBtn variant="ghost" size="icon-sm" type="button" title="Delete" (click)="remove()">
+        <ng-icon name="lucideTrash2" class="text-base" aria-hidden="true" />
+        <span class="sr-only">Delete</span>
       </button>
-      <button hlmBtn variant="ghost" size="sm" type="button" [attr.aria-pressed]="flagged()" (click)="toggleFlag()">
-        <ng-icon name="lucideFlag" [class.text-destructive]="flagged()" aria-hidden="true" />
-        <span class="@max-3xl:sr-only">{{ flagged() ? 'Unflag' : 'Flag' }}</span>
+      <button hlmBtn variant="ghost" size="icon-sm" type="button" title="Move to" [hlmDropdownMenuTrigger]="moveMenu" align="end">
+        <ng-icon name="lucideFolderInput" class="text-base" aria-hidden="true" />
+        <span class="sr-only">Move to</span>
       </button>
-      <button hlmBtn variant="ghost" size="sm" type="button" (click)="toggleRead()">
-        <ng-icon [name]="read() ? 'lucideMail' : 'lucideMailOpen'" aria-hidden="true" />
-        <span class="@max-3xl:sr-only">{{ read() ? 'Mark as unread' : 'Mark as read' }}</span>
+      <span class="bg-border mx-1 h-5 w-px shrink-0" aria-hidden="true"></span>
+      <button hlmBtn variant="ghost" size="icon-sm" type="button" [title]="flagged() ? 'Unflag' : 'Flag'" [attr.aria-pressed]="flagged()" (click)="toggleFlag()">
+        <ng-icon name="lucideFlag" class="text-base" [class.text-destructive]="flagged()" aria-hidden="true" />
+        <span class="sr-only">{{ flagged() ? 'Unflag' : 'Flag' }}</span>
       </button>
-      <div class="ms-auto flex items-center gap-2">
-        <button hlmBtn variant="ghost" size="sm" type="button" [hlmDropdownMenuTrigger]="moveMenu" align="end">
-          <ng-icon name="lucideFolderInput" aria-hidden="true" />
-          <span class="@max-3xl:sr-only">Move to</span>
-          <ng-icon name="lucideChevronDown" class="@max-3xl:hidden" aria-hidden="true" />
-        </button>
-      </div>
+      <button hlmBtn variant="ghost" size="icon-sm" type="button" [title]="read() ? 'Mark as unread' : 'Mark as read'" (click)="toggleRead()">
+        <ng-icon [name]="read() ? 'lucideMail' : 'lucideMailOpen'" class="text-base" aria-hidden="true" />
+        <span class="sr-only">{{ read() ? 'Mark as unread' : 'Mark as read' }}</span>
+      </button>
     </div>
     <ng-template #moveMenu>
       <hlm-dropdown-menu class="max-h-80 w-64" aria-label="Move to folder">
@@ -126,7 +125,7 @@ const formatSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 /
         {{ detail()?.subject ?? summary().subject }}
       </h3>
       <div class="flex flex-wrap items-start gap-x-3 gap-y-1">
-        <span class="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-medium" aria-hidden="true">{{ letters() }}</span>
+        <app-sender-avatar [email]="detail()?.from?.address ?? summary().address" [name]="detail()?.from?.name ?? summary().sender" />
         <div class="min-w-0 flex-1 text-sm">
           <p class="truncate font-semibold">{{ detail()?.from?.name ?? summary().sender }}</p>
           @if ((detail()?.from?.address ?? summary().address); as address) {
@@ -219,7 +218,6 @@ export class MailReader {
   private readonly id = computed(() => this.summary().id);
   protected readonly detail = this.client.detail;
   protected readonly size = formatSize;
-  protected readonly letters = computed(() => initials(this.detail()?.from?.name ?? this.summary().sender) || '?');
   protected readonly recipients = computed(() => (this.detail()?.to.map((p) => p.name) ?? this.summary().to).join(', '));
   protected readonly cc = computed(() => (this.detail()?.cc.map((p) => p.name) ?? []).join(', '));
   protected readonly flagged = computed(() => this.detail()?.flagged ?? this.summary().flagged);

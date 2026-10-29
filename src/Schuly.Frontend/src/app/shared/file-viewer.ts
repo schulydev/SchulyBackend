@@ -15,6 +15,7 @@ export interface ViewerFile {
 type Rendered =
   | { kind: 'pdf'; url: string; safe: SafeResourceUrl }
   | { kind: 'image'; url: string }
+  | { kind: 'video'; url: string }
   | { kind: 'text'; url: string; text: string }
   | { kind: 'none'; url: null };
 
@@ -23,7 +24,7 @@ const MAX_TEXT = 1024 * 1024;
 const startsWith = (bytes: Uint8Array, signature: (number | null)[], offset = 0) => signature.every((b, i) => b === null || bytes[offset + i] === b);
 
 /** What the bytes really are. The declared type is only trusted for plain text; markup (html, svg, xml) is never rendered. */
-export function sniff(bytes: Uint8Array, declared: string): { kind: 'pdf' | 'image' | 'text' | 'none'; type: string } {
+export function sniff(bytes: Uint8Array, declared: string): { kind: 'pdf' | 'image' | 'video' | 'text' | 'none'; type: string } {
   const head = bytes.subarray(0, 1024);
   for (let i = 0; i + 4 <= head.length; i++) {
     if (startsWith(head, [0x25, 0x50, 0x44, 0x46], i)) return { kind: 'pdf', type: 'application/pdf' };
@@ -32,6 +33,9 @@ export function sniff(bytes: Uint8Array, declared: string): { kind: 'pdf' | 'ima
   if (startsWith(bytes, [0xff, 0xd8, 0xff])) return { kind: 'image', type: 'image/jpeg' };
   if (startsWith(bytes, [0x47, 0x49, 0x46, 0x38])) return { kind: 'image', type: 'image/gif' };
   if (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes, [0x57, 0x45, 0x42, 0x50], 8)) return { kind: 'image', type: 'image/webp' };
+  // WebM (EBML header) and MP4 (an ftyp box); typed from the bytes so a blob can play in <video>.
+  if (startsWith(bytes, [0x1a, 0x45, 0xdf, 0xa3])) return { kind: 'video', type: 'video/webm' };
+  if (startsWith(bytes, [0x66, 0x74, 0x79, 0x70], 4)) return { kind: 'video', type: 'video/mp4' };
   const type = declared.split(';')[0].trim().toLowerCase();
   if (type === 'text/plain' || type === 'application/octet-stream' || type === '') {
     const sample = bytes.subarray(0, 8192);
@@ -46,7 +50,7 @@ export function sniff(bytes: Uint8Array, declared: string): { kind: 'pdf' | 'ima
   return { kind: 'none', type: 'application/octet-stream' };
 }
 
-/** Shared in-browser viewer for PDFs, images and plain text. Everything else is download-only, and nothing is ever navigated to a server URL. */
+/** Shared in-browser viewer for PDFs, images, video (webm, mp4) and plain text. Everything else is download-only, and nothing is ever navigated to a server URL. */
 @Component({
   selector: 'app-file-viewer',
   imports: [HlmButton, HlmDialogImports, HlmSpinner, NgIcon],
@@ -100,6 +104,11 @@ export function sniff(bytes: Uint8Array, declared: string): { kind: 'pdf' | 'ima
                   <img [src]="imageUrl()" [alt]="'Preview of ' + file()?.name" class="max-h-full max-w-full object-contain" />
                 </div>
               }
+              @case ('video') {
+                <div class="flex min-h-0 flex-1 items-center justify-center p-4">
+                  <video [src]="videoUrl()" controls playsinline class="max-h-full max-w-full" [attr.aria-label]="'Video ' + file()?.name"></video>
+                </div>
+              }
               @case ('text') {
                 <pre class="min-h-0 flex-1 overflow-auto p-4 text-sm whitespace-pre-wrap wrap-anywhere" tabindex="0" [attr.aria-label]="'Contents of ' + file()?.name">{{ text() }}</pre>
               }
@@ -139,6 +148,10 @@ export class FileViewer {
   protected readonly imageUrl = computed(() => {
     const r = this.rendered();
     return r?.kind === 'image' ? r.url : '';
+  });
+  protected readonly videoUrl = computed(() => {
+    const r = this.rendered();
+    return r?.kind === 'video' ? r.url : '';
   });
   protected readonly text = computed(() => {
     const r = this.rendered();

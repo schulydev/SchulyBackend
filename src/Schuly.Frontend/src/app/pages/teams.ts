@@ -11,6 +11,7 @@ import { MicrosoftProblem } from '../shared/microsoft-problem';
 import { SearchField } from '../shared/search-field';
 import { SplitHandle } from '../shared/split-handle';
 import { persistedNumber } from '../core/persisted';
+import { TeamsApi } from '../core/teams-api';
 import { TeamsStore } from '../stores/teams.store';
 import { TeamsConversation } from './teams-conversation';
 
@@ -20,7 +21,7 @@ const CHAT_POLL_MS = 60_000;
 @Component({
   selector: 'app-teams',
   imports: [HlmSkeletonImports, NgIcon, ChatAvatar, EmptyState, ListTime, LoadMore, MicrosoftAccountPicker, MicrosoftProblem, SearchField, SplitHandle, TeamsConversation],
-  providers: [provideIcons({ lucideMessagesSquare }), TeamsStore],
+  providers: [provideIcons({ lucideMessagesSquare }), TeamsStore, TeamsApi],
   host: { class: 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' },
   template: `
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -33,8 +34,10 @@ const CHAT_POLL_MS = 60_000;
           aria-label="Chats"
         >
           @if (!store.problem()) {
-            <div class="flex flex-col gap-2 px-4 pt-4 pb-2">
-              <h2 class="text-lg font-semibold">Chats</h2>
+            <div class="flex h-10 shrink-0 items-center border-b px-4">
+              <h2 class="text-base font-semibold">Chats</h2>
+            </div>
+            <div class="flex flex-col gap-2 px-4 py-2">
               <app-search-field class="[&_hlm-input-group]:w-full" [(value)]="query" label="Search chats" placeholder="Search chats" />
               @if (query().trim() && store.chatsMore()) {
                 <p class="text-muted-foreground text-xs">Searching loaded items only. Scroll to load more.</p>

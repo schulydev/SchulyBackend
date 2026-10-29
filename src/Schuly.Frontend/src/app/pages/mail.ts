@@ -19,17 +19,17 @@ import {
   lucideSend,
   lucideTrash2,
 } from '@ng-icons/lucide';
-import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
-import { initials } from '../core/initials';
 import { persistedNumber } from '../core/persisted';
 import { EmptyState } from '../shared/empty-state';
 import { ListTime } from '../shared/list-time';
 import { LoadMore } from '../shared/load-more';
 import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
 import { MicrosoftProblem } from '../shared/microsoft-problem';
+import { SenderPhotos } from '../core/sender-photos';
 import { SearchField } from '../shared/search-field';
+import { SenderAvatar } from '../shared/sender-avatar';
 import { SplitHandle } from '../shared/split-handle';
 import { FolderKind, MailClient } from '../stores/mail-client';
 import { MailStore } from '../stores/microsoft.store';
@@ -59,7 +59,7 @@ interface Composing {
 @Component({
   selector: 'app-mail',
   imports: [
-    HlmAvatarImports,
+    SenderAvatar,
     HlmButton,
     HlmSkeletonImports,
     NgIcon,
@@ -95,6 +95,7 @@ interface Composing {
     }),
     MailStore,
     MailClient,
+    SenderPhotos,
   ],
   host: { class: 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', '(keydown.escape)': 'onEscape($event)' },
   template: `
@@ -176,9 +177,8 @@ interface Composing {
           [attr.aria-label]="folderLabel()"
         >
           @if (!mail.problem()) {
-            <div class="flex flex-col gap-2 px-4 pt-4 pb-2">
-              <div class="flex items-center justify-between gap-2">
-                <h2 class="min-w-0 truncate text-lg font-semibold">{{ folderLabel() }}</h2>
+            <div class="flex h-10 shrink-0 items-center justify-between gap-2 border-b px-4">
+              <h2 class="min-w-0 truncate text-base font-semibold">{{ folderLabel() }}</h2>
                 <button
                   hlmBtn
                   type="button"
@@ -189,7 +189,8 @@ interface Composing {
                 >
                   Unread
                 </button>
-              </div>
+            </div>
+            <div class="flex flex-col gap-2 px-4 py-2">
               <app-search-field class="[&_hlm-input-group]:w-full" [(value)]="query" label="Search mail" placeholder="Search mail" />
               @if (query().trim() && mail.hasMore()) {
                 <p class="text-muted-foreground text-xs">Searching loaded items only. Scroll to load more.</p>
@@ -229,9 +230,7 @@ interface Composing {
                       @if (message.unread) {
                         <span class="bg-primary absolute inset-y-0 start-0 w-1" aria-hidden="true"></span>
                       }
-                      <hlm-avatar size="lg">
-                        <span hlmAvatarFallback class="text-foreground">{{ letters(message.listName) }}</span>
-                      </hlm-avatar>
+                      <app-sender-avatar [email]="message.avatarEmail" [name]="message.listName" />
                       <span class="block min-w-0 flex-1 overflow-hidden">
                         <span class="flex min-w-0 items-baseline gap-2">
                           <span class="min-w-0 flex-1 truncate text-sm" [class]="message.unread ? 'text-foreground font-bold' : 'font-medium'">
@@ -320,7 +319,6 @@ export class Mail {
   protected readonly iconOf = (kind: FolderKind): string => FOLDER_ICONS[kind];
   protected readonly foldersWidth = persistedNumber('schuly.mail.folders', 224);
   protected readonly listWidth = persistedNumber('schuly.mail.list', 384);
-  protected readonly letters = (name: string) => initials(name) || '?';
   protected readonly moreOpen = signal(false);
   protected readonly query = signal('');
   protected readonly selectedId = signal<string | null>(null);
@@ -334,7 +332,7 @@ export class Mail {
   /** Sent items and drafts list who the message went to, like Outlook; other folders list the sender. */
   protected readonly items = computed(() => {
     const outgoing = this.mail.folder() === 'sentitems' || this.mail.folder() === 'drafts';
-    return this.mail.messages().map((m) => ({ ...m, listName: outgoing && m.to.length ? m.to.join(', ') : m.sender }));
+    return this.mail.messages().map((m) => ({ ...m, listName: outgoing && m.to.length ? m.to.join(', ') : m.sender, avatarEmail: outgoing && m.to.length ? null : m.address }));
   });
 
   protected readonly filtered = computed(() => {
