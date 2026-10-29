@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
+import { firstValueFrom } from 'rxjs';
 import { StudentDocumentDto, StudentDocumentsService } from '../api';
 import { withCollection } from './with-collection';
 
@@ -16,6 +17,10 @@ export const DocumentsStore = signalStore(
   withMethods((store, http = inject(HttpClient)) => ({
     isDownloading(id: string | null | undefined): boolean {
       return !!id && store.downloading().includes(id);
+    },
+    /** The file's bytes, fetched with the signed-in session like a download. */
+    fetchBlob(document: StudentDocumentDto): Promise<Blob> {
+      return firstValueFrom(http.get(`/api/documents/${encodeURIComponent(document.id ?? '')}`, { responseType: 'blob' }));
     },
     download(document: StudentDocumentDto): void {
       const id = document.id;

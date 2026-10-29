@@ -8,6 +8,7 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { dayKey } from '../core/dates';
 import { renderBody } from '../core/message-html';
 import { EmptyState } from '../shared/empty-state';
+import { EmojiMatch, emojiCompleteAt, emojiQueryAt, loadEmoji, searchEmoji } from '../core/emoji';
 import { ChatAvatar } from '../shared/chat-avatar';
 import { LoadMore } from '../shared/load-more';
 import { MicrosoftProblem } from '../shared/microsoft-problem';
@@ -51,22 +52,22 @@ type LogItem =
   providers: [provideIcons({ lucideArrowLeft, lucideSend, lucideArrowDown, lucideExternalLink, lucideMessagesSquare, lucidePaperclip })],
   template: `
     @if (store.openChat(); as chat) {
-      <header class="flex items-center gap-3 border-b px-4 py-2.5">
-        <button hlmBtn variant="ghost" size="icon-sm" class="-ms-2 lg:hidden" (click)="back.emit()">
+      <header class="flex h-14 shrink-0 items-center gap-3 border-b px-4 sm:px-6">
+        <button hlmBtn variant="ghost" size="icon-sm" class="-ms-2 shrink-0 lg:hidden" (click)="back.emit()">
           <ng-icon name="lucideArrowLeft" aria-hidden="true" />
           <span class="sr-only">Back to chats</span>
         </button>
-        <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" [image]="chat.image" />
+        <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" [image]="chat.image" [imageAvailable]="chat.hasImage" [chatId]="chat.id" size="compact" />
         <div class="min-w-0 flex-1">
-          <h2 class="truncate text-base leading-tight font-semibold">{{ chat.title }}</h2>
+          <h2 class="truncate text-base leading-5 font-semibold">{{ chat.title }}</h2>
           @if (!chat.oneOnOne && chat.memberCount > 1) {
-            <p class="text-muted-foreground truncate text-xs">{{ chat.memberCount }} people</p>
+            <p class="text-muted-foreground truncate text-xs leading-4">{{ chat.memberCount }} people</p>
           }
         </div>
         @if (chat.link) {
-          <a hlmBtn variant="ghost" size="sm" [href]="chat.link" target="_blank" rel="noopener">
+          <a hlmBtn variant="ghost" size="sm" class="shrink-0" [href]="chat.link" target="_blank" rel="noopener">
             <span class="max-sm:sr-only">Open in Teams</span>
-            <ng-icon name="lucideExternalLink" aria-hidden="true" />
+            <ng-icon name="lucideExternalLink" class="text-base" aria-hidden="true" />
             <span class="sr-only">(opens in a new tab)</span>
           </a>
         }
@@ -179,17 +180,49 @@ type LogItem =
       </div>
 
       <form class="w-full px-4 pt-1 pb-4 sm:px-6" (submit)="submit($event)">
-        <div class="bg-background focus-within:border-ring focus-within:ring-ring/30 flex items-end gap-1 rounded-lg border py-1 ps-3 pe-1 focus-within:ring-3">
+        <div class="bg-background focus-within:border-ring focus-within:ring-ring/30 relative flex items-end gap-1 rounded-lg border py-1 ps-3 pe-1 focus-within:ring-3">
+          @if (suggestions().length) {
+            <ul
+              id="emoji-suggestions"
+              role="listbox"
+              aria-label="Emoji suggestions"
+              class="bg-popover text-popover-foreground absolute start-0 bottom-full z-20 mb-1 w-72 max-w-full overflow-hidden rounded-lg border p-1 shadow-md"
+            >
+              @for (match of suggestions(); track match.code; let i = $index) {
+                <li
+                  role="option"
+                  class="flex cursor-default items-center gap-2 rounded-md px-2 py-1 text-sm"
+                  [class.bg-accent]="i === active()"
+                  [class.text-accent-foreground]="i === active()"
+                  [id]="'emoji-option-' + i"
+                  [attr.aria-selected]="i === active()"
+                  (mousedown)="$event.preventDefault(); insertEmoji(match)"
+                >
+                  <span class="text-lg leading-none" aria-hidden="true">{{ match.char }}</span>
+                  <span class="truncate"><span class="sr-only">{{ match.char }} </span>:{{ match.code }}:</span>
+                </li>
+              }
+            </ul>
+          }
+          <div class="sr-only" role="status" aria-live="polite">{{ suggestionStatus() }}</div>
           <label for="teams-composer" class="sr-only">Message {{ chat.title }}</label>
           <textarea
             #composer
             id="teams-composer"
             rows="1"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-haspopup="listbox"
+            aria-controls="emoji-suggestions"
+            [attr.aria-expanded]="suggestions().length > 0"
+            [attr.aria-activedescendant]="suggestions().length ? 'emoji-option-' + active() : null"
             class="placeholder:text-muted-foreground field-sizing-content block max-h-36 min-h-8 min-w-0 flex-1 resize-none self-center bg-transparent py-1 text-sm leading-6 outline-none"
             placeholder="Type a message"
             [maxLength]="maxLength"
             [value]="draft()"
-            (input)="draft.set($any($event.target).value)"
+            (input)="onInput($event)"
+            (keydown)="onKeydown($event)"
+            (blur)="closeSuggestions()"
             (keydown.enter)="onEnter($event)"
           ></textarea>
           @if (draft().length > maxLength - 200) {
@@ -270,6 +303,13 @@ export class TeamsConversation {
 
   protected readonly maxLength = MAX_LENGTH;
   protected readonly draft = signal('');
+  protected readonly suggestions = signal<EmojiMatch[]>([]);
+  protected readonly active = signal(0);
+  protected readonly suggestionStatus = computed(() => {
+    const n = this.suggestions().length;
+    return n ? `${n} emoji ${n === 1 ? 'suggestion' : 'suggestions'} available. Use up and down arrows, Enter to insert.` : '';
+  });
+  private emojiRange: { start: number; end: number } | null = null;
   protected readonly newBelow = signal(false);
   private readonly log = viewChild<ElementRef<HTMLElement>>('log');
   private readonly composer = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
@@ -440,9 +480,81 @@ export class TeamsConversation {
 
   protected onEnter(event: Event): void {
     const e = event as KeyboardEvent;
+    if (this.suggestions().length) return;
     if (e.shiftKey || e.isComposing) return;
     e.preventDefault();
     this.submit();
+  }
+
+  protected async onInput(event: Event): Promise<void> {
+    const el = event.target as HTMLTextAreaElement;
+    this.draft.set(el.value);
+    const caret = el.selectionStart;
+    if (!el.value.includes(':')) return this.closeSuggestions();
+    let data;
+    try {
+      data = await loadEmoji();
+    } catch {
+      return this.closeSuggestions();
+    }
+    if (el.value !== this.draft() || el.selectionStart !== caret) return;
+    const done = emojiCompleteAt(data, el.value, caret);
+    if (done) {
+      this.replace(el, done.start, done.end, done.char);
+      return this.closeSuggestions();
+    }
+    const at = emojiQueryAt(el.value, caret);
+    this.emojiRange = at ? { start: at.start, end: caret } : null;
+    this.suggestions.set(at ? searchEmoji(data, at.query) : []);
+    this.active.set(0);
+  }
+
+  protected onKeydown(event: KeyboardEvent): void {
+    const list = this.suggestions();
+    if (!list.length || event.isComposing) return;
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        this.active.update((i) => (i + 1) % list.length);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        this.active.update((i) => (i - 1 + list.length) % list.length);
+        break;
+      case 'Enter':
+      case 'Tab':
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        this.insertEmoji(list[this.active()]);
+        break;
+      case 'Escape':
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeSuggestions();
+        break;
+    }
+  }
+
+  protected closeSuggestions(): void {
+    this.suggestions.set([]);
+    this.emojiRange = null;
+  }
+
+  protected insertEmoji(match: EmojiMatch): void {
+    const el = this.composer()?.nativeElement;
+    const range = this.emojiRange;
+    if (!el || !range) return;
+    this.replace(el, range.start, range.end, match.char + ' ');
+    this.closeSuggestions();
+    el.focus();
+  }
+
+  private replace(el: HTMLTextAreaElement, start: number, end: number, text: string): void {
+    const next = el.value.slice(0, start) + text + el.value.slice(end);
+    el.value = next;
+    const caret = start + text.length;
+    el.setSelectionRange(caret, caret);
+    this.draft.set(next);
   }
 
   protected submit(event?: Event): void {

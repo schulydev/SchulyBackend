@@ -3,10 +3,13 @@ import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed,
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideArrowLeft,
+  lucideChevronDown,
   lucideDownload,
   lucideEye,
   lucideExternalLink,
   lucideFlag,
+  lucideFolder,
+  lucideFolderInput,
   lucideForward,
   lucideMail,
   lucideMailOpen,
@@ -16,9 +19,10 @@ import {
   lucideTrash2,
 } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
-import { HlmNativeSelectImports } from '@spartan-ng/helm/native-select';
+import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { initials } from '../core/initials';
+import { FileViewer, ViewerFile } from '../shared/file-viewer';
 import { MailBody } from '../shared/mail-body';
 import { ActionResult, MailAttachment, MailClient } from '../stores/mail-client';
 import { MailStore } from '../stores/microsoft.store';
@@ -42,14 +46,17 @@ const formatSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 /
 /** The reading pane: toolbar, header, attachments and the sandboxed body. Falls back to the list preview when the server cannot return full messages. */
 @Component({
   selector: 'app-mail-reader',
-  imports: [DatePipe, HlmButton, HlmNativeSelectImports, HlmSkeletonImports, NgIcon, MailBody],
+  imports: [DatePipe, HlmButton, HlmDropdownMenuImports, HlmSkeletonImports, NgIcon, MailBody, FileViewer],
   providers: [
     provideIcons({
       lucideArrowLeft,
+      lucideChevronDown,
       lucideDownload,
       lucideEye,
       lucideExternalLink,
       lucideFlag,
+      lucideFolder,
+      lucideFolderInput,
       lucideForward,
       lucideMail,
       lucideMailOpen,
@@ -60,45 +67,58 @@ const formatSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 /
     }),
   ],
   template: `
-    <div role="toolbar" aria-label="Message actions" class="flex flex-wrap items-center gap-1 border-b px-3 py-2">
+    <div role="toolbar" aria-label="Message actions" class="flex min-h-14 shrink-0 flex-wrap items-center gap-1 border-b px-4 py-1 lg:px-6">
       <button hlmBtn variant="ghost" size="sm" type="button" class="lg:hidden" (click)="back.emit()">
         <ng-icon name="lucideArrowLeft" aria-hidden="true" />
         <span class="sr-only">Back to list</span>
       </button>
       <button hlmBtn variant="ghost" size="sm" type="button" [disabled]="!detail()" (click)="compose.emit('reply')">
         <ng-icon name="lucideReply" aria-hidden="true" />
-        <span class="max-xl:sr-only">Reply</span>
+        <span class="@max-3xl:sr-only">Reply</span>
       </button>
       <button hlmBtn variant="ghost" size="sm" type="button" [disabled]="!detail()" (click)="compose.emit('replyAll')">
         <ng-icon name="lucideReplyAll" aria-hidden="true" />
-        <span class="max-xl:sr-only">Reply all</span>
+        <span class="@max-3xl:sr-only">Reply all</span>
       </button>
       <button hlmBtn variant="ghost" size="sm" type="button" [disabled]="!detail()" (click)="compose.emit('forward')">
         <ng-icon name="lucideForward" aria-hidden="true" />
-        <span class="max-xl:sr-only">Forward</span>
+        <span class="@max-3xl:sr-only">Forward</span>
       </button>
       <button hlmBtn variant="ghost" size="sm" type="button" (click)="remove()">
         <ng-icon name="lucideTrash2" aria-hidden="true" />
-        <span class="max-xl:sr-only">Delete</span>
+        <span class="@max-3xl:sr-only">Delete</span>
       </button>
       <button hlmBtn variant="ghost" size="sm" type="button" [attr.aria-pressed]="flagged()" (click)="toggleFlag()">
         <ng-icon name="lucideFlag" [class.text-destructive]="flagged()" aria-hidden="true" />
-        <span class="max-xl:sr-only">{{ flagged() ? 'Unflag' : 'Flag' }}</span>
+        <span class="@max-3xl:sr-only">{{ flagged() ? 'Unflag' : 'Flag' }}</span>
       </button>
       <button hlmBtn variant="ghost" size="sm" type="button" (click)="toggleRead()">
         <ng-icon [name]="read() ? 'lucideMail' : 'lucideMailOpen'" aria-hidden="true" />
-        <span class="max-xl:sr-only">{{ read() ? 'Mark as unread' : 'Mark as read' }}</span>
+        <span class="@max-3xl:sr-only">{{ read() ? 'Mark as unread' : 'Mark as read' }}</span>
       </button>
       <div class="ms-auto flex items-center gap-2">
-        <label for="mail-move" class="sr-only">Move to folder</label>
-        <hlm-native-select selectId="mail-move" [value]="''" (valueChange)="move($event)">
-          <option hlmNativeSelectOption value="">Move to</option>
-          @for (folder of targets(); track folder.key) {
-            <option hlmNativeSelectOption [value]="folder.key">{{ folder.name }}</option>
-          }
-        </hlm-native-select>
+        <button hlmBtn variant="ghost" size="sm" type="button" [hlmDropdownMenuTrigger]="moveMenu" align="end">
+          <ng-icon name="lucideFolderInput" aria-hidden="true" />
+          <span class="@max-3xl:sr-only">Move to</span>
+          <ng-icon name="lucideChevronDown" class="@max-3xl:hidden" aria-hidden="true" />
+        </button>
       </div>
     </div>
+    <ng-template #moveMenu>
+      <hlm-dropdown-menu class="max-h-80 w-64" aria-label="Move to folder">
+        <hlm-dropdown-menu-label>Move to folder</hlm-dropdown-menu-label>
+        <hlm-dropdown-menu-separator />
+        @for (folder of targets(); track folder.key) {
+          <button hlmDropdownMenuItem type="button" [style.padding-inline-start.rem]="0.5 + folder.depth * 1.25" (click)="move(folder.key)">
+            <ng-icon name="lucideFolder" aria-hidden="true" />
+            <span class="min-w-0 flex-1 truncate text-start">{{ folder.name }}</span>
+          </button>
+          @if (folder.group === 'main' && isLastMain(folder.key) && moreTargets()) {
+            <hlm-dropdown-menu-separator />
+          }
+        }
+      </hlm-dropdown-menu>
+    </ng-template>
     <p class="text-muted-foreground px-4 text-xs empty:hidden" role="status" aria-live="polite">{{ notice() }}</p>
 
     <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-4 lg:p-6" [attr.aria-busy]="client.detailLoading()">
@@ -141,13 +161,10 @@ const formatSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 /
                 @if (client.isPreviewable(file)) {
                   <button hlmBtn type="button" variant="ghost" size="sm" class="shrink-0" (click)="preview(file)">
                     <ng-icon name="lucideEye" aria-hidden="true" />
-                    {{ previews()[file.id] ? 'Hide' : 'Preview' }}<span class="sr-only"> {{ file.name }}</span>
+                    View<span class="sr-only"> {{ file.name }}</span>
                   </button>
                 }
               </div>
-              @if (previews()[file.id]; as src) {
-                <img [src]="src" [alt]="'Preview of ' + file.name" class="max-h-64 max-w-full self-start rounded-md border object-contain" />
-              }
             </li>
           }
         </ul>
@@ -179,8 +196,9 @@ const formatSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 /
         </div>
       }
     </div>
+    <app-file-viewer [file]="viewing()" (closed)="viewing.set(null)" />
   `,
-  host: { class: 'flex min-h-0 min-w-0 flex-1 flex-col' },
+  host: { class: '@container flex min-h-0 min-w-0 flex-1 flex-col' },
 })
 export class MailReader {
   protected readonly client = inject(MailClient);
@@ -195,7 +213,7 @@ export class MailReader {
 
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
   protected readonly notice = signal('');
-  protected readonly previews = signal<Record<string, string>>({});
+  protected readonly viewing = signal<ViewerFile | null>(null);
 
   /** The effect below must only rerun when the message changes, not when the list patches its summary. */
   private readonly id = computed(() => this.summary().id);
@@ -208,12 +226,15 @@ export class MailReader {
   protected readonly read = computed(() => this.detail()?.read ?? !this.summary().unread);
   protected readonly files = computed(() => this.client.attachments().filter((a) => !a.inline));
   protected readonly targets = computed(() => this.client.folders().filter((f) => f.key !== this.mail.folder()));
+  private readonly lastMain = computed(() => this.targets().filter((f) => f.group === 'main').at(-1)?.key ?? null);
+  protected readonly moreTargets = computed(() => this.targets().some((f) => f.group === 'more'));
+  protected readonly isLastMain = (key: string) => key === this.lastMain();
 
   constructor() {
     effect(() => {
       const id = this.id();
       untracked(() => {
-        this.dropPreviews();
+        this.viewing.set(null);
         this.notice.set('');
         void this.client.open(id).then(() => {
           if (this.summary().id === id && this.summary().unread) void this.markRead(id);
@@ -222,14 +243,8 @@ export class MailReader {
       });
     });
     inject(DestroyRef).onDestroy(() => {
-      this.dropPreviews();
       this.client.close();
     });
-  }
-
-  private dropPreviews(): void {
-    for (const url of Object.values(this.previews())) URL.revokeObjectURL(url);
-    this.previews.set({});
   }
 
   private say(result: ActionResult, success: string): boolean {
@@ -277,16 +292,8 @@ export class MailReader {
     this.notice.set(ok ? `Downloaded ${file.name}` : `Could not download ${file.name}.`);
   }
 
-  protected async preview(file: MailAttachment): Promise<void> {
-    const current = this.previews()[file.id];
-    if (current) {
-      URL.revokeObjectURL(current);
-      const { [file.id]: _, ...rest } = this.previews();
-      this.previews.set(rest);
-      return;
-    }
-    const url = await this.client.previewImage(this.summary().id, file);
-    if (url) this.previews.update((p) => ({ ...p, [file.id]: url }));
-    else this.notice.set(`Could not preview ${file.name}.`);
+  protected preview(file: MailAttachment): void {
+    const id = this.summary().id;
+    this.viewing.set({ name: file.name, load: () => this.client.fetchAttachment(id, file) });
   }
 }

@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { swrCache } from '../core/swr-cache';
 import { MicrosoftAccountsStore } from './microsoft-accounts.store';
 
-export type FolderKind = 'inbox' | 'sent' | 'drafts' | 'archive' | 'deleted' | 'junk' | 'outbox' | 'other';
+export type FolderKind = 'inbox' | 'sent' | 'drafts' | 'archive' | 'deleted' | 'junk' | 'outbox' | 'history' | 'rss' | 'sync' | 'system' | 'other';
 
 export interface MailFolder {
   /** Value for the list's `folder` parameter and for move: a well-known name when there is one, else the folder id. */
@@ -12,12 +12,17 @@ export interface MailFolder {
   name: string;
   kind: FolderKind;
   unread: number | null;
+  /** Nesting level in the folder pane; 0 is top level. */
+  depth: number;
+  /** Rarely used system folders live under the collapsed "More" group. */
+  group: 'main' | 'more';
 }
 
 interface GraphFolder {
   id?: string | null;
   displayName?: string | null;
   wellKnownName?: string | null;
+  parentFolderId?: string | null;
   unreadItemCount?: number | null;
   childFolders?: GraphFolder[] | null;
 }
@@ -94,24 +99,136 @@ export const MAX_ATTACHMENT_BYTES = 3 * 1024 * 1024;
 /** Only these may ever be shown inline, as an img from a blob URL; everything else is download-only. */
 const PREVIEWABLE_IMAGES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
 
-const WELL_KNOWN: Record<string, FolderKind> = {
-  inbox: 'inbox',
-  sentitems: 'sent',
-  drafts: 'drafts',
-  archive: 'archive',
-  deleteditems: 'deleted',
-  junkemail: 'junk',
-  outbox: 'outbox',
+/** What the server names well-known folders (`wellKnownName`), with the order Outlook shows them in. */
+const WELL_KNOWN: Record<string, { kind: FolderKind; rank: number; more?: boolean }> = {
+  inbox: { kind: 'inbox', rank: 0 },
+  drafts: { kind: 'drafts', rank: 1 },
+  sentitems: { kind: 'sent', rank: 2 },
+  deleteditems: { kind: 'deleted', rank: 3 },
+  junkemail: { kind: 'junk', rank: 4 },
+  archive: { kind: 'archive', rank: 5 },
+  outbox: { kind: 'outbox', rank: 10, more: true },
+  conversationhistory: { kind: 'history', rank: 11, more: true },
+  rssfeeds: { kind: 'rss', rank: 12, more: true },
+  syncissues: { kind: 'sync', rank: 13, more: true },
+  conflicts: { kind: 'sync', rank: 14, more: true },
+  localfailures: { kind: 'sync', rank: 15, more: true },
+  serverfailures: { kind: 'sync', rank: 16, more: true },
+  movejob: { kind: 'system', rank: 17, more: true },
 };
+
+/** Display names (English, German, French, Italian, Spanish) per well-known folder, compared after `normalizeName`. */
+const NAMES: Record<string, string[]> = {
+  inbox: ['Inbox', 'Posteingang', 'Boîte de réception', 'Posta in arrivo', 'Bandeja de entrada'],
+  drafts: ['Drafts', 'Entwürfe', 'Brouillons', 'Bozze', 'Borradores'],
+  sentitems: ['Sent Items', 'Sent', 'Gesendete Elemente', 'Gesendet', 'Éléments envoyés', 'Posta inviata', 'Elementi inviati', 'Elementos enviados'],
+  deleteditems: ['Deleted Items', 'Gelöschte Elemente', 'Éléments supprimés', 'Posta eliminata', 'Elementi eliminati', 'Elementos eliminados'],
+  junkemail: ['Junk Email', 'Junk E-mail', 'Junk-E-Mail', 'Courrier indésirable', 'Posta indesiderata', 'Correo electrónico no deseado', 'Correo no deseado'],
+  archive: ['Archive', 'Archiv', 'Archives', 'Archivio', 'Archivo'],
+  outbox: ['Outbox', 'Postausgang', "Boîte d'envoi", 'Posta in uscita', 'Bandeja de salida'],
+  conversationhistory: ['Conversation History', 'Unterhaltungsverlauf', 'Historique des conversations', 'Cronologia conversazioni', 'Historial de conversaciones'],
+  rssfeeds: ['RSS Feeds', 'RSS-Feeds', 'Flux RSS', 'Feed RSS', 'Suscripciones RSS'],
+  syncissues: ['Sync Issues', 'Synchronisierungsprobleme', 'Problèmes de synchronisation', 'Problemi di sincronizzazione', 'Problemas de sincronización'],
+  conflicts: ['Conflicts', 'Konflikte', 'Conflits', 'Conflitti', 'Conflictos'],
+  localfailures: ['Local Failures', 'Lokale Fehler', 'Échecs locaux', 'Errori locali', 'Errores locales'],
+  serverfailures: ['Server Failures', 'Serverfehler', 'Échecs du serveur', 'Errori del server', 'Errores del servidor'],
+  movejob: ['Umzugs-Auftrag', 'Umzugsauftrag', 'Move Job'],
+};
+
+/** Lowercase, accent-free and without spaces or punctuation, so "Gelöschte Elemente" and "geloschteelemente" match. */
+export function normalizeName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+const NAME_LOOKUP = new Map<string, string>(Object.entries(NAMES).flatMap(([key, names]) => names.map((n): [string, string] => [normalizeName(n), key])));
+
+const MORE_PARENTS = new Set(['syncissues']);
+const ID_KEYED = new Set(['inbox', 'drafts', 'sentitems', 'deleteditems', 'junkemail', 'archive', 'outbox']);
 
 /** Shown when the server has no folder endpoint yet. */
 export const FALLBACK_FOLDERS: MailFolder[] = [
-  { key: 'inbox', name: 'Inbox', kind: 'inbox', unread: null },
-  { key: 'sentitems', name: 'Sent Items', kind: 'sent', unread: null },
-  { key: 'drafts', name: 'Drafts', kind: 'drafts', unread: null },
-  { key: 'archive', name: 'Archive', kind: 'archive', unread: null },
-  { key: 'deleteditems', name: 'Deleted Items', kind: 'deleted', unread: null },
+  { key: 'inbox', name: 'Inbox', kind: 'inbox', unread: null, depth: 0, group: 'main' },
+  { key: 'drafts', name: 'Drafts', kind: 'drafts', unread: null, depth: 0, group: 'main' },
+  { key: 'sentitems', name: 'Sent Items', kind: 'sent', unread: null, depth: 0, group: 'main' },
+  { key: 'deleteditems', name: 'Deleted Items', kind: 'deleted', unread: null, depth: 0, group: 'main' },
+  { key: 'archive', name: 'Archive', kind: 'archive', unread: null, depth: 0, group: 'main' },
 ];
+
+interface FolderNode {
+  folder: GraphFolder;
+  well: string | null;
+  children: FolderNode[];
+}
+
+const compareNames = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+
+/** Outlook's order: Inbox, Drafts, Sent, Deleted, Junk, Archive, then own folders A-Z; rare system folders go to "More". */
+export function orderFolders(items: GraphFolder[]): MailFolder[] {
+  const nodes = new Map<string, FolderNode>();
+  const all: FolderNode[] = [];
+  // Nested childFolders count even when the server did not repeat them at the top level.
+  const flat: GraphFolder[] = [];
+  const collect = (list: GraphFolder[]) => {
+    for (const f of list) {
+      if (f.id && flat.some((g) => g.id === f.id)) continue;
+      flat.push(f);
+      collect(f.childFolders ?? []);
+    }
+  };
+  collect(items);
+  for (const folder of flat) {
+    if (!folder.id || !folder.displayName) continue;
+    const given = folder.wellKnownName?.toLowerCase().replace(/\s+/g, '') ?? '';
+    const well = given && WELL_KNOWN[given] ? given : (NAME_LOOKUP.get(normalizeName(folder.displayName)) ?? null);
+    const node: FolderNode = { folder, well, children: [] };
+    all.push(node);
+    nodes.set(folder.id, node);
+  }
+  const attached = new Set<FolderNode>();
+  const adopt = (parent: FolderNode, child: FolderNode) => {
+    if (attached.has(child) || child === parent) return;
+    attached.add(child);
+    parent.children.push(child);
+  };
+  for (const node of all) {
+    for (const c of node.folder.childFolders ?? []) {
+      const child = c.id ? nodes.get(c.id) : undefined;
+      if (child) adopt(node, child);
+    }
+  }
+  for (const node of all) {
+    const parent = node.folder.parentFolderId ? nodes.get(node.folder.parentFolderId) : undefined;
+    if (parent && !attached.has(node)) adopt(parent, node);
+  }
+  const tops = all.filter((n) => !attached.has(n));
+
+  const rank = (n: FolderNode) => (n.well ? WELL_KNOWN[n.well].rank : Number.MAX_SAFE_INTEGER);
+  const sort = (list: FolderNode[]) => [...list].sort((a, b) => rank(a) - rank(b) || compareNames(a.folder.displayName!, b.folder.displayName!));
+  const main: MailFolder[] = [];
+  const more: MailFolder[] = [];
+  const walk = (node: FolderNode, depth: number, inMore: boolean) => {
+    const info = node.well ? WELL_KNOWN[node.well] : null;
+    const isMore = inMore || !!info?.more;
+    const key = node.well && ID_KEYED.has(node.well) ? node.well : node.folder.id!;
+    (isMore ? more : main).push({
+      key,
+      name: node.folder.displayName!,
+      kind: info?.kind ?? 'other',
+      unread: node.folder.unreadItemCount ?? null,
+      depth,
+      group: isMore ? 'more' : 'main',
+    });
+    for (const child of sort(node.children)) walk(child, depth + 1, isMore || (!!node.well && MORE_PARENTS.has(node.well)));
+  };
+  for (const node of sort(tops)) walk(node, 0, false);
+  // A system child whose parent is not in "More" still starts at the top level of that group.
+  const base = more.length ? Math.min(...more.map((f) => f.depth)) : 0;
+  return [...main, ...more.map((f) => ({ ...f, depth: f.depth - base }))];
+}
 
 const person = (a?: GraphAddress | null): MailPerson | null => {
   const address = a?.emailAddress?.address ?? '';
@@ -151,6 +268,9 @@ export class MailClient {
   readonly detailProblem = signal<'unavailable' | 'failed' | null>(null);
   readonly attachments = signal<MailAttachment[]>([]);
 
+  readonly mainFolders = computed(() => this.folders().filter((f) => f.group === 'main'));
+  readonly moreFolders = computed(() => this.folders().filter((f) => f.group === 'more'));
+
   readonly unreadTotal = computed(() => this.folders().find((f) => f.kind === 'inbox')?.unread ?? null);
 
   private openSeq = 0;
@@ -176,14 +296,7 @@ export class MailClient {
     try {
       const items = await firstValueFrom(this.http.get<GraphFolder[]>(`${base}/folders`));
       if (!Array.isArray(items) || !items.length) throw new Error('no folders');
-      const flat = items.flatMap((f) => [f, ...(f.childFolders ?? [])]);
-      const folders = flat
-        .filter((f) => f.id && f.displayName)
-        .map((f): MailFolder => {
-          const wellKnown = (f.wellKnownName || f.displayName!.replace(/\s+/g, '')).toLowerCase();
-          const kind = WELL_KNOWN[wellKnown] ?? 'other';
-          return { key: kind === 'other' ? f.id! : wellKnown, name: f.displayName!, kind, unread: f.unreadItemCount ?? null };
-        });
+      const folders = orderFolders(items);
       swrCache.set(key, folders);
       this.folders.set(folders);
       this.foldersLive.set(true);
@@ -288,11 +401,13 @@ export class MailClient {
     }
   }
 
+  /** Images and PDFs can be viewed in the app; the viewer re-checks the bytes before rendering anything. */
   isPreviewable(attachment: MailAttachment): boolean {
-    return PREVIEWABLE_IMAGES.has(attachment.contentType);
+    return PREVIEWABLE_IMAGES.has(attachment.contentType) || attachment.contentType === 'application/pdf';
   }
 
-  private fetchAttachment(messageId: string, attachment: MailAttachment): Promise<Blob> {
+  /** The attachment's bytes, fetched with the signed-in session; the server URL is never navigated to. */
+  fetchAttachment(messageId: string, attachment: MailAttachment): Promise<Blob> {
     return firstValueFrom(
       this.http.get(`${this.base()}/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachment.id)}`, { responseType: 'blob' }),
     );
@@ -318,17 +433,6 @@ export class MailClient {
       return true;
     } catch {
       return false;
-    }
-  }
-
-  /** Blob URL for an img preview of a png, jpeg, gif or webp attachment (by declared MIME type); null for anything else. The caller revokes it. */
-  async previewImage(messageId: string, attachment: MailAttachment): Promise<string | null> {
-    if (!this.isPreviewable(attachment)) return null;
-    try {
-      const blob = new Blob([await this.fetchAttachment(messageId, attachment)], { type: attachment.contentType });
-      return URL.createObjectURL(blob);
-    } catch {
-      return null;
     }
   }
 
