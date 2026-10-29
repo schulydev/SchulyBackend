@@ -22,7 +22,7 @@ namespace Schuly.Infrastructure.Services
 
         /// <summary>
         /// Positive proof that the user controls <paramref name="email"/>: the password account confirmed it, or a linked
-        /// sign-in provider marked it verified. Anything else fails closed, so registering the configured address first
+        /// sign-in provider configured with TrustEmailVerified marked it verified. Anything else fails closed, so registering the configured address first
         /// without proving it never makes someone administrator.
         /// </summary>
         private async Task<bool> HasProvenEmailAsync(Guid userId, string email, CancellationToken cancellationToken)
@@ -34,8 +34,13 @@ namespace Schuly.Infrastructure.Services
             if (confirmedByPassword)
                 return true;
 
+            // Only providers configured with TrustEmailVerified count: others may let people pick their own address.
+            var trusted = configuration.GetSection("ExternalLogin:Providers").GetChildren().Where(p => p.GetValue<bool>("TrustEmailVerified")).Select(p => p.Key).ToList();
+            if (trusted.Count == 0)
+                return false;
+
             return await db.Set<ToamaisutaaExternalLogin>().AsNoTracking()
-                .AnyAsync(l => l.UserId == userId && l.EmailVerified && l.Email != null && l.Email.ToUpper() == normalized, cancellationToken);
+                .AnyAsync(l => l.UserId == userId && trusted.Contains(l.ProviderKey) && l.EmailVerified && l.Email != null && l.Email.ToUpper() == normalized, cancellationToken);
         }
     }
 }
