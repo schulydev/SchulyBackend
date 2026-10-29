@@ -45,6 +45,8 @@ services:
     restart: unless-stopped
     environment:
       PYTHONUNBUFFERED: "1"
+      # Shared with the backend's Microsoft plugin; guards the password sign-in routes.
+      SCHULY_SERVICE_KEY: ${MICROSOFT_SERVICE_KEY:-}
 
   backend:
     image: ghcr.io/schulydev/schuly:${SCHULY_VERSION:-latest}
