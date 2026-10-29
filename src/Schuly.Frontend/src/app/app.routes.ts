@@ -21,6 +21,7 @@ export const routes: Routes = [
       { path: 'documents', title: 'Documents', loadComponent: () => import('./pages/documents').then((m) => m.Documents) },
       { path: 'mail', title: 'Mail', loadComponent: () => import('./pages/mail').then((m) => m.Mail) },
       { path: 'teams', title: 'Teams', loadComponent: () => import('./pages/teams').then((m) => m.Teams) },
+      { path: 'drive', title: 'Drive', loadComponent: () => import('./pages/drive').then((m) => m.Drive) },
       { path: 'onenote', title: 'OneNote', loadComponent: () => import('./pages/onenote').then((m) => m.OneNote) },
       { path: 'settings', title: 'Settings', loadComponent: () => import('./pages/settings').then((m) => m.Settings) },
     ],
