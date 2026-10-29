@@ -50,6 +50,7 @@ builder.Services.AddSchulyAuthorization(builder.Configuration);
 builder.Services.AddSchulyExceptionHandling();
 builder.Services.AddSchulyForwardedHeaders(builder.Configuration);
 builder.Services.AddSchulyRateLimiting();
+builder.Services.AddSchulyResponseCompression();
 
 if (builder.Environment.IsDevelopment())
     builder.Services.AddSchulyRequestLogging();
@@ -63,8 +64,9 @@ app.UseForwardedHeaders();
 
 app.UseExceptionHandler();
 
+app.UseSchulyResponseCompression();
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(StaticAssetCaching.Options);
 
 if (app.Environment.IsDevelopment())
 {
@@ -80,7 +82,7 @@ app.UseAuthorization();
 app.UseMiddleware<PluginScopeMiddleware>();
 app.MapSchulyAuthEndpoints();
 app.MapControllers();
-app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/|auth/|openapi/|scalar).*$)}", "index.html").AllowAnonymous();
+app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/|auth/|openapi/|scalar).*$)}", "index.html", StaticAssetCaching.Options).AllowAnonymous();
 await app.UseSchulyPluginsAsync();
 
 app.Run();
