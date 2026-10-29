@@ -1,4 +1,5 @@
 using Schuly.Application.Commands.Absence;
+using Schuly.Application.Models;
 using Schuly.Application.Queries.Absence;
 using Schuly.Domain;
 using Schuly.Domain.Enums;
@@ -31,7 +32,7 @@ namespace Schuly.Tests
             var (a, _) = Seed(nameof(List_returns_only_the_callers_own_absences), out _);
             using var ctx = TestDb.NewContext(nameof(List_returns_only_the_callers_own_absences));
 
-            var handler = new GetAbsencesQueryHandler(ctx, new FakeUserService(false, a.Id));
+            var handler = new GetAbsencesQueryHandler(ctx, new FakeUserService(a.Id));
             var result = await handler.Handle(new GetAbsencesQuery(), CancellationToken.None);
 
             await Assert.That(result.IsSuccess).IsTrue();
@@ -39,37 +40,25 @@ namespace Schuly.Tests
         }
 
         [Test]
-        public async Task Admin_sees_every_absence()
+        public async Task Reading_another_users_absence_is_not_found()
         {
-            Seed(nameof(Admin_sees_every_absence), out _);
-            using var ctx = TestDb.NewContext(nameof(Admin_sees_every_absence));
+            var (a, _) = Seed(nameof(Reading_another_users_absence_is_not_found), out var otherId);
+            using var ctx = TestDb.NewContext(nameof(Reading_another_users_absence_is_not_found));
 
-            var handler = new GetAbsencesQueryHandler(ctx, new FakeUserService(true));
-            var result = await handler.Handle(new GetAbsencesQuery(), CancellationToken.None);
-
-            await Assert.That(result.Value!.Count).IsEqualTo(2);
-        }
-
-        [Test]
-        public async Task Reading_another_users_absence_is_forbidden()
-        {
-            var (a, _) = Seed(nameof(Reading_another_users_absence_is_forbidden), out var otherId);
-            using var ctx = TestDb.NewContext(nameof(Reading_another_users_absence_is_forbidden));
-
-            var handler = new GetAbsenceQueryHandler(ctx, new FakeUserService(false, a.Id));
+            var handler = new GetAbsenceQueryHandler(ctx, new FakeUserService(a.Id));
             var result = await handler.Handle(new GetAbsenceQuery(otherId), CancellationToken.None);
 
             await Assert.That(result.IsSuccess).IsFalse();
-            await Assert.That(result.Error).IsEqualTo("Forbidden");
+            await Assert.That(result.Status).IsEqualTo(ResultStatus.NotFound);
         }
 
         [Test]
-        public async Task Deleting_another_users_absence_is_forbidden_and_leaves_it_intact()
+        public async Task Deleting_another_users_absence_is_not_found_and_leaves_it_intact()
         {
-            var (a, _) = Seed(nameof(Deleting_another_users_absence_is_forbidden_and_leaves_it_intact), out var otherId);
-            using var ctx = TestDb.NewContext(nameof(Deleting_another_users_absence_is_forbidden_and_leaves_it_intact));
+            var (a, _) = Seed(nameof(Deleting_another_users_absence_is_not_found_and_leaves_it_intact), out var otherId);
+            using var ctx = TestDb.NewContext(nameof(Deleting_another_users_absence_is_not_found_and_leaves_it_intact));
 
-            var handler = new RemoveAbsenceCommandHandler(ctx, new FakeUserService(false, a.Id));
+            var handler = new RemoveAbsenceCommandHandler(ctx, new FakeUserService(a.Id));
             var result = await handler.Handle(new RemoveAbsenceCommand(otherId), CancellationToken.None);
 
             await Assert.That(result.IsSuccess).IsFalse();
@@ -82,7 +71,7 @@ namespace Schuly.Tests
             var (a, b) = Seed(nameof(Creating_an_absence_for_another_user_is_forbidden), out _);
             using var ctx = TestDb.NewContext(nameof(Creating_an_absence_for_another_user_is_forbidden));
 
-            var handler = new CreateAbsenceCommandHandler(ctx, new FakeUserService(false, a.Id));
+            var handler = new CreateAbsenceCommandHandler(ctx, new FakeUserService(a.Id));
             var result = await handler.Handle(
                 new CreateAbsenceCommand("Forged", default, DateTime.UnixEpoch, DateTime.UnixEpoch, b.Id), CancellationToken.None);
 

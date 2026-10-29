@@ -14,9 +14,9 @@ namespace Schuly.API.Controllers
         [HttpGet]
         [ProducesResponseType(typeof(List<SemesterReportDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> GetSemesterReports([FromQuery] Guid? schoolUserId, CancellationToken cancellationToken)
+        public async Task<IActionResult> GetSemesterReports(CancellationToken cancellationToken)
         {
-            var result = await mediator.Send(new GetSemesterReportsQuery(schoolUserId), cancellationToken);
+            var result = await mediator.Send(new GetSemesterReportsQuery(), cancellationToken);
             return result.ToActionResult();
         }
     }

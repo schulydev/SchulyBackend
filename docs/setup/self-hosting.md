@@ -108,7 +108,6 @@ cp .env.example .env
 | `POSTGRES_PASSWORD` | A strong database password. |
 | `LOCAL_LOGIN_SIGNING_KEY` | Key that signs access tokens (required). Base64 of 32 bytes - generate with `openssl rand -base64 32`. A new key signs everybody out. |
 | `TWO_FACTOR_ENCRYPTION_KEY` | Key that encrypts two-factor secrets (required). Base64 of 32 bytes - generate with `openssl rand -base64 32`. A new key breaks two-factor for every account. |
-| `ADMIN_EMAIL` | Your own email. The account registered with it gets the `Administrator` role. |
 | `S3_ACCESS_KEY` | SeaweedFS S3 access key. |
 | `S3_SECRET_KEY` | SeaweedFS S3 secret key. |
 | `AVATAR_SIGNING_KEY` | HMAC key for signing avatar URLs (required). Generate with `openssl rand -hex 32`. |
@@ -182,23 +181,17 @@ obtains a TLS certificate for the hostname.
   proving the API is up (`/api/app` is the only unauthenticated route).
 - `https://${API_HOST}/api/app` → the app config (also anonymous); its `version` field
   reports the running backend version - handy for confirming a deploy or upgrade.
-- `https://${API_HOST}/api/plugins` → loaded plugins (requires an `Administrator`
-  login). Manage at runtime with `POST /api/plugins/install` and
-  `DELETE /api/plugins/{name}`.
+- Plugins are declared in `plugins.yml`; the backend log lists what was loaded.
 - Point the Schuly app at `https://${API_HOST}`. It signs in against the backend's
   `/auth` endpoints.
 
 ## 7. Create your first login
 
-Open the web app at `https://${API_HOST}` and register with the address you put in
-`ADMIN_EMAIL`, or call `POST https://${API_HOST}/auth/register` directly. Confirm the
-address through the link in the verification mail. That account gets the
-`Administrator` role, which is needed to manage plugins through the API. More
-administrators go into `config/backend.env` as `Auth__Administrators__1`,
-`Auth__Administrators__2`, and so on.
-
-Anyone else registers the same way, from the web app or the Schuly app. They get no
-role.
+Open the web app at `https://${API_HOST}` and register, or call
+`POST https://${API_HOST}/auth/register` directly. Confirm the address through the
+link in the verification mail. Everyone registers the same way, from the web app or
+the Schuly app. There is no admin role: every account is equal and only sees its own
+data. Plugins are managed in `plugins.yml`.
 
 ## 8. Harden for production
 
@@ -261,7 +254,6 @@ POSTGRES_USER=schuly
 POSTGRES_PASSWORD=change-me-postgres
 LOCAL_LOGIN_SIGNING_KEY=<openssl rand -base64 32>
 TWO_FACTOR_ENCRYPTION_KEY=<openssl rand -base64 32>
-ADMIN_EMAIL=you@example.com
 S3_ACCESS_KEY=schuly-access
 S3_SECRET_KEY=change-me-s3-secret
 AVATAR_SIGNING_KEY=change-me-avatar-signing-key

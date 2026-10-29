@@ -16,15 +16,14 @@ namespace Schuly.Application.Queries.Exam
     {
         public async ValueTask<Result<ExamDto>> Handle(GetExamQuery query, CancellationToken cancellationToken)
         {
-            var isAdmin = userService.IsCurrentUserAdmin();
-            IReadOnlyList<Guid> myIds = isAdmin ? [] : await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
 
             var exam = await dbContext.Exams
-                .ApplyVisibility(isAdmin, myIds)
+                .ApplyVisibility(myIds)
                 .SingleOrDefaultAsync(e => e.Id == query.ExamId, cancellationToken);
 
             if (exam == null)
-                return Result<ExamDto>.Failure($"Exam with ID '{query.ExamId}' not found");
+                return Result<ExamDto>.NotFound($"Exam with ID '{query.ExamId}' not found");
 
             var averages = await dbContext.Grades.ToClassAveragesAsync([exam.Id], cancellationToken);
             return Result<ExamDto>.Success(exam.ToDto(averages));

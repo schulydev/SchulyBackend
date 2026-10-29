@@ -15,7 +15,7 @@ namespace Schuly.Tests
             ctx.SchoolUsers.Add(alice);
             ctx.SaveChanges();
 
-            var handler = new CreateAbsenceCommandHandler(ctx, new FakeUserService(false, alice.Id));
+            var handler = new CreateAbsenceCommandHandler(ctx, new FakeUserService(alice.Id));
             var from = new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc);
             var until = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
             var result = await handler.Handle(new CreateAbsenceCommand("Sick", default, from, until, alice.Id), CancellationToken.None);
@@ -37,7 +37,7 @@ namespace Schuly.Tests
             ctx.Absences.Add(absence);
             ctx.SaveChanges();
 
-            var handler = new UpdateAbsenceCommandHandler(ctx, new FakeUserService(false, alice.Id));
+            var handler = new UpdateAbsenceCommandHandler(ctx, new FakeUserService(alice.Id));
             var from = new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc);
             var until = new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc);
             var result = await handler.Handle(new UpdateAbsenceCommand(absence.Id, "Sick", default, from, until, alice.Id), CancellationToken.None);

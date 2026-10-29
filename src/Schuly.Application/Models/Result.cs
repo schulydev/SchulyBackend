@@ -5,6 +5,7 @@ namespace Schuly.Application.Models
         Ok,
         Error,      // 400
         Forbidden,  // 403
+        NotFound,   // 404
         Conflict,   // 409
     }
 
@@ -24,11 +25,13 @@ namespace Schuly.Application.Models
         public static Result Success() => new(ResultStatus.Ok, null);
         public static Result Failure(string error) => new(ResultStatus.Error, error);
         public static Result Forbidden(string error = "Forbidden") => new(ResultStatus.Forbidden, error);
+        public static Result NotFound(string error = "Not found") => new(ResultStatus.NotFound, error);
         public static Result Conflict(string error) => new(ResultStatus.Conflict, error);
 
         public static Result<T> Success<T>(T value) => Result<T>.Success(value);
         public static Result<T> Failure<T>(string error) => Result<T>.Failure(error);
         public static Result<T> Forbidden<T>(string error = "Forbidden") => Result<T>.Forbidden(error);
+        public static Result<T> NotFound<T>(string error = "Not found") => Result<T>.NotFound(error);
         public static Result<T> Conflict<T>(string error) => Result<T>.Conflict(error);
     }
 
@@ -50,6 +53,7 @@ namespace Schuly.Application.Models
         public static Result<T> Success(T value) => new(ResultStatus.Ok, value, null);
         public static Result<T> Failure(string error) => new(ResultStatus.Error, default, error);
         public static Result<T> Forbidden(string error = "Forbidden") => new(ResultStatus.Forbidden, default, error);
+        public static Result<T> NotFound(string error = "Not found") => new(ResultStatus.NotFound, default, error);
         public static Result<T> Conflict(string error) => new(ResultStatus.Conflict, default, error);
     }
 }

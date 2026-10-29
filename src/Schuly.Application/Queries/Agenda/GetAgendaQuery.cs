@@ -16,19 +16,14 @@ namespace Schuly.Application.Queries.Agenda
     {
         public async ValueTask<Result<AgendaEntryDto>> Handle(GetAgendaQuery query, CancellationToken cancellationToken)
         {
-            var dbQuery = dbContext.AgendaEntries.AsNoTracking();
-
-            if (!userService.IsCurrentUserAdmin())
-            {
-                var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
-                dbQuery = dbQuery.Where(AgendaVisibility.For(myIds));
-            }
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+            var dbQuery = dbContext.AgendaEntries.AsNoTracking().Where(AgendaVisibility.For(myIds));
 
             var agendaEntry = await dbQuery
                 .SingleOrDefaultAsync(a => a.Id == query.AgendaEntryId, cancellationToken);
 
             if (agendaEntry == null)
-                return Result<AgendaEntryDto>.Failure($"Agenda entry with ID '{query.AgendaEntryId}' not found");
+                return Result<AgendaEntryDto>.NotFound($"Agenda entry with ID '{query.AgendaEntryId}' not found");
 
             return Result<AgendaEntryDto>.Success(agendaEntry.ToDto());
         }

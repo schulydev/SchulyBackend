@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Models;
+using Schuly.Application.Queries.Agenda;
 using Schuly.Domain.Enums;
 using Schuly.Infrastructure;
 using Schuly.Infrastructure.Services;
@@ -21,25 +22,22 @@ namespace Schuly.Application.Commands.Agenda
             if (scopes != 1)
                 return Result.Failure("Exactly one of ClassId / SchoolId / SchoolUserId must be set");
 
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+
             var agendaEntry = await dbContext.AgendaEntries
+                .Where(AgendaVisibility.For(myIds))
                 .SingleOrDefaultAsync(a => a.Id == command.AgendaEntryId, cancellationToken);
 
             if (agendaEntry == null)
-                return Result.Failure($"Agenda entry with ID '{command.AgendaEntryId}' not found");
+                return Result.NotFound($"Agenda entry with ID '{command.AgendaEntryId}' not found");
 
             if (ManualEdit.RefuseSynced(agendaEntry) is { } synced)
                 return synced;
             if (ManualEdit.RequireOffset(command.Date) is { } invalid)
                 return invalid;
 
-            if (!userService.IsCurrentUserAdmin())
-            {
-                var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
-                var ownsExisting = agendaEntry.SchoolUserId is Guid existing && myIds.Contains(existing);
-                var ownsTarget = command.SchoolUserId is Guid target && myIds.Contains(target);
-                if (!ownsExisting || !ownsTarget)
-                    return Result.Forbidden();
-            }
+            if (command.SchoolUserId is not Guid target || !myIds.Contains(target))
+                return Result.Forbidden();
 
             agendaEntry.EntryType = command.EntryType;
             agendaEntry.Title = command.Title;

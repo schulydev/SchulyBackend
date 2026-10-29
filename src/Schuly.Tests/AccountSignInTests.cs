@@ -9,111 +9,10 @@ namespace Schuly.Tests
 {
     public class AccountSignInTests
     {
-        private static IConfiguration Config(params string[] administrators) =>
+        private static IConfiguration Config() =>
             new ConfigurationBuilder()
-                .AddInMemoryCollection(administrators.Select((a, i) => new KeyValuePair<string, string?>($"Auth:Administrators:{i}", a)))
                 .AddInMemoryCollection([new KeyValuePair<string, string?>("Avatar:SigningKey", "test-signing-key")])
-                .AddInMemoryCollection([new KeyValuePair<string, string?>("ExternalLogin:Providers:gaggaoid:TrustEmailVerified", "true"), new KeyValuePair<string, string?>("ExternalLogin:Providers:selfserve:TrustEmailVerified", "false")])
                 .Build();
-
-        [Test]
-        public async Task Configured_email_or_username_gets_the_administrator_role()
-        {
-            var db = TestDb.NewContext(Guid.NewGuid().ToString());
-            var admin = new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com", UserName = "someone" };
-            db.Set<ToamaisutaaPasswordCredential>().Add(Credential(admin, confirmed: true));
-            await db.SaveChangesAsync();
-            var provider = new UserRoleProvider(Config("Admin@Example.com", "opsuser"), db);
-
-            var byEmail = await provider.GetRolesAsync(admin);
-            var byName = await provider.GetRolesAsync(new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "ops@example.com", UserName = "OpsUser" });
-            var other = await provider.GetRolesAsync(new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "student@example.com", UserName = "student" });
-
-            await Assert.That(byEmail).Contains("Administrator");
-            await Assert.That(byName).Contains("Administrator");
-            await Assert.That(other).IsEmpty();
-        }
-
-        [Test]
-        public async Task An_unconfirmed_administrator_email_gets_no_role()
-        {
-            var db = TestDb.NewContext(Guid.NewGuid().ToString());
-            var squatter = new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com", UserName = "squatter" };
-            db.Set<ToamaisutaaPasswordCredential>().Add(Credential(squatter, confirmed: false));
-            await db.SaveChangesAsync();
-            var provider = new UserRoleProvider(Config("admin@example.com"), db);
-
-            await Assert.That(await provider.GetRolesAsync(squatter)).IsEmpty();
-        }
-
-        [Test]
-        public async Task A_provider_verified_administrator_email_gets_the_role()
-        {
-            var db = TestDb.NewContext(Guid.NewGuid().ToString());
-            var user = new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com" };
-            db.Set<ToamaisutaaExternalLogin>().Add(ExternalLogin(user, verified: true));
-            await db.SaveChangesAsync();
-            var provider = new UserRoleProvider(Config("admin@example.com"), db);
-
-            await Assert.That(await provider.GetRolesAsync(user)).Contains("Administrator");
-        }
-
-        [Test]
-        public async Task Without_proof_of_the_administrator_email_there_is_no_role()
-        {
-            var db = TestDb.NewContext(Guid.NewGuid().ToString());
-            var unverified = new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com" };
-            db.Set<ToamaisutaaExternalLogin>().Add(ExternalLogin(unverified, verified: false));
-            await db.SaveChangesAsync();
-            var provider = new UserRoleProvider(Config("admin@example.com"), db);
-
-            await Assert.That(await provider.GetRolesAsync(unverified)).IsEmpty();
-            await Assert.That(await provider.GetRolesAsync(new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com" })).IsEmpty();
-        }
-
-        [Test]
-        public async Task An_address_entry_never_matches_a_user_name()
-        {
-            var db = TestDb.NewContext(Guid.NewGuid().ToString());
-            var provider = new UserRoleProvider(Config("admin@example.com"), db);
-
-            var roles = await provider.GetRolesAsync(new ToamaisutaaUser { Id = Guid.NewGuid(), UserName = "admin@example.com", Email = "other@example.com" });
-
-            await Assert.That(roles).IsEmpty();
-        }
-
-        [Test]
-        public async Task A_provider_without_TrustEmailVerified_is_no_proof()
-        {
-            var db = TestDb.NewContext(Guid.NewGuid().ToString());
-            var user = new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com" };
-            db.Set<ToamaisutaaExternalLogin>().Add(ExternalLogin(user, verified: true, provider: "selfserve"));
-            await db.SaveChangesAsync();
-            var provider = new UserRoleProvider(Config("admin@example.com"), db);
-
-            await Assert.That(await provider.GetRolesAsync(user)).IsEmpty();
-        }
-
-        private static ToamaisutaaExternalLogin ExternalLogin(ToamaisutaaUser user, bool verified, string provider = "gaggaoid") => new()
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            ProviderKey = provider,
-            Subject = Guid.NewGuid().ToString(),
-            Email = user.Email,
-            EmailVerified = verified,
-        };
-
-        private static ToamaisutaaPasswordCredential Credential(ToamaisutaaUser user, bool confirmed) => new()
-        {
-            UserId = user.Id,
-            UserName = user.UserName!,
-            NormalizedUserName = user.UserName!.ToUpperInvariant(),
-            Email = user.Email,
-            NormalizedEmail = user.Email?.ToUpperInvariant(),
-            EmailConfirmedAt = confirmed ? DateTimeOffset.UtcNow : null,
-            PasswordHash = "x",
-        };
 
         [Test]
         public async Task Avatar_upload_replaces_the_previous_picture()
@@ -123,7 +22,7 @@ namespace Schuly.Tests
             db.ApplicationUsers.Add(user);
             await db.SaveChangesAsync();
             var storage = new InMemoryDocumentStorage();
-            var handler = new SetMyAvatarCommandHandler(db, new FakeUserService(false) { CurrentUserId = user.Id }, storage);
+            var handler = new SetMyAvatarCommandHandler(db, new FakeUserService() { CurrentUserId = user.Id }, storage);
 
             await handler.Handle(new SetMyAvatarCommand(new MemoryStream([1, 2, 3]), "image/png", 3), default);
             var first = user.ProfilePictureUrl;
@@ -143,7 +42,7 @@ namespace Schuly.Tests
             db.ApplicationUsers.Add(user);
             await db.SaveChangesAsync();
             var storage = new InMemoryDocumentStorage();
-            var handler = new SetMyAvatarCommandHandler(db, new FakeUserService(false) { CurrentUserId = user.Id }, storage);
+            var handler = new SetMyAvatarCommandHandler(db, new FakeUserService() { CurrentUserId = user.Id }, storage);
 
             var tooLarge = await handler.Handle(new SetMyAvatarCommand(new MemoryStream([1]), "image/png", SetMyAvatarCommandHandler.MaxBytes + 1), default);
             var notAnImage = await handler.Handle(new SetMyAvatarCommand(new MemoryStream([1]), "image/svg+xml", 1), default);

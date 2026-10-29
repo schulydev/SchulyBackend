@@ -4,14 +4,13 @@ namespace Schuly.Application.Queries.Exam
 {
     internal static class ExamQueryExtensions
     {
-        public static IQueryable<Domain.Exam> ApplyVisibility(this IQueryable<Domain.Exam> exams, bool isAdmin, IReadOnlyList<Guid> myIds)
+        public static IQueryable<Domain.Exam> ApplyVisibility(this IQueryable<Domain.Exam> exams, IReadOnlyList<Guid> myIds)
         {
-            IQueryable<Domain.Exam> scoped = exams.AsNoTracking().Include(e => e.Class);
-
-            if (!isAdmin)
-                scoped = scoped.Where(e => e.Class!.Students.Any(su => myIds.Contains(su.Id)));
-
-            return scoped.Include(e => e.Grades.Where(g => isAdmin || myIds.Contains(g.SchoolUserId)));
+            return exams
+                .AsNoTracking()
+                .Include(e => e.Class)
+                .Where(e => e.Class!.Students.Any(su => myIds.Contains(su.Id)))
+                .Include(e => e.Grades.Where(g => myIds.Contains(g.SchoolUserId)));
         }
     }
 }

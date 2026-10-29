@@ -59,7 +59,7 @@ namespace Schuly.Tests
             var seed = Seed(db);
 
             using var ctx = TestDb.NewContext(db);
-            var handler = new ExportCurrentUserQueryHandler(ctx, new FakeUserService(false) { CurrentUserId = seed.User1Id });
+            var handler = new ExportCurrentUserQueryHandler(ctx, new FakeUserService() { CurrentUserId = seed.User1Id });
 
             var result = await handler.Handle(new ExportCurrentUserQuery(), CancellationToken.None);
 
@@ -93,7 +93,7 @@ namespace Schuly.Tests
         public async Task Export_fails_when_the_current_user_does_not_exist()
         {
             using var ctx = TestDb.NewContext(nameof(Export_fails_when_the_current_user_does_not_exist));
-            var handler = new ExportCurrentUserQueryHandler(ctx, new FakeUserService(false) { CurrentUserId = Guid.NewGuid() });
+            var handler = new ExportCurrentUserQueryHandler(ctx, new FakeUserService() { CurrentUserId = Guid.NewGuid() });
 
             var result = await handler.Handle(new ExportCurrentUserQuery(), CancellationToken.None);
 

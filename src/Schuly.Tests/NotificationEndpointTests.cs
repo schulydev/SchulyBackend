@@ -11,8 +11,8 @@ namespace Schuly.Tests
         public async Task Registering_the_same_token_twice_upserts_a_single_row_reassigned_to_the_caller()
         {
             var dbName = nameof(Registering_the_same_token_twice_upserts_a_single_row_reassigned_to_the_caller);
-            var firstUser = new FakeUserService(false) { CurrentUserId = Guid.NewGuid() };
-            var secondUser = new FakeUserService(false) { CurrentUserId = Guid.NewGuid() };
+            var firstUser = new FakeUserService() { CurrentUserId = Guid.NewGuid() };
+            var secondUser = new FakeUserService() { CurrentUserId = Guid.NewGuid() };
 
             using var ctx = TestDb.NewContext(dbName);
 
@@ -35,8 +35,8 @@ namespace Schuly.Tests
         public async Task Removing_another_users_token_leaves_it_in_place()
         {
             var dbName = nameof(Removing_another_users_token_leaves_it_in_place);
-            var owner = new FakeUserService(false) { CurrentUserId = Guid.NewGuid() };
-            var intruder = new FakeUserService(false) { CurrentUserId = Guid.NewGuid() };
+            var owner = new FakeUserService() { CurrentUserId = Guid.NewGuid() };
+            var intruder = new FakeUserService() { CurrentUserId = Guid.NewGuid() };
 
             using var ctx = TestDb.NewContext(dbName);
             ctx.DeviceTokens.Add(new DeviceToken { ApplicationUserId = owner.CurrentUserId, Token = "token-1", Platform = "android", Locale = "de", LastSeenAt = DateTime.UtcNow });
@@ -54,7 +54,7 @@ namespace Schuly.Tests
         {
             var dbName = nameof(Get_preferences_returns_defaults_when_the_user_has_no_row);
             using var ctx = TestDb.NewContext(dbName);
-            var user = new FakeUserService(false) { CurrentUserId = Guid.NewGuid() };
+            var user = new FakeUserService() { CurrentUserId = Guid.NewGuid() };
 
             var handler = new GetNotificationPreferencesQueryHandler(ctx, user);
             var result = await handler.Handle(new GetNotificationPreferencesQuery(), CancellationToken.None);
@@ -72,7 +72,7 @@ namespace Schuly.Tests
         {
             var dbName = nameof(Updating_then_getting_preferences_round_trips);
             using var ctx = TestDb.NewContext(dbName);
-            var user = new FakeUserService(false) { CurrentUserId = Guid.NewGuid() };
+            var user = new FakeUserService() { CurrentUserId = Guid.NewGuid() };
 
             var updateHandler = new UpdateNotificationPreferencesCommandHandler(ctx, user);
             var updateResult = await updateHandler.Handle(new UpdateNotificationPreferencesCommand(false, false, true, true), CancellationToken.None);
@@ -92,7 +92,7 @@ namespace Schuly.Tests
         {
             var dbName = nameof(Invalid_platform_is_rejected);
             using var ctx = TestDb.NewContext(dbName);
-            var user = new FakeUserService(false) { CurrentUserId = Guid.NewGuid() };
+            var user = new FakeUserService() { CurrentUserId = Guid.NewGuid() };
 
             var handler = new RegisterDeviceTokenCommandHandler(ctx, user);
             var result = await handler.Handle(new RegisterDeviceTokenCommand("token-1", "windows-phone", "de"), CancellationToken.None);
@@ -105,7 +105,7 @@ namespace Schuly.Tests
         {
             var dbName = nameof(Invalid_locale_is_rejected);
             using var ctx = TestDb.NewContext(dbName);
-            var user = new FakeUserService(false) { CurrentUserId = Guid.NewGuid() };
+            var user = new FakeUserService() { CurrentUserId = Guid.NewGuid() };
 
             var handler = new RegisterDeviceTokenCommandHandler(ctx, user);
             var result = await handler.Handle(new RegisterDeviceTokenCommand("token-1", "android", "fr"), CancellationToken.None);

@@ -54,7 +54,7 @@ Full documentation lives at **[docs.schuly.dev/SchulyServer](https://docs.schuly
 
 ## School systems catalog
 
-Which login systems the app offers is **supplied by the loaded plugins**, not baked into the backend: each plugin describes the system it serves via its `IPluginLogin.SchoolSystem` descriptor, and the backend seeds the catalog from those on load (seed-if-missing by `Key`, so admin edits survive). Install a plugin and its system appears in the picker with no operator config.
+Which login systems the app offers is **supplied by the loaded plugins**, not baked into the backend: each plugin describes the system it serves via its `IPluginLogin.SchoolSystem` descriptor, and the backend seeds the catalog from those on load (seed-if-missing by `Key`, so local edits survive). Install a plugin and its system appears in the picker with no operator config.
 
 Operators can still add or override custom systems through a `SchoolSystems` config section, which seeds first and therefore wins on a matching `Key`.
 

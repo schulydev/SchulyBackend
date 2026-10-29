@@ -23,12 +23,9 @@ namespace Schuly.Application.Commands.Agenda
             if (ManualEdit.RequireOffset(command.Date) is { } invalid)
                 return invalid;
 
-            if (!userService.IsCurrentUserAdmin())
-            {
-                var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
-                if (command.SchoolUserId is not Guid ownerId || !myIds.Contains(ownerId))
-                    return Result.Forbidden();
-            }
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+            if (command.SchoolUserId is not Guid ownerId || !myIds.Contains(ownerId))
+                return Result.Forbidden();
 
             await dbContext.AgendaEntries.AddAsync(new AgendaEntry
             {

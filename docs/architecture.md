@@ -75,7 +75,7 @@ register controllers, minimal-API endpoints, and recurring background tasks -
 run by the host's own scheduler and dispatched back into the owning plugin's DI scope by name.
 Plugin requests execute inside the owning plugin's DI scope via
 `PluginScopeMiddleware`. See [Plugin management](plugin-management.md) for the
-registry, hot-swap, background tasks, and admin endpoints.
+registry, hot-swap, and background tasks.
 
 ### What a plugin can reach
 

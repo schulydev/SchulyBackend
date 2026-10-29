@@ -16,18 +16,13 @@ namespace Schuly.Application.Queries.Absence
     {
         public async ValueTask<Result<List<AbsenceDto>>> Handle(GetAbsencesQuery query, CancellationToken cancellationToken)
         {
-            var dbQuery = dbContext.Absences
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+
+            var absences = await dbContext.Absences
                 .AsNoTracking()
                 .Include(a => a.SchoolUser)
-                .AsQueryable();
-
-            if (!userService.IsCurrentUserAdmin())
-            {
-                var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
-                dbQuery = dbQuery.Where(a => myIds.Contains(a.SchoolUserId));
-            }
-
-            var absences = await dbQuery.ToListAsync(cancellationToken);
+                .Where(a => myIds.Contains(a.SchoolUserId))
+                .ToListAsync(cancellationToken);
             return Result<List<AbsenceDto>>.Success(absences.ToDto());
         }
     }

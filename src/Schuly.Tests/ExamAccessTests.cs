@@ -37,7 +37,7 @@ namespace Schuly.Tests
             var aliceId = Seed(nameof(Student_only_sees_exams_for_their_enrolled_classes));
             using var ctx = TestDb.NewContext(nameof(Student_only_sees_exams_for_their_enrolled_classes));
 
-            var handler = new GetExamsQueryHandler(ctx, new FakeUserService(false, aliceId));
+            var handler = new GetExamsQueryHandler(ctx, new FakeUserService(aliceId));
             var result = await handler.Handle(new GetExamsQuery(), CancellationToken.None);
 
             await Assert.That(result.IsSuccess).IsTrue();
@@ -50,24 +50,12 @@ namespace Schuly.Tests
             var aliceId = Seed(nameof(Student_only_sees_their_own_grade_on_a_shared_exam));
             using var ctx = TestDb.NewContext(nameof(Student_only_sees_their_own_grade_on_a_shared_exam));
 
-            var handler = new GetExamsQueryHandler(ctx, new FakeUserService(false, aliceId));
+            var handler = new GetExamsQueryHandler(ctx, new FakeUserService(aliceId));
             var result = await handler.Handle(new GetExamsQuery(), CancellationToken.None);
 
             var exam = result.Value!.Single();
             await Assert.That(exam.Grades.Count).IsEqualTo(1);
         }
 
-        [Test]
-        public async Task Admin_sees_all_exams_and_all_grades()
-        {
-            Seed(nameof(Admin_sees_all_exams_and_all_grades));
-            using var ctx = TestDb.NewContext(nameof(Admin_sees_all_exams_and_all_grades));
-
-            var handler = new GetExamsQueryHandler(ctx, new FakeUserService(true));
-            var result = await handler.Handle(new GetExamsQuery(), CancellationToken.None);
-
-            await Assert.That(result.Value!.Count).IsEqualTo(2);
-            await Assert.That(result.Value!.Sum(e => e.Grades.Count)).IsEqualTo(3);
-        }
     }
 }

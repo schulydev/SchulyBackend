@@ -1,7 +1,7 @@
 # Plugin management
 
 Plugins are loaded into the backend at runtime from a registry - no rebuilds, no
-manual DLL drops, no restart.
+manual DLL drops.
 
 ## How it works
 
@@ -46,9 +46,6 @@ An override that fails to parse (a typo'd cron expression, say) is ignored in fa
 of the plugin's own default rather than taking the task offline. The same keys work as
 `SCHULY_PLUGIN_<NAME>_` environment variables, like the rest of the plugin config.
 
-`GET /api/plugins/scheduler` reports each task's cron, last run, next run, and failure
-counts.
-
 ## Configuration
 
 | Key | Default | Purpose |
@@ -58,17 +55,8 @@ counts.
 | `Plugins:Directory` | `<app>/plugins` | Where plugin DLLs are stored. |
 | `Plugins:ConfigDirectory` | `<app>/plugins-config` | Per-plugin `<AssemblyName>.yml` config. |
 
-## Admin endpoints (`Administrator`)
+## Managing plugins
 
-| Method | Route | Action |
-|---|---|---|
-| `GET` | `/api/plugins` | Loaded plugins. |
-| `GET` | `/api/plugins/scheduler` | Background task schedules, last/next run, failure counts. |
-| `GET` | `/api/plugins/registry` | Plugins available in the registry. |
-| `POST` | `/api/plugins/install` | `{ "name": "...", "version": "latest" }` - download + load. |
-| `POST` | `/api/plugins/{name}/update` | Update to the registry's latest. |
-| `DELETE` | `/api/plugins/{name}` | Unload + delete. |
-
-Every change is applied in-process and persisted to `plugins.yml`, so it survives a
-restart. Shared dependency DLLs are reference-counted: removing one plugin never
-deletes a dependency another still uses.
+There is no runtime admin API. Edit `plugins.yml` and restart the backend: it installs
+what is declared, removes what is not, and loads the result. Shared dependency DLLs are
+reference-counted: removing one plugin never deletes a dependency another still uses.

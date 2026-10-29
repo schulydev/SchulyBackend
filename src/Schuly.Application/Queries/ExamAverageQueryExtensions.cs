@@ -6,7 +6,7 @@ namespace Schuly.Application.Queries
     internal static class ExamAverageQueryExtensions
     {
         // Deliberately aggregates over ALL grades of the exam rather than the caller-filtered
-        // Exam.Grades collection, so a non-admin still gets a real class average. A scalar
+        // Exam.Grades collection, so the caller still gets a real class average. A scalar
         // aggregate leaks no individual grade to the caller.
         public static async Task<Dictionary<Guid, decimal>> ToClassAveragesAsync(this IQueryable<Grade> grades, IReadOnlyCollection<Guid> examIds, CancellationToken cancellationToken)
         {

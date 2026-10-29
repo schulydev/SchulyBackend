@@ -15,5 +15,5 @@ runtime from a registry.
   - [Configuration](setup/configuration.md) - settings, sign-in, roles, connection strings.
   - [Production](setup/production.md) - Docker image, release flow, startup migrations.
 - [Migrations](migrations.md) - EF Core migration scripts and startup behavior.
-- [Plugin management](plugin-management.md) - runtime plugin registry, hot-swap, admin endpoints.
+- [Plugin management](plugin-management.md) - runtime plugin registry, hot-swap.
 - [Contributing](contributing.md) - issue → branch → PR workflow and conventions.

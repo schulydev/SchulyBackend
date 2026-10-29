@@ -15,15 +15,13 @@ namespace Schuly.Application.Commands.Me
     {
         public async ValueTask<Result> Handle(DeleteMyGradeCommand command, CancellationToken cancellationToken)
         {
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+
             var grade = await dbContext.Grades
                 .Include(g => g.Exam)
-                .SingleOrDefaultAsync(g => g.Id == command.GradeId, cancellationToken);
+                .SingleOrDefaultAsync(g => g.Id == command.GradeId && myIds.Contains(g.SchoolUserId), cancellationToken);
             if (grade is null)
-                return Result.Failure($"Grade with ID '{command.GradeId}' not found");
-
-            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
-            if (!myIds.Contains(grade.SchoolUserId))
-                return Result.Forbidden();
+                return Result.NotFound($"Grade with ID '{command.GradeId}' not found");
             if (ManualEdit.RefuseSynced(grade) is { } synced)
                 return synced;
 

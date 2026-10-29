@@ -1,7 +1,6 @@
 using Mediator;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Schuly.Application.Commands.Exam;
 using Schuly.Application.Dtos;
 using Schuly.Application.Queries.Exam;
 
@@ -27,42 +26,6 @@ namespace Schuly.API.Controllers
         public async Task<IActionResult> GetExams(CancellationToken cancellationToken)
         {
             var result = await mediator.Send(new GetExamsQuery(), cancellationToken);
-            return result.ToActionResult();
-        }
-
-        [HttpPost]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> AddExam([FromBody] CreateExamCommand command, CancellationToken cancellationToken)
-        {
-            var result = await mediator.Send(command, cancellationToken);
-            return result.ToActionResult();
-        }
-
-        [HttpPost("grade")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> AddGradeToExam([FromBody] AddGradeToExamCommand command, CancellationToken cancellationToken)
-        {
-            var result = await mediator.Send(command, cancellationToken);
-            return result.ToActionResult();
-        }
-
-        [HttpPut]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> UpdateExam([FromBody] UpdateExamCommand command, CancellationToken cancellationToken)
-        {
-            var result = await mediator.Send(command, cancellationToken);
-            return result.ToActionResult();
-        }
-
-        [HttpDelete("{id:guid}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> DeleteExam(Guid id, CancellationToken cancellationToken)
-        {
-            var result = await mediator.Send(new DeleteExamCommand(id), cancellationToken);
             return result.ToActionResult();
         }
     }

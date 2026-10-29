@@ -14,21 +14,16 @@ namespace Schuly.Application.Commands.Absence
     {
         public async ValueTask<Result> Handle(RemoveAbsenceCommand command, CancellationToken cancellationToken)
         {
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+
             var absence = await dbContext.Absences
-                .SingleOrDefaultAsync(a => a.Id == command.AbsenceId, cancellationToken);
+                .SingleOrDefaultAsync(a => a.Id == command.AbsenceId && myIds.Contains(a.SchoolUserId), cancellationToken);
 
             if (absence == null)
-                return Result.Failure($"Absence with ID '{command.AbsenceId}' not found");
+                return Result.NotFound($"Absence with ID '{command.AbsenceId}' not found");
 
             if (ManualEdit.RefuseSynced(absence) is { } synced)
                 return synced;
-
-            if (!userService.IsCurrentUserAdmin())
-            {
-                var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
-                if (!myIds.Contains(absence.SchoolUserId))
-                    return Result.Forbidden();
-            }
 
             dbContext.Absences.Remove(absence);
             await dbContext.SaveChangesAsync(cancellationToken);

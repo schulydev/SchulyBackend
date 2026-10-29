@@ -55,13 +55,12 @@ get the tokens in the JSON body.
 | `LocalLogin:AllowSelfRegistration` | Whether anyone can register (`true` in `appsettings.json`). |
 | `LocalLogin:RequireVerifiedEmailForPasswordReset` | Only send reset mails to verified addresses (`true` in `appsettings.json`). |
 | `TwoFactor:Issuer` | Name shown in authenticator apps (`Schuly`). |
-| `Auth:Administrators` | List of emails or usernames that get the `Administrator` role (`Auth__Administrators__0`, `__1`, ...). |
 
 Generate both keys with `openssl rand -base64 32` and keep them stable. A new signing
 key signs everybody out. A new encryption key breaks two-factor for every account
 that has it set up.
 
-Every account not listed in `Auth:Administrators` has no role. On the first valid
+There is no admin role. On the first valid
 token for an unknown user, the API creates the matching Schuly user (`AddUserSync` /
 `IUserService`).
 
@@ -81,7 +80,7 @@ providers under Settings → Security in the web app.
 | `ExternalLogin:Providers:<key>:ClientId` / `ClientSecret` | The client the provider issued. Leave the secret out for a public client. |
 | `ExternalLogin:Providers:<key>:Scopes` | Defaults to `openid profile email`. |
 | `ExternalLogin:Providers:<key>:AllowSignUp` | Whether a first sign-in may create a new account. `false` by default: only accounts that linked the provider can use it. |
-| `ExternalLogin:Providers:<key>:TrustEmailVerified` | Whether the address this provider marks `email_verified` counts as the account's email when the account has no verified address of its own. Without it, accounts created through the provider have no email. Anything granted by email, such as `Auth:Administrators`, then goes to whoever the provider lets claim that address, so only turn this on for providers that really verify addresses. |
+| `ExternalLogin:Providers:<key>:TrustEmailVerified` | Whether the address this provider marks `email_verified` counts as the account's email when the account has no verified address of its own. Without it, accounts created through the provider have no email. Only turn this on for providers that really verify addresses. |
 | `ExternalLogin:Providers:<key>:LinkByVerifiedEmail` | Whether a first sign-in joins the account that already has the provider's verified address. Only turn this on for providers that really verify addresses. |
 | `ExternalLogin:AllowedReturnUrls` | Exact URLs a finished sign-in may return to (`ExternalLogin__AllowedReturnUrls__0`, `__1`, ...). |
 | `ExternalLogin:CallbackBaseUrl` | Public scheme and host of the server, when a proxy does not forward them. |
@@ -184,8 +183,7 @@ The default (fallback) policy **requires an authenticated user for every endpoin
 (`AddSchulyAuthorization`). Endpoints opt out with `[AllowAnonymous]`. The anonymous
 `/api/app` surface (e.g. the school-systems catalog and static logo assets under
 `wwwroot`) is reachable without auth so the app can load its login catalog. Register,
-login and the other public sign-in endpoints under `/auth` need no token either. Admin
-plugin endpoints under `/api/plugins` require the `Administrator` role.
+login and the other public sign-in endpoints under `/auth` need no token either.
 
 ## Plugins
 

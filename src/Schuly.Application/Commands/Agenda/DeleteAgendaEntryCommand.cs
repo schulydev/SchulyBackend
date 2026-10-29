@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Schuly.Application.Models;
+using Schuly.Application.Queries.Agenda;
 using Schuly.Infrastructure;
 using Schuly.Infrastructure.Services;
 using Schuly.Application.Authorization;
@@ -14,21 +15,17 @@ namespace Schuly.Application.Commands.Agenda
     {
         public async ValueTask<Result> Handle(DeleteAgendaEntryCommand command, CancellationToken cancellationToken)
         {
+            var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
+
             var agendaEntry = await dbContext.AgendaEntries
+                .Where(AgendaVisibility.For(myIds))
                 .SingleOrDefaultAsync(a => a.Id == command.AgendaEntryId, cancellationToken);
 
             if (agendaEntry == null)
-                return Result.Failure($"Agenda entry with ID '{command.AgendaEntryId}' not found");
+                return Result.NotFound($"Agenda entry with ID '{command.AgendaEntryId}' not found");
 
             if (ManualEdit.RefuseSynced(agendaEntry) is { } synced)
                 return synced;
-
-            if (!userService.IsCurrentUserAdmin())
-            {
-                var myIds = await userService.GetCurrentUserSchoolUserIdsAsync(cancellationToken);
-                if (agendaEntry.SchoolUserId is not Guid ownerId || !myIds.Contains(ownerId))
-                    return Result.Forbidden();
-            }
 
             dbContext.AgendaEntries.Remove(agendaEntry);
             await dbContext.SaveChangesAsync(cancellationToken);
