@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Schuly.Infrastructure;
 using Schuly.Infrastructure.Services;
 using System.Security.Claims;
+using Schuly.API.Email;
 using Toamaisutaa.Abstractions;
+using Toamaisutaa.Email.Smtp;
 using Toamaisutaa.EntityFrameworkCore;
 
 namespace Schuly.API.Extensions
@@ -18,6 +20,7 @@ namespace Schuly.API.Extensions
             services.AddScoped<IUserRoleProvider, UserRoleProvider>();
 
             services.AddToamaisutaaSmtpEmail(configuration);
+            services.AddSingleton<IEmailVerificationEmailTemplate, SchulyEmailVerificationEmailTemplate>();
             services.AddToamaisutaaSmtpEmailVerification();
             services.AddToamaisutaaPasswordLogin(configuration);
             services.AddToamaisutaaTwoFactor(configuration);
