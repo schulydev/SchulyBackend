@@ -20,10 +20,13 @@ export const microsoftProblemText: Record<MicrosoftProblem, { title: string; des
   failed: { title: 'Could not load data', description: 'Microsoft 365 did not respond. Try again later.' },
 };
 
+type ResourceParams = Record<string, string | number | boolean>;
+
 interface ResourceState<T> {
   items: T[];
   loading: boolean;
   problem: MicrosoftProblem | null;
+  params: ResourceParams;
 }
 
 // The plugin answers an expired Microsoft sign-in with 409; a 401 is the Schuly session and the auth interceptor handles it.
@@ -34,10 +37,10 @@ const problemOf = (error: unknown): MicrosoftProblem =>
       ? 'missing'
       : 'failed';
 
-/** Loads a list from /api/plugins/microsoft/accounts/{id}/{resource} for the selected account, reloading when it changes. */
-export function withMicrosoftResource<T>(resource: string, params: Record<string, string | number | boolean> = {}) {
+/** Loads a list from /api/plugins/microsoft/accounts/{id}/{resource} for the selected account, reloading when the account or a query parameter changes. */
+export function withMicrosoftResource<T>(resource: string, params: ResourceParams = {}) {
   return signalStoreFeature(
-    withState<ResourceState<T>>({ items: [], loading: false, problem: null }),
+    withState<ResourceState<T>>({ items: [], loading: false, problem: null, params }),
     withComputed(() => {
       const accounts = inject(MicrosoftAccountsStore);
       return { waiting: computed(() => !accounts.loaded()) };
@@ -45,10 +48,13 @@ export function withMicrosoftResource<T>(resource: string, params: Record<string
     withMethods((store) => {
       const http = inject(HttpClient);
       return {
-        load: rxMethod<string | null>(
+        /** Changes one query parameter and reloads the list. */
+        setParam: (key: string, value: string | number | boolean) =>
+          patchState(store, { params: { ...store.params(), [key]: value } }),
+        load: rxMethod<{ id: string | null; params: ResourceParams }>(
           pipe(
-            tap((id) => patchState(store, { items: [], problem: null, loading: !!id })),
-            switchMap((id) =>
+            tap(({ id }) => patchState(store, { items: [], problem: null, loading: !!id })),
+            switchMap(({ id, params }) =>
               id
                 ? http
                     .get<T[]>(`/api/plugins/microsoft/accounts/${encodeURIComponent(id)}/${resource}`, { params })
@@ -65,6 +71,11 @@ export function withMicrosoftResource<T>(resource: string, params: Record<string
         ),
       };
     }),
-    withHooks({ onInit: (store) => store.load(inject(MicrosoftAccountsStore).selectedId) }),
+    withHooks({
+      onInit: (store) => {
+        const accounts = inject(MicrosoftAccountsStore);
+        store.load(computed(() => ({ id: accounts.selectedId(), params: store.params() })));
+      },
+    }),
   );
 }

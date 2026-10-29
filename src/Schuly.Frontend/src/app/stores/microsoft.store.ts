@@ -1,5 +1,5 @@
 import { computed, inject } from '@angular/core';
-import { signalStore, withComputed } from '@ngrx/signals';
+import { signalStore, withComputed, withMethods } from '@ngrx/signals';
 import { MicrosoftAccountsStore } from './microsoft-accounts.store';
 import { withMicrosoftResource } from './microsoft-resource';
 
@@ -39,6 +39,21 @@ export interface OneNoteNotebook {
   links?: { oneNoteWebUrl?: { href?: string | null } | null } | null;
 }
 
+/**
+ * OneDrive driveItem from me/drive/{path}/children (outnote `files`). Folders carry `folder`, files carry `file`;
+ * `@microsoft.graph.downloadUrl` is a short-lived pre-authenticated link and only present on files.
+ */
+export interface DriveItem {
+  id: string;
+  name?: string | null;
+  size?: number | null;
+  lastModifiedDateTime?: string | null;
+  webUrl?: string | null;
+  folder?: { childCount?: number | null } | null;
+  file?: { mimeType?: string | null } | null;
+  '@microsoft.graph.downloadUrl'?: string | null;
+}
+
 export const MailStore = signalStore(
   withMicrosoftResource<MailMessage>('mail', { folder: 'inbox', top: 25, unread: false }),
   withComputed((store) => ({
@@ -46,6 +61,7 @@ export const MailStore = signalStore(
       store.items().map((m) => ({
         id: m.id,
         sender: m.from?.emailAddress?.name || m.from?.emailAddress?.address || 'Unknown sender',
+        address: m.from?.emailAddress?.address ?? null,
         subject: m.subject || '(no subject)',
         preview: m.bodyPreview ?? '',
         received: m.receivedDateTime ?? null,
@@ -53,6 +69,10 @@ export const MailStore = signalStore(
         link: m.webLink ?? null,
       })),
     ),
+    unreadOnly: computed(() => store.params()['unread'] === true),
+  })),
+  withMethods((store) => ({
+    setUnreadOnly: (unread: boolean) => store.setParam('unread', unread),
   })),
 );
 
@@ -111,5 +131,62 @@ export const NotebooksStore = signalStore(
         }))
         .sort((a, b) => (b.modified ?? '').localeCompare(a.modified ?? '')),
     ),
+  })),
+);
+
+export type DriveKind = 'folder' | 'document' | 'spreadsheet' | 'presentation' | 'pdf' | 'image' | 'archive' | 'file';
+
+const extensionKinds: Record<string, DriveKind> = {
+  doc: 'document', docx: 'document', odt: 'document', rtf: 'document', txt: 'document', md: 'document',
+  xls: 'spreadsheet', xlsx: 'spreadsheet', ods: 'spreadsheet', csv: 'spreadsheet',
+  ppt: 'presentation', pptx: 'presentation', odp: 'presentation', key: 'presentation',
+  pdf: 'pdf',
+  png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image', svg: 'image', bmp: 'image', heic: 'image',
+  zip: 'archive', rar: 'archive', '7z': 'archive', tar: 'archive', gz: 'archive',
+};
+
+const extensionOf = (name: string): string => (name.includes('.') ? (name.split('.').pop() ?? '').toLowerCase() : '');
+
+const kindOf = (item: DriveItem, name: string): DriveKind => {
+  if (item.folder) return 'folder';
+  const mime = item.file?.mimeType ?? '';
+  if (mime.startsWith('image/')) return 'image';
+  if (mime === 'application/pdf') return 'pdf';
+  if (/zip|compressed|tar|rar/.test(mime)) return 'archive';
+  if (/spreadsheet|ms-excel|csv/.test(mime)) return 'spreadsheet';
+  if (/presentation|powerpoint/.test(mime)) return 'presentation';
+  if (/wordprocessing|msword|opendocument\.text|rtf|^text\//.test(mime)) return 'document';
+  return extensionKinds[extensionOf(name)] ?? 'file';
+};
+
+export const DriveStore = signalStore(
+  withMicrosoftResource<DriveItem>('files', { path: 'root', top: 100 }),
+  withComputed((store) => ({
+    entries: computed(() =>
+      store
+        .items()
+        .map((i) => {
+          const name = i.name || 'Untitled';
+          const kind = kindOf(i, name);
+          return {
+            id: i.id,
+            name,
+            kind,
+            isFolder: kind === 'folder',
+            size: i.size ?? 0,
+            childCount: i.folder?.childCount ?? null,
+            extension: extensionOf(name),
+            modified: i.lastModifiedDateTime ?? null,
+            link: i.webUrl ?? null,
+            download: i.folder ? null : (i['@microsoft.graph.downloadUrl'] ?? null),
+          };
+        })
+        .sort((a, b) => Number(b.isFolder) - Number(a.isFolder) || a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })),
+    ),
+  })),
+  withMethods((store) => ({
+    /** Opens a folder given as the names from the drive root; an empty trail is the root. */
+    openFolder: (trail: string[]) =>
+      store.setParam('path', trail.length ? `root:/${trail.map(encodeURIComponent).join('/')}:` : 'root'),
   })),
 );
