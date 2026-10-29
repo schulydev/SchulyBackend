@@ -6,6 +6,7 @@ import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { EmptyState } from '../shared/empty-state';
+import { LoadMore } from '../shared/load-more';
 import { ListTime } from '../shared/list-time';
 import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
 import { MicrosoftProblem } from '../shared/microsoft-problem';
@@ -24,6 +25,7 @@ import { MailStore } from '../stores/microsoft.store';
     DatePipe,
     EmptyState,
     ListTime,
+    LoadMore,
     MicrosoftAccountPicker,
     MicrosoftProblem,
     PageHeader,
@@ -58,6 +60,9 @@ import { MailStore } from '../stores/microsoft.store';
           }
         </app-page-header>
       </div>
+      @if (query().trim() && mail.hasMore()) {
+          <p class="text-muted-foreground -mt-2 text-xs">Searching loaded items only. Scroll to load more.</p>
+        }
 
       <ng-template #filterMenu>
         <hlm-dropdown-menu class="min-w-44">
@@ -89,7 +94,7 @@ import { MailStore } from '../stores/microsoft.store';
                 <span class="text-right">Received</span>
                 <span>Status</span>
               </div>
-              <ul class="divide-y border-b">
+              <ul class="divide-y border-b" [attr.aria-busy]="mail.loadingMore()">
                 @for (message of filtered(); track message.id) {
                   <li>
                     <button
@@ -128,6 +133,14 @@ import { MailStore } from '../stores/microsoft.store';
                 description="Try a different search or clear the filter."
               />
             }
+            <app-load-more
+              label="Load more messages"
+              [hasMore]="mail.hasMore()"
+              [loading]="mail.loadingMore()"
+              [failed]="mail.moreFailed()"
+              [loaded]="mail.loadedMore()"
+              (more)="mail.loadMore()"
+            />
           </div>
 
           @if (selected(); as message) {

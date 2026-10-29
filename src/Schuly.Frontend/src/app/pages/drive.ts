@@ -17,6 +17,7 @@ import { HlmBreadcrumbImports } from '@spartan-ng/helm/breadcrumb';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { EmptyState } from '../shared/empty-state';
+import { LoadMore } from '../shared/load-more';
 import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
 import { MicrosoftProblem } from '../shared/microsoft-problem';
 import { SearchField } from '../shared/search-field';
@@ -47,7 +48,7 @@ function formatSize(bytes: number): string {
 
 @Component({
   selector: 'app-drive',
-  imports: [HlmBreadcrumbImports, HlmButton, HlmSkeletonImports, NgIcon, EmptyState, MicrosoftAccountPicker, MicrosoftProblem, SearchField],
+  imports: [HlmBreadcrumbImports, HlmButton, HlmSkeletonImports, NgIcon, EmptyState, LoadMore, MicrosoftAccountPicker, MicrosoftProblem, SearchField],
   providers: [
     provideIcons({
       lucideDownload,
@@ -110,6 +111,9 @@ function formatSize(bytes: number): string {
             <app-search-field [(value)]="query" label="Search files" placeholder="Search files" />
           </div>
         </div>
+        @if (query().trim() && store.hasMore()) {
+          <p class="text-muted-foreground -mt-2 text-xs">Searching loaded items only. Scroll to load more.</p>
+        }
       }
 
       @if (store.waiting() || store.loading()) {
@@ -125,6 +129,7 @@ function formatSize(bytes: number): string {
           role="listbox"
           aria-label="Files and folders"
           class="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-4"
+          [attr.aria-busy]="store.loadingMore()"
           (keydown)="onKeydown($event)"
         >
           @for (entry of filtered(); track entry.id; let i = $index) {
@@ -157,6 +162,15 @@ function formatSize(bytes: number): string {
       } @else {
         <app-empty-state icon="lucideHardDrive" title="This folder is empty" description="Files and folders from OneDrive appear here." />
       }
+
+      <app-load-more
+        label="Load more files"
+        [hasMore]="store.hasMore()"
+        [loading]="store.loadingMore()"
+        [failed]="store.moreFailed()"
+        [loaded]="store.loadedMore()"
+        (more)="store.loadMore()"
+      />
     </div>
   `,
 })

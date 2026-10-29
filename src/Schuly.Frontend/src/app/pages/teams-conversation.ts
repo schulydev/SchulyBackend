@@ -9,6 +9,7 @@ import { dayKey } from '../core/dates';
 import { renderBody } from '../core/message-html';
 import { EmptyState } from '../shared/empty-state';
 import { ChatAvatar } from '../shared/chat-avatar';
+import { LoadMore } from '../shared/load-more';
 import { MicrosoftProblem } from '../shared/microsoft-problem';
 import { PersonAvatar } from '../shared/person-avatar';
 import { TeamsStore, bodyText } from '../stores/teams.store';
@@ -46,7 +47,7 @@ type LogItem =
 
 @Component({
   selector: 'app-teams-conversation',
-  imports: [DatePipe, NgTemplateOutlet, HlmButton, HlmSkeletonImports, HlmSpinner, NgIcon, ChatAvatar, EmptyState, MicrosoftProblem, PersonAvatar],
+  imports: [DatePipe, NgTemplateOutlet, HlmButton, HlmSkeletonImports, HlmSpinner, NgIcon, ChatAvatar, EmptyState, LoadMore, MicrosoftProblem, PersonAvatar],
   providers: [provideIcons({ lucideArrowLeft, lucideArrowUp, lucideArrowDown, lucideExternalLink, lucideMessagesSquare, lucidePaperclip })],
   template: `
     @if (store.openChat(); as chat) {
@@ -70,12 +71,21 @@ type LogItem =
         <div
           #log
           role="log"
-          aria-live="polite"
+          [attr.aria-live]="store.messagesLoadingMore() ? 'off' : 'polite'"
           aria-label="Messages"
-          class="absolute inset-0 overflow-y-auto"
+          [attr.aria-busy]="store.messagesLoadingMore()"
+          class="absolute inset-0 overflow-y-auto [overflow-anchor:none]"
           (scroll)="onScroll()"
         >
           <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-end gap-1 px-4 py-6 sm:px-6">
+            <app-load-more
+              label="Load older messages"
+              [hasMore]="store.messagesMore()"
+              [loading]="store.messagesLoadingMore()"
+              [failed]="store.messagesMoreFailed()"
+              [loaded]="store.messagesLoadedMore()"
+              (more)="loadOlder()"
+            />
             @if (store.messagesLoading()) {
               <div class="flex flex-col gap-6" aria-busy="true">
                 @for (i of [1, 2, 3]; track i) {
@@ -259,6 +269,8 @@ export class TeamsConversation {
   private readonly log = viewChild<ElementRef<HTMLElement>>('log');
   private readonly composer = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
 
+  /** Scroll geometry from just before older messages were requested; restoring it keeps the same message in view. */
+  private anchor: { height: number; top: number } | null = null;
   private atBottom = true;
   private forceScroll = true;
   private lastKey: string | null = null;
@@ -354,6 +366,7 @@ export class TeamsConversation {
         this.forceScroll = true;
         this.atBottom = true;
         this.lastKey = null;
+        this.anchor = null;
         this.newBelow.set(false);
         afterNextRender(() => this.composer()?.nativeElement.focus(), { injector: this.injector });
       });
@@ -362,7 +375,8 @@ export class TeamsConversation {
     effect(() => {
       const items = this.items();
       untracked(() => {
-        if (!items.length) return;
+        // Older messages arriving at the top are not news at the bottom; the anchor restore handles the scroll.
+        if (this.anchor || !items.length) return;
         const last = items[items.length - 1];
         const changed = last.key !== this.lastKey;
         this.lastKey = last.key;
@@ -375,6 +389,29 @@ export class TeamsConversation {
         }
       });
     });
+
+    effect(() => {
+      const loading = this.store.messagesLoadingMore();
+      untracked(() => {
+        if (loading || !this.anchor) return;
+        const anchor = this.anchor;
+        afterNextRender(
+          () => {
+            const el = this.log()?.nativeElement;
+            if (el && this.anchor === anchor) el.scrollTop = anchor.top + (el.scrollHeight - anchor.height);
+            if (this.anchor === anchor) this.anchor = null;
+          },
+          { injector: this.injector },
+        );
+      });
+    });
+  }
+
+  protected loadOlder(): void {
+    const el = this.log()?.nativeElement;
+    if (!el || !this.store.messagesMore() || this.store.messagesLoadingMore()) return;
+    this.anchor = { height: el.scrollHeight, top: el.scrollTop };
+    this.store.loadOlderMessages();
   }
 
   private scrollToEnd(): void {
