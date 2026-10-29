@@ -79,12 +79,12 @@ const CHAT_POLL_MS = 60_000;
                           <span class="min-w-0 flex-1 truncate text-sm" [class]="chat.unread ? 'text-foreground font-bold' : 'font-medium'">
                             {{ chat.title }}
                           </span>
-                          <span class="text-muted-foreground shrink-0 text-xs"><app-list-time [value]="chat.updated" [weekday]="true" /></span>
+                          <span class="text-foreground/70 shrink-0 text-xs"><app-list-time [value]="chat.updated" [weekday]="true" /></span>
                         </span>
                         <span class="flex min-w-0 items-center gap-2">
                           <span
                             class="block min-w-0 flex-1 truncate text-xs"
-                            [class]="chat.unread ? 'text-foreground font-semibold' : 'text-muted-foreground'"
+                            [class]="chat.unread ? 'text-foreground font-semibold' : 'text-foreground/70'"
                           >
                             {{ chat.preview || 'No messages yet' }}
                           </span>

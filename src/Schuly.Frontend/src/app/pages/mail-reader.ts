@@ -105,7 +105,7 @@ const formatSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 /
       <h3 #title tabindex="-1" class="text-2xl leading-tight font-semibold tracking-tight wrap-anywhere outline-none">
         {{ detail()?.subject ?? summary().subject }}
       </h3>
-      <div class="flex items-start gap-3">
+      <div class="flex flex-wrap items-start gap-x-3 gap-y-1">
         <span class="bg-muted flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-medium" aria-hidden="true">{{ letters() }}</span>
         <div class="min-w-0 flex-1 text-sm">
           <p class="truncate font-semibold">{{ detail()?.from?.name ?? summary().sender }}</p>
@@ -122,7 +122,7 @@ const formatSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 /
           }
         </div>
         @if (detail()?.received ?? summary().received; as received) {
-          <time class="text-muted-foreground shrink-0 text-xs" [attr.datetime]="received">{{ received | date: 'EEE d MMM y, HH:mm' }}</time>
+          <time class="text-muted-foreground shrink-0 text-xs max-sm:ps-13" [attr.datetime]="received">{{ received | date: 'EEE d MMM y, HH:mm' }}</time>
         }
       </div>
 
@@ -130,9 +130,9 @@ const formatSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 /
         <ul class="flex flex-col gap-2 border-y py-3" aria-label="Attachments">
           @for (file of files(); track file.id) {
             <li class="flex min-w-0 flex-col gap-2">
-              <div class="flex min-w-0 items-center gap-2 text-sm">
+              <div class="flex min-w-0 flex-wrap items-center gap-x-2 text-sm">
                 <ng-icon name="lucidePaperclip" class="shrink-0" aria-hidden="true" />
-                <span class="min-w-0 truncate">{{ file.name }}</span>
+                <span class="min-w-24 flex-1 truncate">{{ file.name }}</span>
                 <span class="text-muted-foreground shrink-0 text-xs">{{ size(file.size) }}</span>
                 <button hlmBtn type="button" variant="ghost" size="sm" class="ms-auto shrink-0" (click)="download(file)">
                   <ng-icon name="lucideDownload" aria-hidden="true" />
@@ -197,6 +197,8 @@ export class MailReader {
   protected readonly notice = signal('');
   protected readonly previews = signal<Record<string, string>>({});
 
+  /** The effect below must only rerun when the message changes, not when the list patches its summary. */
+  private readonly id = computed(() => this.summary().id);
   protected readonly detail = this.client.detail;
   protected readonly size = formatSize;
   protected readonly letters = computed(() => initials(this.detail()?.from?.name ?? this.summary().sender) || '?');
@@ -209,7 +211,7 @@ export class MailReader {
 
   constructor() {
     effect(() => {
-      const id = this.summary().id;
+      const id = this.id();
       untracked(() => {
         this.dropPreviews();
         this.notice.set('');

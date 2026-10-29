@@ -84,6 +84,7 @@ interface Composing {
   template: `
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div class="px-4 has-[label]:pt-4 lg:px-6"><app-microsoft-account-picker /></div>
+      <p class="bg-muted mx-4 mt-2 truncate rounded-md px-3 py-1.5 text-sm empty:hidden lg:mx-6" role="status" aria-live="polite">{{ sent() }}</p>
 
       <div
         class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex-row"
@@ -190,14 +191,14 @@ interface Composing {
                         <span class="bg-primary absolute inset-y-0 start-0 w-1" aria-hidden="true"></span>
                       }
                       <hlm-avatar size="lg">
-                        <span hlmAvatarFallback>{{ letters(message.listName) }}</span>
+                        <span hlmAvatarFallback class="text-foreground">{{ letters(message.listName) }}</span>
                       </hlm-avatar>
                       <span class="block min-w-0 flex-1 overflow-hidden">
                         <span class="flex min-w-0 items-baseline gap-2">
                           <span class="min-w-0 flex-1 truncate text-sm" [class]="message.unread ? 'text-foreground font-bold' : 'font-medium'">
                             {{ message.listName }}
                           </span>
-                          <span class="text-muted-foreground shrink-0 text-xs"><app-list-time [value]="message.received" [weekday]="true" /></span>
+                          <span class="text-foreground/70 shrink-0 text-xs"><app-list-time [value]="message.received" [weekday]="true" /></span>
                         </span>
                         <span class="flex min-w-0 items-center gap-1.5">
                           <span class="min-w-0 flex-1 truncate text-sm" [class]="message.unread ? 'text-foreground font-semibold' : ''">
@@ -216,7 +217,7 @@ interface Composing {
                           }
                         </span>
                         @if (message.preview) {
-                          <span class="text-muted-foreground block min-w-0 truncate text-xs">{{ message.preview }}</span>
+                          <span class="text-foreground/70 block min-w-0 truncate text-xs">{{ message.preview }}</span>
                         }
                       </span>
                     </button>
@@ -263,7 +264,7 @@ interface Composing {
           } @else {
             <div class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 text-sm">
               <ng-icon name="lucideMail" class="text-2xl" aria-hidden="true" />
-              {{ sent() || 'Select a message to read it' }}
+              Select a message to read it
             </div>
           }
         </section>
@@ -285,6 +286,7 @@ export class Mail {
   protected readonly selectedId = signal<string | null>(null);
   protected readonly composing = signal<Composing | null>(null);
   protected readonly sent = signal('');
+  private sentTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly rows = viewChildren<ElementRef<HTMLElement>>('row');
 
   protected readonly folderLabel = computed(() => this.client.folders().find((f) => f.key === this.mail.folder())?.name ?? 'Mail');
@@ -348,6 +350,8 @@ export class Mail {
   protected composed(message: string): void {
     this.composing.set(null);
     this.sent.set(message);
+    clearTimeout(this.sentTimer);
+    this.sentTimer = setTimeout(() => this.sent.set(''), 6000);
   }
 
   private focusRow(id: string | null): void {

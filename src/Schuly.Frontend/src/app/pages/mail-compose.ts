@@ -90,7 +90,7 @@ const toBase64 = async (file: File): Promise<string> => {
       @if (mode() === 'new') {
         <div class="flex flex-col gap-2">
           <div class="flex flex-wrap items-center gap-3">
-            <input #files id="compose-files" type="file" multiple class="sr-only" tabindex="-1" (change)="pick($event)" />
+            <input #files id="compose-files" type="file" multiple aria-label="Attach files" class="sr-only" tabindex="-1" (change)="pick($event)" />
             <button hlmBtn type="button" variant="outline" size="sm" (click)="files.click()">
               <ng-icon name="lucidePaperclip" aria-hidden="true" />
               Attach files

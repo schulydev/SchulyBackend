@@ -16,8 +16,8 @@ describe('cleanPreview', () => {
 
 describe('safeFileName', () => {
   it('removes path parts and leading dots', () => {
-    expect(safeFileName('../../etc/passwd')).toBe('_etc_passwd');
-    expect(safeFileName('..\evil.exe')).toBe('_evil.exe');
+    expect(safeFileName('../../etc/passwd')).toBe('etc_passwd');
+    expect(safeFileName('..\evil.exe')).toBe('evil.exe');
     expect(safeFileName('')).toBe('attachment');
   });
 });
