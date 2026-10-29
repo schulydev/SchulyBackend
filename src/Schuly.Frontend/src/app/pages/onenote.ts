@@ -4,7 +4,6 @@ import { lucideKeyboard, lucideNotebook } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmDialogImports } from '@spartan-ng/helm/dialog';
 import { HlmInput } from '@spartan-ng/helm/input';
-import { HlmPopoverImports } from '@spartan-ng/helm/popover';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { persistedNumber } from '../core/persisted';
 import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
@@ -32,7 +31,7 @@ const isTyping = (target: EventTarget | null): boolean => {
 
 @Component({
   selector: 'app-onenote',
-  imports: [HlmButton, HlmDialogImports, HlmInput, HlmPopoverImports, HlmSpinner, MicrosoftAccountPicker, NgIcon, OneNotePageView, OneNotePages, OneNoteTree, SearchField, SplitHandle],
+  imports: [HlmButton, HlmDialogImports, HlmInput, HlmSpinner, MicrosoftAccountPicker, NgIcon, OneNotePageView, OneNotePages, OneNoteTree, SearchField, SplitHandle],
   providers: [provideIcons({ lucideKeyboard, lucideNotebook }), OneNoteStore],
   host: {
     class: 'flex h-[calc(100svh-var(--header-height))] min-h-0 min-w-0 flex-col overflow-hidden',
@@ -49,12 +48,12 @@ const isTyping = (target: EventTarget | null): boolean => {
           [value]="store.query()"
           (valueChange)="store.setQuery($event)"
         />
-        <hlm-popover>
-          <button hlmPopoverTrigger hlmBtn variant="ghost" size="icon-sm" type="button" title="Keyboard shortcuts">
+        <div class="relative" (keydown.escape)="shortcutsOpen.set(false)">
+          <button hlmBtn variant="ghost" size="icon-sm" type="button" title="Keyboard shortcuts" aria-controls="onenote-shortcuts" [attr.aria-expanded]="shortcutsOpen()" (click)="shortcutsOpen.set(!shortcutsOpen())">
             <ng-icon name="lucideKeyboard" aria-hidden="true" />
             <span class="sr-only">Keyboard shortcuts</span>
           </button>
-          <hlm-popover-content *hlmPopoverPortal="let ctx" class="w-64">
+          <div id="onenote-shortcuts" class="bg-popover text-popover-foreground ring-foreground/10 absolute end-0 top-full z-30 mt-1 flex w-64 flex-col gap-2.5 rounded-lg p-2.5 text-sm shadow-md ring-1" [hidden]="!shortcutsOpen()">
             <h2 class="text-sm font-medium">Keyboard shortcuts</h2>
             <dl class="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1.5 text-sm">
               @for (s of shortcuts; track s.keys) {
@@ -62,8 +61,8 @@ const isTyping = (target: EventTarget | null): boolean => {
                 <dd>{{ s.action }}</dd>
               }
             </dl>
-          </hlm-popover-content>
-        </hlm-popover>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -133,6 +132,7 @@ export class OneNote {
   protected readonly treeWidth = persistedNumber('schuly.onenote.tree', 288);
   protected readonly listWidth = persistedNumber('schuly.onenote.list', 340);
 
+  protected readonly shortcutsOpen = signal(false);
   protected readonly newOpen = signal(false);
   protected readonly newTitle = signal('');
   protected readonly creating = signal(false);

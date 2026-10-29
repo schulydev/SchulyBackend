@@ -183,7 +183,7 @@ const SAVE_ERRORS: Record<OneNoteProblem, string> = {
         </hlm-alert-dialog-header>
         <hlm-alert-dialog-footer>
           <button hlmAlertDialogCancel>Cancel</button>
-          <button hlmAlertDialogAction variant="destructive" (click)="remove()">Delete</button>
+          <button hlmAlertDialogAction variant="destructive" class="bg-destructive! text-white! hover:bg-destructive/90! dark:text-black!" (click)="remove()">Delete</button>
         </hlm-alert-dialog-footer>
       </hlm-alert-dialog-content>
     </hlm-alert-dialog>
