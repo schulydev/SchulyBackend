@@ -3,7 +3,7 @@ import { computed, effect, inject, untracked } from '@angular/core';
 import { patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { AbsencesStore } from './absences.store';
-import { ConnectionsStore } from './connections.store';
+import { CapabilityAccount, LinkedAccountsStore } from './linked-accounts.store';
 
 export interface AbsenceReportRequest {
   dateFrom: string;
@@ -38,22 +38,22 @@ interface AbsenceReportsState {
   reasons: Record<string, string[]>;
 }
 
-const base = (accountId: string) =>
-  `/api/plugins/schulware/accounts/${encodeURIComponent(accountId)}/absences`;
+const base = (account: CapabilityAccount) => `${account.basePath}/${encodeURIComponent(account.id)}/absences`;
 
 export function absenceErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof HttpErrorResponse)) return fallback;
   const body = error.error as { code?: string; message?: string } | null;
+  if (typeof body?.message === 'string' && body.message.trim()) return body.message.trim();
   switch (body?.code) {
-    case 'schulnetz_rejected':
+    case 'school_rejected':
       return body.message || 'Your school did not accept this report.';
     case 'not_withdrawable':
       return 'Your school already processed this report, so it can no longer be withdrawn.';
     case 'absence_reporting_not_allowed':
       return 'Your school does not let you report absences here. Contact your school instead.';
-    case 'schulnetz_signin_expired':
-      return 'Your school sign-in expired. Reconnect the school in the Schuly mobile app, then try again.';
-    case 'schulnetz_unavailable':
+    case 'signin_expired':
+      return 'Your school sign-in expired. Re-authenticate it in Settings > Schools & accounts, then try again.';
+    case 'school_unavailable':
       return 'Your school could not be reached right now. Try again in a moment.';
   }
   if (error.status === 502) return 'Your school could not be reached right now. Try again in a moment.';
@@ -63,20 +63,20 @@ export function absenceErrorMessage(error: unknown, fallback: string): string {
 
 export const AbsenceReportsStore = signalStore(
   withState<AbsenceReportsState>({ reports: [], loading: false, unavailable: false, reasons: {} }),
-  withComputed((store, connections = inject(ConnectionsStore)) => ({
-    accounts: connections.schulnetzAccounts,
-    available: computed(() => !store.unavailable() && connections.schulnetzAccounts().length > 0),
+  withComputed((store, linked = inject(LinkedAccountsStore)) => ({
+    accounts: computed(() => linked.capabilityAccounts().absence_reporting),
+    available: computed(() => !store.unavailable() && linked.capabilityAccounts().absence_reporting.length > 0),
   })),
-  withMethods((store, http = inject(HttpClient), connections = inject(ConnectionsStore)) => ({
+  withMethods((store, http = inject(HttpClient), linked = inject(LinkedAccountsStore)) => ({
     async load(): Promise<void> {
-      const accounts = connections.schulnetzAccounts();
+      const accounts = linked.capabilityAccounts().absence_reporting;
       patchState(store, { loading: true });
       let missing = 0;
       const groups = await Promise.all(
         accounts.map(async (account) => {
           try {
             const rows = await firstValueFrom(
-              http.get<ReportedAbsenceDto[]>(`${base(account.id)}/reported`),
+              http.get<ReportedAbsenceDto[]>(`${base(account)}/reported`),
             );
             return (Array.isArray(rows) ? rows : []).map((row) => ({
               ...row,
@@ -99,10 +99,12 @@ export const AbsenceReportsStore = signalStore(
     },
     /** Reasons the school offers, cached per account; any failure yields an empty list (not cached). */
     async loadReasons(accountId: string): Promise<string[]> {
+      const account = linked.capabilityAccounts().absence_reporting.find((a) => a.id === accountId);
+      if (!account) return [];
       const cached = store.reasons()[accountId];
       if (cached) return cached;
       try {
-        const rows = await firstValueFrom(http.get<string[]>(`${base(accountId)}/reasons`));
+        const rows = await firstValueFrom(http.get<string[]>(`${base(account)}/reasons`));
         const reasons = Array.isArray(rows)
           ? rows.filter((r): r is string => typeof r === 'string' && r.trim() !== '')
           : [];
@@ -113,11 +115,15 @@ export const AbsenceReportsStore = signalStore(
       }
     },
     async report(accountId: string, request: AbsenceReportRequest): Promise<void> {
-      await firstValueFrom(http.post(base(accountId), request));
+      const account = linked.capabilityAccounts().absence_reporting.find((a) => a.id === accountId);
+      if (!account) throw new Error('This account is not linked any more.');
+      await firstValueFrom(http.post(base(account), request));
     },
     async withdraw(report: ReportedAbsence): Promise<void> {
+      const account = linked.capabilityAccounts().absence_reporting.find((a) => a.id === report.accountId);
+      if (!account) throw new Error('This account is not linked any more.');
       await firstValueFrom(
-        http.delete(base(report.accountId), { params: { ids: report.ids.join(',') } }),
+        http.delete(base(account), { params: { ids: report.ids.join(',') } }),
       );
     },
   })),
@@ -129,9 +135,9 @@ export const AbsenceReportsStore = signalStore(
   })),
   withHooks({
     onInit(store) {
-      const connections = inject(ConnectionsStore);
+      const linked = inject(LinkedAccountsStore);
       effect(() => {
-        connections.schulnetzAccounts();
+        linked.capabilityAccounts().absence_reporting;
         untracked(() => void store.load());
       });
     },

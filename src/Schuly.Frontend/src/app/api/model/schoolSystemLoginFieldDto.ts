@@ -7,6 +7,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { LoginFieldSuggestionDto } from './loginFieldSuggestionDto';
 
 
 export interface SchoolSystemLoginFieldDto { 
@@ -17,5 +18,6 @@ export interface SchoolSystemLoginFieldDto {
     defaultValue?: string | null;
     required?: boolean;
     replacedByLinkedAccount?: boolean;
+    suggestions?: Array<LoginFieldSuggestionDto>;
 }
 

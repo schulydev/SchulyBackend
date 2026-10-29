@@ -89,7 +89,7 @@ let nextId = 0;
 
       @if (accounts().length > 1) {
         <fieldset hlmFieldSet>
-          <legend hlmFieldLegend>Microsoft accounts</legend>
+          <legend hlmFieldLegend>Linked accounts</legend>
           <div class="flex flex-col gap-2 rounded-lg border px-3 py-2.5">
             <label class="flex items-center gap-2 text-sm" [for]="prefix + 'all-accounts'">
               <hlm-checkbox

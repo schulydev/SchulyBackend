@@ -15,7 +15,7 @@ import { HlmToggleGroupImports } from '@spartan-ng/helm/toggle-group';
 import { Theme, ThemeStore } from '../stores/theme.store';
 import { AccountCard } from './settings/account-card';
 import { SecurityCard } from './settings/security-card';
-import { ConnectionsCard } from './settings/connections-card';
+import { AccountsCard } from './settings/accounts-card';
 import { UserStore } from '../stores/user.store';
 
 @Component({
@@ -23,7 +23,7 @@ import { UserStore } from '../stores/user.store';
   imports: [
     AccountCard,
     SecurityCard,
-    ConnectionsCard,
+    AccountsCard,
     HlmCardImports,
     HlmButton,
     HlmToggleGroupImports,
@@ -36,7 +36,7 @@ import { UserStore } from '../stores/user.store';
     <div class="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 lg:p-6">
       <app-account-card />
       <app-security-card />
-      <app-connections-card />
+      <app-accounts-card />
 
       <section hlmCard>
         <div hlmCardHeader>

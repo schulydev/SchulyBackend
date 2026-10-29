@@ -1,4 +1,6 @@
 import { DatePipe, formatDate } from '@angular/common';
+import { SyncingNotice } from '../../shared/syncing-notice';
+import { LinkedAccountsStore } from '../../stores/linked-accounts.store';
 import { Component, LOCALE_ID, computed, inject } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideChevronLeft, lucideChevronRight, lucideTriangleAlert } from '@ng-icons/lucide';
@@ -15,7 +17,7 @@ import { WeekView } from './week-view';
 
 @Component({
   selector: 'app-calendar',
-  imports: [
+  imports: [SyncingNotice, 
     HlmAlertImports,
     HlmButton,
     HlmSpinner,
@@ -33,6 +35,7 @@ import { WeekView } from './week-view';
   ],
   template: `
     <div class="flex flex-col gap-4 p-4 lg:p-6">
+      <app-syncing-notice />
       <div class="flex flex-wrap items-center gap-2">
         <div class="flex items-center gap-1">
           <button
@@ -105,11 +108,10 @@ import { WeekView } from './week-view';
       }
 
       @if (
-        calendar.microsoftAvailable() && !calendar.microsoftLoading() && !calendar.accounts().length
+        calendar.feedAvailable() && !calendar.feedLoading() && !calendar.accounts().length && !linked.loading()
       ) {
         <p class="text-muted-foreground text-sm">
-          Link a Microsoft account in the Schuly app to see your Outlook and Teams calendar here
-          too.
+          Link an account in Settings to see its calendar here too.
         </p>
       }
 
@@ -156,6 +158,7 @@ import { WeekView } from './week-view';
 })
 export class Calendar {
   protected readonly calendar = inject(CalendarStore);
+  protected readonly linked = inject(LinkedAccountsStore);
   private readonly locale = inject(LOCALE_ID);
 
   protected readonly title = computed(() => {

@@ -15,6 +15,8 @@ export function withCollection<T>(fetcher: () => () => Observable<T[]>) {
     withMethods((store) => {
       const fetch = fetcher();
       return {
+        /** Empties the list at once, e.g. when the account behind it was unlinked. */
+        clear: () => patchState(store, { items: [] }),
         load: rxMethod<void>(
           pipe(
             tap(() => patchState(store, { loading: true, error: null })),

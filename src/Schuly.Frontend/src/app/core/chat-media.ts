@@ -20,7 +20,7 @@ export interface MessageFile {
   /** word, excel, powerpoint, pdf, onenote, image, video, archive, code or other. */
   kind?: string | null;
   hasThumbnail?: boolean | null;
-  /** Link to open the file in Microsoft 365 / SharePoint. */
+  /** Link to open the file in the service's web app. */
   webUrl?: string | null;
 }
 

@@ -6,7 +6,7 @@ const WEEK_MS = 6 * 24 * 60 * 60 * 1000;
 
 /**
  * Time of day for today's items, short date otherwise.
- * With `weekday`, items from the last week show the short weekday and older ones "d MMM" (plus the year when it differs), as Outlook and Teams do.
+ * With `weekday`, items from the last week show the short weekday and older ones "d MMM" (plus the year when it differs), as mail and chat clients do.
  */
 @Component({
   selector: 'app-list-time',

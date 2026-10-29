@@ -120,7 +120,7 @@ const emptyModel = (): ReportModel => {
         <hlm-dialog-header>
           <h2 hlmDialogTitle>Report an absence</h2>
           <p hlmDialogDescription>
-            This is sent to your school (Schulnetz) and appears for each of your classes. You can
+            This is sent to your school and appears for each of your classes. You can
             withdraw it until the school has processed it.
           </p>
         </hlm-dialog-header>

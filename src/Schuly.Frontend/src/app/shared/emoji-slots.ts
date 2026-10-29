@@ -1,5 +1,5 @@
 import { ApplicationRef, Directive, ElementRef, EnvironmentInjector, Injector, afterRenderEffect, createComponent, inject, input, untracked } from '@angular/core';
-import { TeamsEmoji } from '../core/teams-emoji';
+import { ChatEmoji } from '../core/chat-emoji';
 import { EmojiView } from './emoji-view';
 
 /**
@@ -18,7 +18,7 @@ export class EmojiSlots {
   readonly appEmojiSlots = input('');
   /** Message keys in slot order. */
   readonly keys = input<string[]>([]);
-  readonly emojis = input<Record<string, TeamsEmoji>>({});
+  readonly emojis = input<Record<string, ChatEmoji>>({});
   readonly size = input(24);
 
   constructor() {
@@ -38,7 +38,7 @@ export class EmojiSlots {
           slot.textContent = '';
           slot.append(holder);
           const ref = createComponent(EmojiView, { environmentInjector: this.injector, elementInjector: this.node, hostElement: holder });
-          ref.setInput('emoji', { kind: 'teams', emoji });
+          ref.setInput('emoji', { kind: 'native', emoji });
           ref.setInput('size', size);
           this.app.attachView(ref.hostView);
           undo.push(() => {

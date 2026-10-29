@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, Signal, WritableSignal, effect, inject, signal, untracked } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { MicrosoftAccountsStore } from '../stores/microsoft-accounts.store';
+import { LinkedAccountsStore } from '../stores/linked-accounts.store';
 import { createQueue } from './request-queue';
 
 export const MISS_TTL_MS = 10 * 60 * 1000;
@@ -14,7 +14,7 @@ export const MAX_CONCURRENT_PHOTOS = 4;
 @Injectable()
 export class SenderPhotos {
   private readonly http = inject(HttpClient);
-  private readonly accounts = inject(MicrosoftAccountsStore);
+  private readonly accounts = inject(LinkedAccountsStore);
 
   private readonly queue = createQueue(MAX_CONCURRENT_PHOTOS);
   private readonly photos = new Map<string, WritableSignal<string | null>>();
@@ -25,7 +25,7 @@ export class SenderPhotos {
 
   constructor() {
     effect(() => {
-      this.accounts.selectedId();
+      this.accounts.selectedId('mail');
       untracked(() => this.clear());
     });
   }
@@ -53,15 +53,15 @@ export class SenderPhotos {
   }
 
   private load(key: string, sig: WritableSignal<string | null>): void {
-    const accountId = this.accounts.selectedId();
+    const accountId = this.accounts.selectedId('mail');
     if (!accountId || sig() || this.inflight.has(key)) return;
     const missedAt = this.misses.get(key);
     if (missedAt !== undefined && this.now() - missedAt < MISS_TTL_MS) return;
     this.inflight.add(key);
-    const url = `/api/plugins/microsoft/accounts/${encodeURIComponent(accountId)}/people/photo`;
+    const url = `${this.accounts.endpoint('mail')}/people/photo`;
     void this.queue(() => firstValueFrom(this.http.get(url, { params: { email: key, size: 48 }, responseType: 'blob' })))
       .then((blob) => {
-        if (this.accounts.selectedId() !== accountId) return;
+        if (this.accounts.selectedId('mail') !== accountId) return;
         if (blob.size > 0) {
           this.misses.delete(key);
           sig.set(URL.createObjectURL(blob));
@@ -70,7 +70,7 @@ export class SenderPhotos {
         }
       })
       .catch(() => {
-        if (this.accounts.selectedId() === accountId) this.misses.set(key, this.now());
+        if (this.accounts.selectedId('mail') === accountId) this.misses.set(key, this.now());
       })
       .finally(() => this.inflight.delete(key));
   }

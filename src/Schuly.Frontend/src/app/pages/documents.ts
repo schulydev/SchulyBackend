@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { SyncingNotice } from '../shared/syncing-notice';
 import { Component, inject, signal } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideDownload, lucideEye, lucideFileText } from '@ng-icons/lucide';
@@ -15,10 +16,11 @@ import { DocumentsStore } from '../stores/documents.store';
 
 @Component({
   selector: 'app-documents',
-  imports: [HlmAlertImports, HlmTableImports, HlmBadge, HlmButton, HlmSkeletonImports, HlmSpinner, NgIcon, DatePipe, EmptyState, FileViewer],
+  imports: [SyncingNotice, HlmAlertImports, HlmTableImports, HlmBadge, HlmButton, HlmSkeletonImports, HlmSpinner, NgIcon, DatePipe, EmptyState, FileViewer],
   providers: [provideIcons({ lucideDownload, lucideEye, lucideFileText })],
   template: `
     <div class="flex flex-col gap-4 p-4 lg:p-6">
+      <app-syncing-notice />
       @if (documents.downloadError()) {
         <div hlmAlert variant="destructive">
           <p hlmAlertDescription>{{ documents.downloadError() }}</p>

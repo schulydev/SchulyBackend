@@ -1,6 +1,6 @@
 import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, signal } from '@angular/core';
 import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
-import { TeamsStore } from '../stores/teams.store';
+import { ChatStore } from '../stores/chat.store';
 import { PersonAvatar } from './person-avatar';
 
 export interface ChatPerson {
@@ -45,7 +45,7 @@ const PHOTO_CANDIDATES = 4;
   host: { class: 'inline-flex shrink-0' },
 })
 export class ChatAvatar {
-  private readonly store = inject(TeamsStore);
+  private readonly store = inject(ChatStore);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
 

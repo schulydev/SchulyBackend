@@ -11,5 +11,6 @@
 
 export interface RegenerateRecoveryCodesRequest { 
     proof: string;
+    currentPassword?: string | null;
 }
 

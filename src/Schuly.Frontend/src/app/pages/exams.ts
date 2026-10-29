@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { SyncingNotice } from '../shared/syncing-notice';
 import { Component, inject, input } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideClipboardList } from '@ng-icons/lucide';
@@ -91,10 +92,11 @@ export class ExamTable {
 
 @Component({
   selector: 'app-exams',
-  imports: [HlmTabsImports, HlmBadge, ExamTable],
+  imports: [SyncingNotice, HlmTabsImports, HlmBadge, ExamTable],
   providers: [provideIcons({ lucideClipboardList })],
   template: `
     <div class="flex flex-col gap-4 p-4 lg:p-6">
+      <app-syncing-notice />
       <hlm-tabs tab="upcoming" class="w-full">
         <hlm-tabs-list
           aria-label="Exams"

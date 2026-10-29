@@ -2,7 +2,7 @@ import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, i
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideImageOff } from '@ng-icons/lucide';
 import { BubbleFile, BubbleMedia, BubbleSticker, CardView } from '../core/chat-media';
-import { TeamsApi } from '../core/teams-api';
+import { ChatApi } from '../core/chat-api';
 import { FileCard } from './file-card';
 import { ViewerFile } from './file-viewer';
 
@@ -40,7 +40,7 @@ import { ViewerFile } from './file-viewer';
   host: { class: 'block max-w-full' },
 })
 export class ChatImage {
-  private readonly api = inject(TeamsApi);
+  private readonly api = inject(ChatApi);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -133,7 +133,7 @@ export class ChatImage {
   host: { class: 'flex max-w-full flex-col items-start gap-2 empty:hidden' },
 })
 export class ChatMedia {
-  private readonly api = inject(TeamsApi);
+  private readonly api = inject(ChatApi);
 
   readonly media = input<BubbleMedia[]>([]);
   readonly files = input<BubbleFile[]>([]);

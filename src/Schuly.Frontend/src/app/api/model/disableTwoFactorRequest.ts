@@ -11,5 +11,6 @@
 
 export interface DisableTwoFactorRequest { 
     proof: string;
+    currentPassword?: string | null;
 }
 

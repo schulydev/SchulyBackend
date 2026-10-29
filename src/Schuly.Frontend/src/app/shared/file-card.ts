@@ -24,12 +24,12 @@ import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
 import { BubbleFile, formatSize } from '../core/chat-media';
 import { KIND_STYLES } from '../core/file-kind';
-import { TeamsApi } from '../core/teams-api';
+import { ChatApi } from '../core/chat-api';
 
 /** Largest image file that is fetched whole to serve as its own preview when the server has no thumbnail. */
 const MAX_IMAGE_PREVIEW_BYTES = 10 * 1024 * 1024;
 
-/** A file in a chat bubble, Teams-style: name and actions on top, a page preview below. */
+/** A file in a chat bubble, chat-style: name and actions on top, a page preview below. */
 @Component({
   selector: 'app-file-card',
   imports: [NgIcon, NgTemplateOutlet, HlmButton, HlmDropdownMenuImports],
@@ -72,7 +72,7 @@ const MAX_IMAGE_PREVIEW_BYTES = 10 * 1024 * 1024;
         @if (file().webUrl; as url) {
           <a hlmBtn variant="ghost" size="icon-sm" [href]="url" target="_blank" rel="noopener">
             <ng-icon name="lucideExternalLink" aria-hidden="true" />
-            <span class="sr-only">Open {{ file().name }} in Microsoft 365 (opens in a new tab)</span>
+            <span class="sr-only">Open {{ file().name }} online (opens in a new tab)</span>
           </a>
         }
         @if (file().path) {
@@ -124,7 +124,7 @@ const MAX_IMAGE_PREVIEW_BYTES = 10 * 1024 * 1024;
   host: { class: 'block max-w-full' },
 })
 export class FileCard {
-  private readonly api = inject(TeamsApi);
+  private readonly api = inject(ChatApi);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
 

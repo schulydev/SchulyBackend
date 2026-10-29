@@ -25,7 +25,7 @@ import { SenderAvatar } from '../shared/sender-avatar';
 import { FileViewer, ViewerFile } from '../shared/file-viewer';
 import { MailBody } from '../shared/mail-body';
 import { ActionResult, MailAttachment, MailClient } from '../stores/mail-client';
-import { MailStore } from '../stores/microsoft.store';
+import { MailStore } from '../stores/capability-data.store';
 import { ComposeMode } from './mail-compose';
 
 export interface MailSummary {

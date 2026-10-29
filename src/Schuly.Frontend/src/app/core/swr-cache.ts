@@ -6,7 +6,7 @@ interface Entry {
 const MAX_ENTRIES = 300;
 const entries = new Map<string, Entry>();
 
-/** In-memory stale-while-revalidate cache shared by Mail and Teams; keys start with the account id. Lives only as long as the tab. */
+/** In-memory stale-while-revalidate cache shared by Mail and Chat; keys start with the account id. Lives only as long as the tab. */
 export const swrCache = {
   get<T>(key: string): { data: T; age: number } | null {
     const entry = entries.get(key);
