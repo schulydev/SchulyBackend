@@ -1,20 +1,56 @@
 import { Component, computed, input } from '@angular/core';
-import { siClaude, siCursor, siGithubcopilot, siWindsurf } from 'simple-icons';
+import { siClaude, siCursor, siGooglegemini, siWindsurf } from 'simple-icons';
 
 /**
- * Monochrome client logos from Simple Icons (CC0 icon data), drawn in currentColor so they follow the theme. Only brands whose guidelines allow a plain
- * mark that refers to the product are here; OpenAI (ChatGPT, Codex), Microsoft (VS Code) and Google (Gemini) logos are left out and get a neutral icon.
+ * Monochrome client marks, drawn in currentColor so they follow the theme. They only identify which client a setup guide is for.
+ *
+ * - claude, cursor, gemini, windsurf: Simple Icons 16.35.0 (CC0 icon data), imported per icon.
+ * - chatgpt: OpenAI mark from @lobehub/icons-static-svg 1.101.0 (openai.svg, MIT). The mark itself is OpenAI's trademark.
+ * - codex: Codex mark from @lobehub/icons-static-svg 1.101.0 (codex.svg, MIT). The mark itself is OpenAI's trademark.
+ * - vscode: Visual Studio Code mark from @vscode/codicons 0.0.44 (vscode.svg, CC-BY-4.0, (c) Microsoft). The mark itself is Microsoft's trademark.
  */
-const BRANDS = { claude: siClaude, cursor: siCursor, githubcopilot: siGithubcopilot, windsurf: siWindsurf } as const;
+interface Brand {
+  path: string;
+  viewBox: string;
+  evenodd?: true;
+}
+
+const BRANDS = {
+  claude: { path: siClaude.path, viewBox: '0 0 24 24' },
+  cursor: { path: siCursor.path, viewBox: '0 0 24 24' },
+  gemini: { path: siGooglegemini.path, viewBox: '0 0 24 24' },
+  windsurf: { path: siWindsurf.path, viewBox: '0 0 24 24' },
+  chatgpt: {
+    path: 'M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z',
+    viewBox: '0 0 24 24',
+    evenodd: true,
+  },
+  codex: {
+    path: 'M8.086.457a6.105 6.105 0 013.046-.415c1.333.153 2.521.72 3.564 1.7a.117.117 0 00.107.029c1.408-.346 2.762-.224 4.061.366l.063.03.154.076c1.357.703 2.33 1.77 2.918 3.198.278.679.418 1.388.421 2.126a5.655 5.655 0 01-.18 1.631.167.167 0 00.04.155 5.982 5.982 0 011.578 2.891c.385 1.901-.01 3.615-1.183 5.14l-.182.22a6.063 6.063 0 01-2.934 1.851.162.162 0 00-.108.102c-.255.736-.511 1.364-.987 1.992-1.199 1.582-2.962 2.462-4.948 2.451-1.583-.008-2.986-.587-4.21-1.736a.145.145 0 00-.14-.032c-.518.167-1.04.191-1.604.185a5.924 5.924 0 01-2.595-.622 6.058 6.058 0 01-2.146-1.781c-.203-.269-.404-.522-.551-.821a7.74 7.74 0 01-.495-1.283 6.11 6.11 0 01-.017-3.064.166.166 0 00.008-.074.115.115 0 00-.037-.064 5.958 5.958 0 01-1.38-2.202 5.196 5.196 0 01-.333-1.589 6.915 6.915 0 01.188-2.132c.45-1.484 1.309-2.648 2.577-3.493.282-.188.55-.334.802-.438.286-.12.573-.22.861-.304a.129.129 0 00.087-.087A6.016 6.016 0 015.635 2.31C6.315 1.464 7.132.846 8.086.457zm-.804 7.85a.848.848 0 00-1.473.842l1.694 2.965-1.688 2.848a.849.849 0 001.46.864l1.94-3.272a.849.849 0 00.007-.854l-1.94-3.393zm5.446 6.24a.849.849 0 000 1.695h4.848a.849.849 0 000-1.696h-4.848z',
+    viewBox: '0 0 24 24',
+    evenodd: true,
+  },
+  vscode: {
+    path: 'M10.8635 13.9195C10.6568 14.0195 10.4234 14.0246 10.2186 13.9444C10.1163 13.9044 10.0211 13.843 9.94003 13.7614L4.81622 9.06268L2.5844 10.7656C2.37664 10.9241 2.08603 10.9111 1.89307 10.7347L1.17725 10.0802C0.941229 9.86437 0.940959 9.49112 1.17667 9.27496L3.11219 7.5L1.17667 5.72504C0.940959 5.50888 0.941229 5.13563 1.17725 4.91982L1.89307 4.2653C2.08603 4.08887 2.37664 4.07588 2.5844 4.2344L4.81622 5.93732L9.94003 1.23855C9.97043 1.20797 10.0028 1.18023 10.0368 1.15538C10.2749 0.981429 10.5923 0.949298 10.8635 1.08048L13.54 2.37507C13.8212 2.5111 14.0001 2.79721 14.0001 3.11109V8H10.752V4.53356L6.86425 7.5L10.752 10.4664V8H14.0001V11.8889C14.0001 12.2028 13.8212 12.4889 13.54 12.625L10.8635 13.9195Z',
+    viewBox: '0 0 16 16',
+  },
+} satisfies Record<string, Brand>;
 
 export type BrandName = keyof typeof BRANDS;
 
 @Component({
   selector: 'app-brand-icon',
   host: { class: 'inline-flex size-4 shrink-0', 'aria-hidden': 'true' },
-  template: `<svg viewBox="0 0 24 24" class="size-full" fill="currentColor" focusable="false"><path [attr.d]="path()" /></svg>`,
+  template: `<svg
+    [attr.viewBox]="brandData().viewBox"
+    class="size-full"
+    fill="currentColor"
+    focusable="false"
+  >
+    <path [attr.d]="brandData().path" [attr.fill-rule]="brandData().evenodd ? 'evenodd' : null" />
+  </svg>`,
 })
 export class BrandIcon {
   readonly brand = input.required<BrandName>();
-  protected readonly path = computed(() => BRANDS[this.brand()].path);
+  protected readonly brandData = computed<Brand>(() => BRANDS[this.brand()]);
 }

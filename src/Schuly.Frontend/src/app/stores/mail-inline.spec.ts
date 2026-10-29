@@ -1,11 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 import { prepareMailBody } from '../shared/mail-body';
 import { MailClient, imageTypeOf, normalizeCid, referencesInlineParts } from './mail-client';
-import { MicrosoftAccountsStore } from './microsoft-accounts.store';
+import { LinkedAccountsStore } from './linked-accounts.store';
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
 const CID = 'part1.3570rv4z.rIgVu9H8@stud.bbbaden.ch';
@@ -50,7 +49,7 @@ describe('prepareMailBody', () => {
 describe('MailClient inline images', () => {
   it('loads the attachments of an inline-only message (hasAttachments false) and hands the images over as data URLs', async () => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting(), MailClient, { provide: MicrosoftAccountsStore, useValue: { selectedId: signal('acc1') } }],
+      providers: [provideHttpClient(), provideHttpClientTesting(), MailClient, { provide: LinkedAccountsStore, useValue: { selectedId: () => 'acc1', endpoint: () => '/api/plugins/microsoft/accounts/acc1' } }],
     });
     const client = TestBed.inject(MailClient);
     const http = TestBed.inject(HttpTestingController);
