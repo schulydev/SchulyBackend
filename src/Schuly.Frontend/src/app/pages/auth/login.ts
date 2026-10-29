@@ -18,6 +18,7 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { firstValueFrom } from 'rxjs';
 import { AuthApi, SignInProvider } from '../../core/auth-api';
 import { beginExternalSignIn, externalErrors, takePending } from '../../core/external-sign-in';
+import { rememberReturnUrl, takeReturnUrl } from '../../core/return-url';
 import { AuthStore, authErrorMessage } from '../../stores/auth.store';
 import { AuthLayout } from './auth-layout';
 import { ConfirmEmail, confirmEmailHint } from './confirm-email';
@@ -219,6 +220,7 @@ const CODE_LENGTH = 6;
 })
 export class Login implements OnInit {
   readonly changed = input<string>();
+  readonly returnUrl = input<string>();
   readonly code = input<string>();
   readonly state = input<string>();
   readonly failure = input<string>(undefined, { alias: 'error' });
@@ -252,6 +254,7 @@ export class Login implements OnInit {
   });
 
   async ngOnInit(): Promise<void> {
+    rememberReturnUrl(this.returnUrl());
     const code = this.code();
     const failure = this.failure();
     if (code || failure) {
@@ -274,7 +277,7 @@ export class Login implements OnInit {
       const result = await this.auth.signInExternal(code, verifier);
       if (result === 'challenge') this.step.set('code');
       else if (result === 'email') this.step.set('email');
-      else await this.router.navigateByUrl('/');
+      else await this.router.navigateByUrl(takeReturnUrl(this.returnUrl()));
     } catch (error) {
       this.error.set(authErrorMessage(error, externalErrors['external_login_failed']));
     }
@@ -293,7 +296,7 @@ export class Login implements OnInit {
   }
 
   protected async finishEmail(): Promise<void> {
-    await this.router.navigateByUrl('/');
+    await this.router.navigateByUrl(takeReturnUrl(this.returnUrl()));
   }
 
   protected codeHint(): string {
@@ -324,7 +327,7 @@ export class Login implements OnInit {
       const result = await this.auth.signIn(identifier.trim(), password);
       if (result === 'challenge') this.step.set('code');
       else if (result === 'email') this.step.set('email');
-      else await this.router.navigateByUrl('/');
+      else await this.router.navigateByUrl(takeReturnUrl(this.returnUrl()));
     } catch (error) {
       this.error.set(
         authErrorMessage(error, "That didn't match. Check your username and password."),
@@ -338,7 +341,7 @@ export class Login implements OnInit {
     this.error.set(null);
     try {
       await this.auth.verifyCode(this.codeModel().code.trim(), this.rememberDevice());
-      await this.router.navigateByUrl('/');
+      await this.router.navigateByUrl(takeReturnUrl(this.returnUrl()));
     } catch (error) {
       this.codeModel.set({ code: '' });
       const rateLimited = error instanceof HttpErrorResponse && error.status === 429;

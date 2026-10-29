@@ -1,5 +1,7 @@
 using Mediator;
 using Schuly.API.Extensions;
+using Schuly.API.Helply;
+using Schuly.API.Mcp;
 using Schuly.API.Plugins;
 using Schuly.API.Services;
 using Schuly.Application.Behaviors;
@@ -47,6 +49,8 @@ builder.Services.AddSchulyPlugins(builder.Configuration, mvcBuilder);
 
 builder.Services.AddSchulyAuthentication(builder.Configuration);
 builder.Services.AddSchulyAuthorization(builder.Configuration);
+builder.Services.AddSchulyMcp(builder.Configuration);
+builder.Services.AddSchulyHelply(builder.Configuration);
 builder.Services.AddSchulyExceptionHandling();
 builder.Services.AddSchulyForwardedHeaders(builder.Configuration);
 builder.Services.AddSchulyRateLimiting();
@@ -74,15 +78,21 @@ if (app.Environment.IsDevelopment())
     app.MapSchulyApiReference();
 }
 
+app.UseSchulyMcpCors();
 app.UseMiddleware<WebTokenCookies>();
 app.UseAuthentication();
+app.UseSchulyMcpGuards();
 // Partitions on the authenticated "sub" claim, so it has to run after authentication.
 app.UseRateLimiter();
 app.UseAuthorization();
 app.UseMiddleware<PluginScopeMiddleware>();
 app.MapSchulyAuthEndpoints();
 app.MapControllers();
-app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/|auth/|openapi/|scalar).*$)}", "index.html", StaticAssetCaching.Options).AllowAnonymous();
+app.MapSchulyOAuthEndpoints();
+app.MapSchulyMcp();
+app.MapFallbackToFile("{*path:nonfile:regex(^(?!api/|auth/|openapi/|scalar|oauth/|mcp(/|$)|[.]well-known/).*$)}", "index.html", StaticAssetCaching.Options).AllowAnonymous();
 await app.UseSchulyPluginsAsync();
+// Built last, so its routing sees every endpoint, plugin ones included.
+InProcessPluginApi.Build(app);
 
 app.Run();

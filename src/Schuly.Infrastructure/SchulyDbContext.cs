@@ -3,6 +3,8 @@ using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Schuly.Domain;
+using Schuly.Domain.Mcp;
+using Schuly.Infrastructure.Mcp;
 
 namespace Schuly.Infrastructure
 {
@@ -27,6 +29,12 @@ namespace Schuly.Infrastructure
         public DbSet<VaultEntry> VaultEntries { get; set; }
         public DbSet<LinkedAccount> LinkedAccounts { get; set; }
         public DbSet<PluginTask> PluginTasks { get; set; }
+        public DbSet<McpOAuthClient> McpOAuthClients { get; set; }
+        public DbSet<McpGrant> McpGrants { get; set; }
+        public DbSet<McpAuthorizationCode> McpAuthorizationCodes { get; set; }
+        public DbSet<McpToken> McpTokens { get; set; }
+        public DbSet<McpApiKey> McpApiKeys { get; set; }
+        public DbSet<McpActivity> McpActivities { get; set; }
 
         public SchulyDbContext(DbContextOptions<SchulyDbContext> options) : base(options) { }
 
@@ -368,6 +376,104 @@ namespace Schuly.Infrastructure
                 entity.Property(a => a.Email).HasMaxLength(320).IsRequired();
                 entity.Property(a => a.DisplayName).HasMaxLength(200);
                 entity.HasIndex(a => new { a.ApplicationUserId, a.Provider, a.ExternalId }).IsUnique();
+
+                entity.HasOne(a => a.ApplicationUser)
+                    .WithMany()
+                    .HasForeignKey(a => a.ApplicationUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<McpOAuthClient>(entity =>
+            {
+                entity.HasKey(c => c.Id);
+                entity.Property(c => c.ClientId).HasMaxLength(64).IsRequired();
+                entity.Property(c => c.ClientName).HasMaxLength(200).IsRequired();
+                entity.Property(c => c.ClientUri).HasMaxLength(2000);
+                entity.Property(c => c.SoftwareId).HasMaxLength(200);
+                entity.Property(c => c.SoftwareVersion).HasMaxLength(100);
+                entity.Property(c => c.RegistrationIpHash).HasMaxLength(64);
+                entity.HasIndex(c => c.ClientId).IsUnique();
+                entity.HasIndex(c => new { c.RegistrationIpHash, c.CreatedAt });
+            });
+
+            modelBuilder.Entity<McpGrant>(entity =>
+            {
+                entity.HasKey(g => g.Id);
+                entity.Property(g => g.SecurityStamp).HasMaxLength(256);
+                entity.Property(g => g.Permissions).HasConversion(McpPermissionJson.Converter, McpPermissionJson.Comparer).IsRequired();
+                entity.HasIndex(g => new { g.ApplicationUserId, g.McpOAuthClientId });
+
+                entity.HasOne(g => g.ApplicationUser)
+                    .WithMany()
+                    .HasForeignKey(g => g.ApplicationUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(g => g.McpOAuthClient)
+                    .WithMany()
+                    .HasForeignKey(g => g.McpOAuthClientId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<McpAuthorizationCode>(entity =>
+            {
+                entity.HasKey(c => c.Id);
+                entity.Property(c => c.CodeHash).HasMaxLength(64).IsRequired();
+                entity.Property(c => c.RedirectUri).HasMaxLength(2000).IsRequired();
+                entity.Property(c => c.CodeChallenge).HasMaxLength(128).IsRequired();
+                entity.Property(c => c.Resource).HasMaxLength(2000).IsRequired();
+                entity.HasIndex(c => c.CodeHash).IsUnique();
+                entity.HasIndex(c => c.ExpiresAt);
+
+                entity.HasOne(c => c.McpGrant)
+                    .WithMany()
+                    .HasForeignKey(c => c.McpGrantId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<McpToken>(entity =>
+            {
+                entity.HasKey(t => t.Id);
+                entity.Property(t => t.TokenHash).HasMaxLength(64).IsRequired();
+                entity.Property(t => t.Resource).HasMaxLength(2000).IsRequired();
+                entity.Property(t => t.Permissions).HasConversion(McpPermissionJson.NullableConverter, McpPermissionJson.NullableComparer);
+                entity.HasIndex(t => t.TokenHash).IsUnique();
+                entity.HasIndex(t => t.ExpiresAt);
+                entity.HasIndex(t => t.McpGrantId);
+
+                entity.HasOne(t => t.ApplicationUser)
+                    .WithMany()
+                    .HasForeignKey(t => t.ApplicationUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(t => t.McpGrant)
+                    .WithMany()
+                    .HasForeignKey(t => t.McpGrantId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<McpApiKey>(entity =>
+            {
+                entity.HasKey(k => k.Id);
+                entity.Property(k => k.Name).HasMaxLength(100).IsRequired();
+                entity.Property(k => k.Prefix).HasMaxLength(32).IsRequired();
+                entity.Property(k => k.KeyHash).HasMaxLength(64).IsRequired();
+                entity.Property(k => k.Permissions).HasConversion(McpPermissionJson.Converter, McpPermissionJson.Comparer).IsRequired();
+                entity.HasIndex(k => k.KeyHash).IsUnique();
+                entity.HasIndex(k => k.ApplicationUserId);
+
+                entity.HasOne(k => k.ApplicationUser)
+                    .WithMany()
+                    .HasForeignKey(k => k.ApplicationUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<McpActivity>(entity =>
+            {
+                entity.HasKey(a => a.Id);
+                entity.Property(a => a.ToolName).HasMaxLength(100).IsRequired();
+                entity.HasIndex(a => new { a.McpGrantId, a.CreatedAt });
+                entity.HasIndex(a => new { a.McpApiKeyId, a.CreatedAt });
+                entity.HasIndex(a => a.CreatedAt);
 
                 entity.HasOne(a => a.ApplicationUser)
                     .WithMany()

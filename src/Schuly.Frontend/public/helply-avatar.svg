@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="512" height="512" role="img" aria-label="Helply">
+<defs>
+<linearGradient id="helplyBg" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#5BB8FF"/>
+<stop offset="1" stop-color="#0A7CFF"/>
+</linearGradient>
+</defs>
+<circle cx="100" cy="100" r="100" fill="url(#helplyBg)"/>
+<rect x="34" y="118" width="12" height="30" rx="6" fill="#CFE6FF"/>
+<rect x="154" y="118" width="12" height="30" rx="6" fill="#CFE6FF"/>
+<rect x="44" y="90" width="112" height="90" rx="32" fill="#FFFFFF"/>
+<rect x="58" y="106" width="84" height="56" rx="22" fill="#0B1B33"/>
+<rect x="78" y="120" width="13" height="20" rx="6.5" fill="#5CC8FF"/>
+<rect x="109" y="120" width="13" height="20" rx="6.5" fill="#5CC8FF"/>
+<path d="M90 148 Q100 155 110 148" fill="none" stroke="#5CC8FF" stroke-width="4" stroke-linecap="round"/>
+<g>
+<path d="M66 86 Q100 101 134 86 L134 91 Q100 106 66 91 Z" fill="#0A5FCC" fill-opacity="0.14"/>
+<path d="M68 66 V84 Q100 98 132 84 V66 Z" fill="#E4F1FF" stroke="#E4F1FF" stroke-width="6" stroke-linejoin="round"/>
+<path d="M155 58 V88" fill="none" stroke="#CFE6FF" stroke-width="3.5" stroke-linecap="round"/>
+<path d="M100 36 L162 60 L100 84 L38 60 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="8" stroke-linejoin="round"/>
+<circle cx="100" cy="60" r="4" fill="#CFE6FF"/>
+<path d="M155 86 C160 90 161 98 161 102 Q155 106 149 102 C149 98 150 90 155 86 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+</g>
+</svg>

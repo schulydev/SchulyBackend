@@ -44,6 +44,7 @@ namespace Schuly.Infrastructure.Services
             QueueDeviceTokenDeletionAsync,
             QueueNotificationPreferenceDeletionAsync,
             QueueNotificationOutboxDeletionAsync,
+            QueueMcpCredentialDeletionAsync,
         ];
 
         public async Task<AccountPurgeSummary> PurgeApplicationUserAsync(Guid applicationUserId, CancellationToken cancellationToken = default)
@@ -236,6 +237,17 @@ namespace Schuly.Infrastructure.Services
         {
             var outboxEntries = await dbContext.NotificationOutbox.Where(o => o.ApplicationUserId == applicationUserId).ToListAsync(cancellationToken);
             dbContext.NotificationOutbox.RemoveRange(outboxEntries);
+        }
+
+        // MCP connections, tokens and API keys cascade from ApplicationUser too; deleting them here keeps that independent of the provider, like the rows above.
+        private static async Task QueueMcpCredentialDeletionAsync(SchulyDbContext dbContext, Guid applicationUserId, CancellationToken cancellationToken)
+        {
+            var grantIds = await dbContext.McpGrants.Where(g => g.ApplicationUserId == applicationUserId).Select(g => g.Id).ToListAsync(cancellationToken);
+            dbContext.McpAuthorizationCodes.RemoveRange(await dbContext.McpAuthorizationCodes.Where(c => grantIds.Contains(c.McpGrantId)).ToListAsync(cancellationToken));
+            dbContext.McpTokens.RemoveRange(await dbContext.McpTokens.Where(t => t.ApplicationUserId == applicationUserId).ToListAsync(cancellationToken));
+            dbContext.McpGrants.RemoveRange(await dbContext.McpGrants.Where(g => g.ApplicationUserId == applicationUserId).ToListAsync(cancellationToken));
+            dbContext.McpApiKeys.RemoveRange(await dbContext.McpApiKeys.Where(k => k.ApplicationUserId == applicationUserId).ToListAsync(cancellationToken));
+            dbContext.McpActivities.RemoveRange(await dbContext.McpActivities.Where(a => a.ApplicationUserId == applicationUserId).ToListAsync(cancellationToken));
         }
 
         private static string HashUserId(Guid id) => Convert.ToHexStringLower(SHA256.HashData(id.ToByteArray()))[..16];
