@@ -20,7 +20,7 @@ import { ConnectionsStore } from '../../stores/connections.store';
     HlmSpinner,
     NgIcon,
   ],
-  providers: [provideIcons({ lucideExternalLink, lucideUnplug }), ConnectionsStore],
+  providers: [provideIcons({ lucideExternalLink, lucideUnplug })],
   template: `
     <section hlmCard>
       <div hlmCardHeader>
