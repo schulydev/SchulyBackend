@@ -1,0 +1,187 @@
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import {
+  lucideCopy,
+  lucideDownload,
+  lucideEllipsis,
+  lucideEye,
+  lucideFile,
+  lucideFileArchive,
+  lucideFileAudio,
+  lucideFileChartPie,
+  lucideFileCode,
+  lucideFileImage,
+  lucideFileSpreadsheet,
+  lucideFileText,
+  lucideFileType,
+  lucideFileVideo,
+  lucideNotebookPen,
+  lucideExternalLink,
+} from '@ng-icons/lucide';
+import { toast } from '@spartan-ng/brain/sonner';
+import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
+import { BubbleFile, formatSize } from '../core/chat-media';
+import { KIND_STYLES } from '../core/file-kind';
+import { TeamsApi } from '../core/teams-api';
+
+/** Largest image file that is fetched whole to serve as its own preview when the server has no thumbnail. */
+const MAX_IMAGE_PREVIEW_BYTES = 10 * 1024 * 1024;
+
+/** A file in a chat bubble, Teams-style: name and actions on top, a page preview below. */
+@Component({
+  selector: 'app-file-card',
+  imports: [NgIcon, NgTemplateOutlet, HlmButton, HlmDropdownMenuImports],
+  providers: [
+    provideIcons({
+      lucideCopy,
+      lucideDownload,
+      lucideEllipsis,
+      lucideExternalLink,
+      lucideEye,
+      lucideFile,
+      lucideFileArchive,
+      lucideFileAudio,
+      lucideFileChartPie,
+      lucideFileCode,
+      lucideFileImage,
+      lucideFileSpreadsheet,
+      lucideFileText,
+      lucideFileType,
+      lucideFileVideo,
+      lucideNotebookPen,
+    }),
+  ],
+  template: `
+    <article class="bg-background/70 w-60 max-w-full overflow-hidden rounded-lg border sm:w-64" [attr.aria-label]="file().name">
+      <div class="flex h-14 items-center gap-1 ps-3 pe-1">
+        <ng-icon [name]="style().icon" class="shrink-0 text-xl" [class]="style().tint" aria-hidden="true" />
+        @if (file().path) {
+          <button
+            type="button"
+            class="focus-visible:outline-ring ms-1 min-w-0 flex-1 truncate rounded-sm py-1 text-start text-sm font-medium focus-visible:outline-2"
+            [title]="file().name"
+            (click)="view.emit()"
+          >
+            {{ file().name }}<span class="sr-only">, {{ style().label }}@if (sizeText()) {, {{ sizeText() }}}. Open preview</span>
+          </button>
+        } @else {
+          <span class="ms-1 min-w-0 flex-1 truncate text-sm font-medium" [title]="file().name">{{ file().name }}</span>
+        }
+        @if (file().webUrl; as url) {
+          <a hlmBtn variant="ghost" size="icon-sm" [href]="url" target="_blank" rel="noopener">
+            <ng-icon name="lucideExternalLink" aria-hidden="true" />
+            <span class="sr-only">Open {{ file().name }} in Microsoft 365 (opens in a new tab)</span>
+          </a>
+        }
+        @if (file().path) {
+          <button hlmBtn variant="ghost" size="icon-sm" type="button" [hlmDropdownMenuTrigger]="menu" align="end">
+            <ng-icon name="lucideEllipsis" aria-hidden="true" />
+            <span class="sr-only">More actions for {{ file().name }}</span>
+          </button>
+        }
+      </div>
+
+      @if (file().path) {
+        <button type="button" class="focus-visible:outline-ring block h-44 w-full bg-white focus-visible:outline-2 focus-visible:-outline-offset-2" tabindex="-1" aria-hidden="true" (click)="view.emit()">
+          <ng-container *ngTemplateOutlet="preview" />
+        </button>
+      } @else {
+        <div class="h-44 w-full bg-white"><ng-container *ngTemplateOutlet="preview" /></div>
+      }
+    </article>
+
+    <ng-template #preview>
+      @if (image(); as src) {
+        <img [src]="src" alt="" class="size-full object-cover object-top" />
+      } @else {
+        <span class="flex size-full items-center justify-center">
+          <ng-icon [name]="style().icon" class="text-6xl" [class]="style().onWhite" aria-hidden="true" />
+        </span>
+      }
+    </ng-template>
+
+    <ng-template #menu>
+      <hlm-dropdown-menu class="w-48" [attr.aria-label]="'Actions for ' + file().name">
+        <button hlmDropdownMenuItem type="button" (click)="view.emit()">
+          <ng-icon name="lucideEye" aria-hidden="true" />
+          Open in viewer
+        </button>
+        <button hlmDropdownMenuItem type="button" (click)="download()">
+          <ng-icon name="lucideDownload" aria-hidden="true" />
+          Download
+        </button>
+        @if (file().webUrl) {
+          <button hlmDropdownMenuItem type="button" (click)="copyLink()">
+            <ng-icon name="lucideCopy" aria-hidden="true" />
+            Copy link
+          </button>
+        }
+      </hlm-dropdown-menu>
+    </ng-template>
+  `,
+  host: { class: 'block max-w-full' },
+})
+export class FileCard {
+  private readonly api = inject(TeamsApi);
+  private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly file = input.required<BubbleFile>();
+  readonly view = output<void>();
+
+  protected readonly style = computed(() => KIND_STYLES[this.file().kind]);
+  protected readonly sizeText = computed(() => formatSize(this.file().size));
+  private readonly visible = signal(false);
+  protected readonly image = signal<string | null>(null);
+
+  constructor() {
+    afterNextRender(() => {
+      if (typeof IntersectionObserver === 'undefined') return this.visible.set(true);
+      const observer = new IntersectionObserver((entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          this.visible.set(true);
+          observer.disconnect();
+        }
+      });
+      observer.observe(this.element.nativeElement);
+      this.destroyRef.onDestroy(() => observer.disconnect());
+    });
+    // The preview is fetched only once the card scrolls into view: the server thumbnail, or for an image its own bytes.
+    effect(() => {
+      const f = this.file();
+      if (!this.visible()) return;
+      const path = f.thumbnailPath ?? (f.kind === 'image' && f.path && (f.size ?? 0) <= MAX_IMAGE_PREVIEW_BYTES ? f.path : null);
+      if (!path) return;
+      untracked(() => void this.api.imageUrl(path).then((url) => this.image.set(url)));
+    });
+  }
+
+  protected async download(): Promise<void> {
+    const f = this.file();
+    if (!f.path) return;
+    try {
+      const blob = await this.api.blob(f.path);
+      const url = URL.createObjectURL(new Blob([blob], { type: 'application/octet-stream' }));
+      const link = Object.assign(document.createElement('a'), { href: url, download: f.name, rel: 'noopener', hidden: true });
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      toast.error('Could not download the file.');
+    }
+  }
+
+  protected async copyLink(): Promise<void> {
+    const url = this.file().webUrl;
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied.');
+    } catch {
+      toast.error('Could not copy the link.');
+    }
+  }
+}

@@ -2,6 +2,9 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { computed, effect, inject, untracked } from '@angular/core';
 import { patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
+import { Importance, MessageCard, MessageFile, MessageMedia } from '../core/chat-media';
+import { MessageEmoji } from '../core/teams-emoji';
+import { NOTES_TITLE, chatPeople } from '../core/chat-people';
 import { cleanPreview } from '../core/preview-text';
 import { swrCache } from '../core/swr-cache';
 import { MicrosoftAccountsStore } from './microsoft-accounts.store';
@@ -49,6 +52,41 @@ export interface ChatMessage {
   attachments?: { id?: string | null; name?: string | null; contentType?: string | null; contentUrl?: string | null }[] | null;
   mentions?: unknown[] | null;
   reactions?: { reactionType?: string | null }[] | null;
+  importance?: Importance | null;
+  /** What happened, for system messages (Graph's eventMessageDetail). */
+  eventDetail?: Record<string, unknown> | null;
+  media?: MessageMedia[] | null;
+  files?: MessageFile[] | null;
+  cards?: MessageCard[] | null;
+  /** Teams emojis of the message, matching the `<emoji key>` placeholders in the body. */
+  emojis?: MessageEmoji[] | null;
+}
+
+export interface OutgoingMention {
+  id: number;
+  mentionText: string;
+  mentioned: { user: { id: string; displayName: string } };
+}
+
+export interface OutgoingGif {
+  url: string;
+  alt: string;
+  width: number;
+  height: number;
+}
+
+/** What the composer hands over to send. */
+export interface Outgoing {
+  content: string;
+  contentType: 'text' | 'html';
+  importance: Importance;
+  mentions: OutgoingMention[];
+  gif: OutgoingGif | null;
+  /** Inline images, in the order of `hostedContents/N`. */
+  images: File[];
+  files: File[];
+  /** Plain text for the bubble while it is sending. */
+  preview: string;
 }
 
 /** A message of mine that the server has not confirmed yet. */
@@ -56,6 +94,7 @@ export interface PendingMessage {
   localId: string;
   chatId: string;
   text: string;
+  outgoing: Outgoing;
   createdDateTime: string;
   status: 'sending' | 'failed';
 }
@@ -108,6 +147,7 @@ export function bodyText(body?: ChatBody | null): string {
   if (body?.contentType === 'html') {
     const root = new DOMParser().parseFromString(content, 'text/html').body;
     root.querySelectorAll('script, style').forEach((element) => element.remove());
+    root.querySelectorAll('emoji').forEach((e) => e.replaceWith(e.getAttribute('alt') || e.textContent || ''));
     text = root.textContent ?? '';
   }
   return text.replace(/\s+/g, ' ').trim();
@@ -167,11 +207,10 @@ export const TeamsStore = signalStore(
 
     const chatItems = computed(() => {
       const mine = meId();
+      const ownEmail = accounts.selected()?.email ?? null;
       return store.chats().map((c) => {
-        const members = (c.members ?? []).filter((m) => m.displayName);
-        const others = members.filter((m) => !mine || m.userId !== mine);
-        const people = others.length ? others : members;
         const last = c.lastMessagePreview;
+        const { people, memberCount, notes } = chatPeople(c, mine, ownEmail, last?.from?.user);
         const sender = last?.from?.user;
         const text = last?.isDeleted ? 'This message has been deleted' : bodyText(last?.body);
         const fromMe = !!mine && !!sender?.id && sender.id === mine;
@@ -181,13 +220,14 @@ export const TeamsStore = signalStore(
           !!lastAt && !!sender?.id && sender.id !== mine && (!read || new Date(lastAt).getTime() > new Date(read).getTime());
         return {
           id: c.id,
-          title: c.topic || people.map((m) => m.displayName).join(', ') || 'Chat',
+          title: notes ? NOTES_TITLE : c.topic || people.map((m) => m.name).join(', ') || 'Chat',
           image: c.imageUrl || null,
           hasImage: !!c.hasImage,
           kind: (c.chatType && chatKinds[c.chatType]) || null,
           oneOnOne: c.chatType === 'oneOnOne',
-          people: people.map((m) => ({ id: m.userId ?? null, name: m.displayName ?? '' })),
-          memberCount: members.length,
+          people,
+          memberCount,
+          mentionable: notes ? [] : people.filter((m) => !!m.id).map((m) => ({ id: m.id as string, name: m.name })),
           preview: cleanPreview(!text ? '' : fromMe ? `You: ${text}` : sender?.displayName && c.chatType !== 'oneOnOne' ? `${sender.displayName}: ${text}` : text),
           updated: lastAt ?? c.lastUpdatedDateTime ?? null,
           unread,
@@ -232,6 +272,20 @@ export const TeamsStore = signalStore(
           });
       });
       pumpPhotos();
+    };
+
+    /** JSON when there is nothing to upload, multipart (mentions and gif as JSON strings) when there are images or files. */
+    const bodyOf = (out: Outgoing): FormData | Record<string, unknown> => {
+      const fields: Record<string, unknown> = { content: out.content, contentType: out.contentType };
+      if (out.importance !== 'normal') fields['importance'] = out.importance;
+      if (out.mentions.length) fields['mentions'] = out.mentions;
+      if (out.gif) fields['gif'] = out.gif;
+      if (!out.images.length && !out.files.length) return fields;
+      const form = new FormData();
+      for (const [name, value] of Object.entries(fields)) form.append(name, typeof value === 'string' ? value : JSON.stringify(value));
+      for (const image of out.images) form.append('images', image, image.name);
+      for (const file of out.files) form.append('files', file, file.name);
+      return form;
     };
 
     let nextLocal = 0;
@@ -352,9 +406,7 @@ export const TeamsStore = signalStore(
         pending: store.pending().map((p) => (p.localId === pending.localId ? { ...p, status: 'sending' as const } : p)),
       });
       try {
-        const created = await firstValueFrom(
-          http.post<ChatMessage>(`${chatUrl(accountId, pending.chatId)}/messages`, { text: pending.text }),
-        );
+        const created = await firstValueFrom(http.post<ChatMessage>(`${chatUrl(accountId, pending.chatId)}/messages`, bodyOf(pending.outgoing)));
         const stillOpen = store.openId() === pending.chatId;
         const known = store.messages().some((m) => m.id === created?.id);
         patchState(store, {
@@ -414,14 +466,14 @@ export const TeamsStore = signalStore(
         patchState(store, { openId: null, messages: [], messagesProblem: null, messagesLoading: false, ...firstMessagePages });
       },
       markRead,
-      send(text: string): void {
+      send(outgoing: Outgoing): void {
         const chatId = store.openId();
-        const trimmed = text.trim();
-        if (!chatId || !trimmed) return;
+        if (!chatId) return;
         const pending: PendingMessage = {
           localId: `local-${Date.now()}-${nextLocal++}`,
           chatId,
-          text: trimmed.slice(0, 4000),
+          text: outgoing.preview,
+          outgoing,
           createdDateTime: new Date().toISOString(),
           status: 'sending',
         };

@@ -1,14 +1,21 @@
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
-import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, output, signal, untracked, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, effect, inject, output, signal, untracked, viewChild } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideArrowLeft, lucideSend, lucideArrowDown, lucideExternalLink, lucideMessagesSquare, lucidePaperclip } from '@ng-icons/lucide';
+import { lucideArrowLeft, lucideArrowDown, lucideExternalLink, lucideMessagesSquare, lucidePaperclip, lucideTriangleAlert, lucideCircleAlert } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
-import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { dayKey } from '../core/dates';
 import { renderBody } from '../core/message-html';
 import { EmptyState } from '../shared/empty-state';
-import { EmojiMatch, emojiCompleteAt, emojiQueryAt, loadEmoji, searchEmoji } from '../core/emoji';
+import { BubbleFile, BubbleMedia, BubbleSticker, CardView, Importance, allowedMediaUrl, cardView, isHttps } from '../core/chat-media';
+import { describeEvent } from '../core/chat-events';
+import { fileKindOf } from '../core/file-kind';
+import { TeamsApi } from '../core/teams-api';
+import { TeamsEmoji, fromMessageEmoji } from '../core/teams-emoji';
+import { ChatMedia } from '../shared/chat-media';
+import { EmojiSlots } from '../shared/emoji-slots';
+import { FileViewer, ViewerFile } from '../shared/file-viewer';
+import { TeamsComposer } from './teams-composer';
 import { ChatAvatar } from '../shared/chat-avatar';
 import { LoadMore } from '../shared/load-more';
 import { MicrosoftProblem } from '../shared/microsoft-problem';
@@ -17,7 +24,6 @@ import { TeamsStore, bodyText } from '../stores/teams.store';
 
 const GROUP_WINDOW_MS = 5 * 60 * 1000;
 const NEAR_BOTTOM_PX = 80;
-const MAX_LENGTH = 4000;
 
 interface Attachment {
   name: string;
@@ -27,7 +33,7 @@ interface Reaction {
   count: number;
 }
 type LogItem =
-  | { kind: 'day'; key: string; label: string | null; date: string }
+  | { kind: 'day'; key: string; label: string | null; date: string; showYear: boolean }
   | { kind: 'system'; key: string; text: string }
   | {
       kind: 'msg';
@@ -42,26 +48,34 @@ type LogItem =
       html: string;
       text: string;
       attachments: Attachment[];
+      importance: Importance;
+      media: BubbleMedia[];
+      files: BubbleFile[];
+      stickers: BubbleSticker[];
+      cards: CardView[];
+      emojiKeys: string[];
+      emojiMap: Record<string, TeamsEmoji>;
+      emojiSize: number;
       reactions: Reaction[];
       status: 'sent' | 'sending' | 'failed';
     };
 
 @Component({
   selector: 'app-teams-conversation',
-  imports: [DatePipe, NgTemplateOutlet, HlmButton, HlmSkeletonImports, HlmSpinner, NgIcon, ChatAvatar, EmptyState, LoadMore, MicrosoftProblem, PersonAvatar],
-  providers: [provideIcons({ lucideArrowLeft, lucideSend, lucideArrowDown, lucideExternalLink, lucideMessagesSquare, lucidePaperclip })],
+  imports: [DatePipe, NgTemplateOutlet, HlmButton, HlmSkeletonImports, NgIcon, ChatAvatar, ChatMedia, EmojiSlots, EmptyState, FileViewer, LoadMore, MicrosoftProblem, PersonAvatar, TeamsComposer],
+  providers: [provideIcons({ lucideArrowLeft, lucideArrowDown, lucideExternalLink, lucideMessagesSquare, lucidePaperclip, lucideTriangleAlert, lucideCircleAlert })],
   template: `
     @if (store.openChat(); as chat) {
-      <header class="flex h-14 shrink-0 items-center gap-3 border-b px-4 sm:px-6">
-        <button hlmBtn variant="ghost" size="icon-sm" class="-ms-2 shrink-0 lg:hidden" (click)="back.emit()">
+      <header class="flex h-10 shrink-0 items-center gap-2 border-b px-2 sm:px-3">
+        <button hlmBtn variant="ghost" size="icon-sm" class="shrink-0 lg:hidden" title="Back to chats" (click)="back.emit()">
           <ng-icon name="lucideArrowLeft" aria-hidden="true" />
           <span class="sr-only">Back to chats</span>
         </button>
         <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" [image]="chat.image" [imageAvailable]="chat.hasImage" [chatId]="chat.id" size="compact" />
         <div class="min-w-0 flex-1">
-          <h2 class="truncate text-base leading-5 font-semibold">{{ chat.title }}</h2>
+          <h2 class="truncate text-sm leading-4 font-semibold">{{ chat.title }}</h2>
           @if (!chat.oneOnOne && chat.memberCount > 1) {
-            <p class="text-muted-foreground truncate text-xs leading-4">{{ chat.memberCount }} people</p>
+            <p class="text-muted-foreground truncate text-[11px] leading-3">{{ chat.memberCount }} people</p>
           }
         </div>
         @if (chat.link) {
@@ -114,7 +128,7 @@ type LogItem =
                   @case ('day') {
                     <div class="my-4 flex justify-center">
                       <time class="bg-muted text-foreground/70 rounded-full px-3 py-0.5 text-xs font-medium" [attr.datetime]="item.date">
-                        {{ item.label ?? (item.date | date: 'EEEE, d MMMM') }}
+                        {{ item.label ?? (item.date | date: (item.showYear ? 'EEEE, d MMMM y' : 'EEEE, d MMMM')) }}
                       </time>
                     </div>
                   }
@@ -124,7 +138,7 @@ type LogItem =
                   @case ('msg') {
                     @if (item.mine) {
                       <div class="flex flex-col items-end" [class]="item.head ? 'mt-4' : 'mt-0.5'">
-                        <div class="flex max-w-[85%] flex-col items-end sm:max-w-[75%]">
+                        <div class="flex max-w-[85%] flex-col items-end" [class]="item.files.length ? 'sm:max-w-[95%]' : 'sm:max-w-[75%]'">
                           @if (item.head) {
                             <span class="text-muted-foreground mb-0.5 text-xs">
                               <time [attr.datetime]="item.time">{{ item.time | date: 'HH:mm' }}</time>
@@ -147,7 +161,7 @@ type LogItem =
                             <app-person-avatar [userId]="item.senderId" [name]="item.senderName" />
                           }
                         </div>
-                        <div class="flex max-w-[85%] min-w-0 flex-col items-start sm:max-w-[75%]">
+                        <div class="flex max-w-[85%] min-w-0 flex-col items-start" [class]="item.files.length ? 'sm:max-w-[95%]' : 'sm:max-w-[75%]'">
                           @if (item.head) {
                             <div class="mb-0.5 flex items-baseline gap-2">
                               <span class="text-sm font-semibold">{{ item.senderName }}</span>
@@ -179,73 +193,10 @@ type LogItem =
         }
       </div>
 
-      <form class="w-full px-4 pt-1 pb-4 sm:px-6" (submit)="submit($event)">
-        <div class="bg-background focus-within:border-ring focus-within:ring-ring/30 relative flex items-end gap-1 rounded-lg border py-1 ps-3 pe-1 focus-within:ring-3">
-          @if (suggestions().length) {
-            <ul
-              id="emoji-suggestions"
-              role="listbox"
-              aria-label="Emoji suggestions"
-              class="bg-popover text-popover-foreground absolute start-0 bottom-full z-20 mb-1 w-72 max-w-full overflow-hidden rounded-lg border p-1 shadow-md"
-            >
-              @for (match of suggestions(); track match.code; let i = $index) {
-                <li
-                  role="option"
-                  class="flex cursor-default items-center gap-2 rounded-md px-2 py-1 text-sm"
-                  [class.bg-accent]="i === active()"
-                  [class.text-accent-foreground]="i === active()"
-                  [id]="'emoji-option-' + i"
-                  [attr.aria-selected]="i === active()"
-                  (mousedown)="$event.preventDefault(); insertEmoji(match)"
-                >
-                  <span class="text-lg leading-none" aria-hidden="true">{{ match.char }}</span>
-                  <span class="truncate"><span class="sr-only">{{ match.char }} </span>:{{ match.code }}:</span>
-                </li>
-              }
-            </ul>
-          }
-          <div class="sr-only" role="status" aria-live="polite">{{ suggestionStatus() }}</div>
-          <label for="teams-composer" class="sr-only">Message {{ chat.title }}</label>
-          <textarea
-            #composer
-            id="teams-composer"
-            rows="1"
-            role="combobox"
-            aria-autocomplete="list"
-            aria-haspopup="listbox"
-            aria-controls="emoji-suggestions"
-            [attr.aria-expanded]="suggestions().length > 0"
-            [attr.aria-activedescendant]="suggestions().length ? 'emoji-option-' + active() : null"
-            class="placeholder:text-muted-foreground field-sizing-content block max-h-36 min-h-8 min-w-0 flex-1 resize-none self-center bg-transparent py-1 text-sm leading-6 outline-none"
-            placeholder="Type a message"
-            [maxLength]="maxLength"
-            [value]="draft()"
-            (input)="onInput($event)"
-            (keydown)="onKeydown($event)"
-            (blur)="closeSuggestions()"
-            (keydown.enter)="onEnter($event)"
-          ></textarea>
-          @if (draft().length > maxLength - 200) {
-            <span class="text-muted-foreground self-center text-xs tabular-nums">{{ draft().length }} / {{ maxLength }}</span>
-          }
-          <button
-            hlmBtn
-            type="submit"
-            variant="ghost"
-            size="icon-sm"
-            [class]="canSend() ? 'text-primary' : 'text-muted-foreground'"
-            [disabled]="!canSend()"
-          >
-            @if (sending()) {
-              <hlm-spinner aria-label="Sending" />
-            } @else {
-              <ng-icon name="lucideSend" aria-hidden="true" />
-            }
-            <span class="sr-only">Send</span>
-          </button>
-        </div>
-      </form>
+      <app-teams-composer #composer class="w-full px-4 pt-1 pb-4 sm:px-6" [chat]="chat" (sent)="onSent()" />
     }
+
+    <app-file-viewer [file]="viewing()" (closed)="viewing.set(null)" />
 
     <ng-template #bubble let-m>
       @if (m.deleted) {
@@ -256,15 +207,36 @@ type LogItem =
           [class]="m.mine ? 'bg-sky-100 text-foreground dark:bg-sky-900/45' : 'bg-muted text-foreground'"
           [class.opacity-60]="m.status === 'sending'"
         >
+          @if (m.importance !== 'normal') {
+            <p
+              class="mb-1 inline-flex items-center gap-1 rounded-full border px-2 py-px text-xs font-semibold"
+              [class]="m.importance === 'urgent' ? 'border-red-700 bg-red-100 text-red-900 dark:border-red-300 dark:bg-red-950 dark:text-red-100' : 'border-amber-700 bg-amber-100 text-amber-900 dark:border-amber-300 dark:bg-amber-950 dark:text-amber-100'"
+            >
+              <ng-icon [name]="m.importance === 'urgent' ? 'lucideTriangleAlert' : 'lucideCircleAlert'" aria-hidden="true" />
+              {{ m.importance === 'urgent' ? 'Urgent' : 'Important' }}
+            </p>
+          }
           @if (m.html) {
             <div
               class="leading-relaxed wrap-anywhere [&_.mention]:bg-primary/15 [&_.mention]:rounded-sm [&_.mention]:px-1 [&_.mention]:font-medium [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:border-border [&_blockquote]:text-muted-foreground [&_blockquote]:border-s-2 [&_blockquote]:ps-3 [&_img]:max-w-full [&_img]:rounded-md [&_ol]:list-decimal [&_ol]:ps-5 [&_p+p]:mt-2 [&_pre]:overflow-x-auto [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:ps-5"
               [innerHTML]="m.html"
+              [appEmojiSlots]="m.html"
+              [keys]="m.emojiKeys"
+              [emojis]="m.emojiMap"
+              [size]="m.emojiSize"
               (click)="onBodyClick($event)"
             ></div>
           } @else if (m.text) {
             <p class="leading-relaxed wrap-anywhere whitespace-pre-wrap">{{ m.text }}</p>
           }
+          <app-chat-media
+            class="[&:not(:empty)]:mt-1.5"
+            [media]="m.media"
+            [files]="m.files"
+            [stickers]="m.stickers"
+            [cards]="m.cards"
+            (view)="viewing.set($event)"
+          />
           @if (m.attachments.length) {
             <ul class="mt-1.5 flex flex-wrap gap-2">
               @for (a of m.attachments; track $index) {
@@ -301,18 +273,12 @@ export class TeamsConversation {
 
   readonly back = output<void>();
 
-  protected readonly maxLength = MAX_LENGTH;
-  protected readonly draft = signal('');
-  protected readonly suggestions = signal<EmojiMatch[]>([]);
-  protected readonly active = signal(0);
-  protected readonly suggestionStatus = computed(() => {
-    const n = this.suggestions().length;
-    return n ? `${n} emoji ${n === 1 ? 'suggestion' : 'suggestions'} available. Use up and down arrows, Enter to insert.` : '';
-  });
-  private emojiRange: { start: number; end: number } | null = null;
+  private readonly api = inject(TeamsApi);
+  protected readonly viewing = signal<ViewerFile | null>(null);
+  private readonly localUrls = new Map<File, string>();
   protected readonly newBelow = signal(false);
   private readonly log = viewChild<ElementRef<HTMLElement>>('log');
-  private readonly composer = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
+  private readonly composer = viewChild<TeamsComposer>('composer');
 
   /** Scroll geometry from just before older messages were requested; restoring it keeps the same message in view. */
   private anchor: { height: number; top: number } | null = null;
@@ -320,13 +286,13 @@ export class TeamsConversation {
   private forceScroll = true;
   private lastKey: string | null = null;
 
-  protected readonly sending = computed(() => this.store.pending().some((p) => p.status === 'sending'));
-  protected readonly canSend = computed(() => !!this.draft().trim() && !this.sending());
-
   protected readonly items = computed<LogItem[]>(() => {
     const chatId = this.store.openId();
     const mine = this.store.meId();
     const today = dayKey(new Date());
+    const currentYear = new Date().getFullYear();
+    const people = new Map((this.store.openChat()?.people ?? []).filter((p) => p.id).map((p) => [p.id as string, p.name]));
+    if (mine) people.set(mine, 'You');
     const yesterdayDate = new Date();
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     const yesterday = dayKey(yesterdayDate);
@@ -351,26 +317,84 @@ export class TeamsConversation {
       const time = m?.createdDateTime ?? p!.createdDateTime;
       const date = new Date(time);
       const key = dayKey(date);
+      // System events say what happened ("Alice added Bob"); those with nothing to say are left out, along with their day label.
+      let systemText: string | null = null;
+      if (m && m.messageType && m.messageType !== 'message') {
+        systemText = describeEvent(m.eventDetail, (uid) => people.get(uid) ?? null, mine) ?? (bodyText(m.body) || null);
+        if (!systemText) continue;
+      }
       if (key !== lastDay) {
         lastDay = key;
         prev = null;
-        out.push({ kind: 'day', key: `day-${key}`, label: key === today ? 'Today' : key === yesterday ? 'Yesterday' : null, date: time });
+        out.push({ kind: 'day', key: `day-${key}`, label: key === today ? 'Today' : key === yesterday ? 'Yesterday' : null, date: time, showYear: date.getFullYear() !== currentYear });
       }
 
-      if (m && m.messageType && m.messageType !== 'message') {
+      if (systemText) {
         prev = null;
-        out.push({ kind: 'system', key: id, text: bodyText(m.body) || 'Chat updated' });
+        out.push({ kind: 'system', key: id, text: systemText });
         continue;
       }
 
       const senderId = m ? (m.from?.user?.id ?? null) : mine;
       const isMine = m ? !!mine && senderId === mine : true;
-      const rendered = m && !m.deletedDateTime ? renderBody(m.body?.content, m.body?.contentType) : null;
+      const out2 = p?.outgoing;
+      const gifUrls = (m?.media ?? []).filter((x) => x.kind === 'gif' && x.url).map((x) => x.url as string);
+      const rendered = m && !m.deletedDateTime ? renderBody(m.body?.content, m.body?.contentType, { gifUrls }) : out2 ? renderBody(out2.content, out2.contentType) : null;
+      const hosted = (m?.media ?? []).filter((x) => x.kind === 'hosted' && x.hostedContentId);
+      const media: BubbleMedia[] = [];
+      (m?.media ?? []).forEach((x, i) => {
+        const key = `${id}-m${i}`;
+        const alt = x.alt ?? '';
+        if (x.kind === 'hosted' && x.hostedContentId && m) {
+          media.push({ key, kind: 'hosted', src: null, path: this.api.mediaPath(chatId ?? '', m.id, x.hostedContentId), alt, width: x.width ?? null, height: x.height ?? null });
+        } else if (x.kind === 'gif' && allowedMediaUrl(x.url)) {
+          media.push({ key, kind: 'gif', src: allowedMediaUrl(x.url), path: null, alt, width: x.width ?? null, height: x.height ?? null });
+        }
+      });
+      for (const [i, file] of (out2?.images ?? []).entries()) {
+        media.push({ key: `${id}-l${i}`, kind: 'local', src: this.localUrl(file), path: null, alt: file.name, width: null, height: null });
+      }
+      if (out2?.gif) media.push({ key: `${id}-g`, kind: 'gif', src: out2.gif.url, path: null, alt: out2.gif.alt, width: out2.gif.width, height: out2.gif.height });
+      const files: BubbleFile[] = [
+        ...(m?.files ?? []).map((f) => {
+          const path = m ? this.api.filePath(chatId ?? '', m.id, f.id) : null;
+          const name = f.name || 'File';
+          return {
+            key: `${id}-f${f.id}`,
+            name,
+            size: f.size ?? null,
+            type: f.contentType ?? '',
+            path,
+            kind: fileKindOf(name, f.contentType, f.kind),
+            thumbnailPath: path && f.hasThumbnail ? `${path}/thumbnail?size=medium` : null,
+            webUrl: isHttps(f.webUrl) ? f.webUrl : null,
+          };
+        }),
+        ...(out2?.files ?? []).map((f, i) => ({ key: `${id}-lf${i}`, name: f.name, size: f.size, type: f.type, path: null, kind: fileKindOf(f.name, f.type), thumbnailPath: null, webUrl: null })),
+      ];
+      const fileIds = new Set((m?.files ?? []).map((f) => f.id));
+      const stickers: BubbleSticker[] = [];
+      const cards: CardView[] = [];
+      (m?.cards ?? []).forEach((c, i) => {
+        const url = c.sticker?.url;
+        if (url) {
+          // Only allow-listed public hosts: a sticker URL from the server never reaches the authenticated fetch.
+          const src = allowedMediaUrl(url);
+          if (src) stickers.push({ key: `${id}-s${i}`, src, path: null, alt: c.sticker?.alt ?? c.name ?? 'Sticker' });
+          return;
+        }
+        const view = cardView(c, i);
+        if (view) cards.push({ ...view, key: `${id}-${view.key}` });
+      });
+      const emojiMap: Record<string, TeamsEmoji> = {};
+      for (const e of m?.emojis ?? []) if (e.key) emojiMap[e.key] = fromMessageEmoji(e);
+      // Hosted images are shown from `media`; only images the server did not list still fall back to a placeholder.
+      const uncovered = Math.max(0, (rendered?.removedImages ?? 0) - hosted.length);
       const attachments: Attachment[] = [
         ...(m?.attachments ?? [])
-          .filter((a) => a.contentType !== 'messageReference' && !a.contentType?.startsWith('application/vnd.microsoft.card'))
+          .filter((a) => a.contentType !== 'messageReference' && !a.contentType?.startsWith('application/vnd.microsoft.card') && !(a.id && fileIds.has(a.id)))
           .map((a) => ({ name: a.name || 'Attachment' })),
-        ...Array.from({ length: rendered?.removedImages ?? 0 }, () => ({ name: 'Image' })),
+        ...Array.from({ length: m?.media ? 0 : uncovered }, () => ({ name: 'Image' })),
       ];
       const counts = new Map<string, number>();
       for (const r of m?.reactions ?? []) {
@@ -390,8 +414,16 @@ export class TeamsConversation {
         time,
         deleted: !!m?.deletedDateTime,
         html: rendered?.html ?? '',
-        text: m ? (rendered && m.body?.contentType === 'html' ? (rendered.html ? '' : rendered.text) : (m.body?.content ?? '')) : p!.text,
+        text: m ? (rendered && m.body?.contentType === 'html' ? (rendered.html ? '' : rendered.text) : (m.body?.content ?? '')) : out2 && out2.contentType === 'html' ? (rendered?.html ? '' : (rendered?.text ?? '')) : p!.text,
         attachments,
+        importance: m?.importance ?? out2?.importance ?? 'normal',
+        media,
+        files,
+        stickers,
+        cards,
+        emojiKeys: rendered?.emojiKeys ?? [],
+        emojiMap,
+        emojiSize: rendered?.emojiOnly ? 48 : 24,
         reactions: [...counts].map(([label, count]) => ({ label, count })),
         status: p ? p.status : 'sent',
       };
@@ -403,17 +435,17 @@ export class TeamsConversation {
   });
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => this.localUrls.forEach((url) => URL.revokeObjectURL(url)));
     // A different chat starts empty and jumps to its newest message once loaded.
     effect(() => {
       this.store.openId();
       untracked(() => {
-        this.draft.set('');
+        this.viewing.set(null);
         this.forceScroll = true;
         this.atBottom = true;
         this.lastKey = null;
         this.anchor = null;
         this.newBelow.set(false);
-        afterNextRender(() => this.composer()?.nativeElement.focus(), { injector: this.injector });
       });
     });
 
@@ -468,7 +500,7 @@ export class TeamsConversation {
 
   protected jumpToLatest(): void {
     this.scrollToEnd();
-    this.composer()?.nativeElement.focus();
+    this.composer()?.focus();
   }
 
   protected onScroll(): void {
@@ -478,91 +510,17 @@ export class TeamsConversation {
     if (this.atBottom) this.newBelow.set(false);
   }
 
-  protected onEnter(event: Event): void {
-    const e = event as KeyboardEvent;
-    if (this.suggestions().length) return;
-    if (e.shiftKey || e.isComposing) return;
-    e.preventDefault();
-    this.submit();
-  }
-
-  protected async onInput(event: Event): Promise<void> {
-    const el = event.target as HTMLTextAreaElement;
-    this.draft.set(el.value);
-    const caret = el.selectionStart;
-    if (!el.value.includes(':')) return this.closeSuggestions();
-    let data;
-    try {
-      data = await loadEmoji();
-    } catch {
-      return this.closeSuggestions();
-    }
-    if (el.value !== this.draft() || el.selectionStart !== caret) return;
-    const done = emojiCompleteAt(data, el.value, caret);
-    if (done) {
-      this.replace(el, done.start, done.end, done.char);
-      return this.closeSuggestions();
-    }
-    const at = emojiQueryAt(el.value, caret);
-    this.emojiRange = at ? { start: at.start, end: caret } : null;
-    this.suggestions.set(at ? searchEmoji(data, at.query) : []);
-    this.active.set(0);
-  }
-
-  protected onKeydown(event: KeyboardEvent): void {
-    const list = this.suggestions();
-    if (!list.length || event.isComposing) return;
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        this.active.update((i) => (i + 1) % list.length);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        this.active.update((i) => (i - 1 + list.length) % list.length);
-        break;
-      case 'Enter':
-      case 'Tab':
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        this.insertEmoji(list[this.active()]);
-        break;
-      case 'Escape':
-        event.preventDefault();
-        event.stopPropagation();
-        this.closeSuggestions();
-        break;
-    }
-  }
-
-  protected closeSuggestions(): void {
-    this.suggestions.set([]);
-    this.emojiRange = null;
-  }
-
-  protected insertEmoji(match: EmojiMatch): void {
-    const el = this.composer()?.nativeElement;
-    const range = this.emojiRange;
-    if (!el || !range) return;
-    this.replace(el, range.start, range.end, match.char + ' ');
-    this.closeSuggestions();
-    el.focus();
-  }
-
-  private replace(el: HTMLTextAreaElement, start: number, end: number, text: string): void {
-    const next = el.value.slice(0, start) + text + el.value.slice(end);
-    el.value = next;
-    const caret = start + text.length;
-    el.setSelectionRange(caret, caret);
-    this.draft.set(next);
-  }
-
-  protected submit(event?: Event): void {
-    event?.preventDefault();
-    if (!this.canSend()) return;
-    this.store.send(this.draft());
-    this.draft.set('');
+  protected onSent(): void {
     this.atBottom = true;
+  }
+
+  private localUrl(file: File): string {
+    let url = this.localUrls.get(file);
+    if (!url) {
+      url = URL.createObjectURL(file);
+      this.localUrls.set(file, url);
+    }
+    return url;
   }
 
   /** Message links open in a new tab even if the sanitizer dropped the target attribute. */

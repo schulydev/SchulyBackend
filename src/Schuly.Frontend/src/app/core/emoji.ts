@@ -77,3 +77,57 @@ export function emojiCompleteAt(data: EmojiData, text: string, caret: number): {
   const char = match ? data.byCode.get(match[3].toLowerCase()) : undefined;
   return match && char ? { start: caret - match[2].length - 1, end: caret - 1, char } : null;
 }
+
+export interface PickerEmoji {
+  char: string;
+  label: string;
+  tags: string[];
+}
+
+export interface PickerGroup {
+  key: string;
+  label: string;
+  emoji: PickerEmoji[];
+}
+
+let loadingGroups: Promise<PickerGroup[]> | null = null;
+
+/** Categorized emoji for the picker, from the same lazy emojibase data; the skin-tone "components" group is left out. */
+export function loadEmojiGroups(): Promise<PickerGroup[]> {
+  loadingGroups ??= (async () => {
+    const [compact, messages] = await Promise.all([import('emojibase-data/en/compact.json'), import('emojibase-data/en/messages.json')]);
+    const groups = (messages.default as unknown as { groups: { key: string; message: string; order: number }[] }).groups;
+    const list = (compact.default as unknown as { unicode: string; label: string; group?: number; order?: number; tags?: string[] }[])
+      .filter((e) => e.group !== undefined && e.group !== 2)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    return groups
+      .filter((g) => g.order !== 2)
+      .map((g) => ({
+        key: g.key,
+        label: g.message.replace(/\b\w/g, (c) => c.toUpperCase()),
+        emoji: list.filter((e) => e.group === g.order).map((e) => ({ char: e.unicode, label: e.label, tags: e.tags ?? [] })),
+      }))
+      .filter((g) => g.emoji.length > 0);
+  })().catch((error: unknown) => {
+    loadingGroups = null;
+    throw error;
+  });
+  return loadingGroups;
+}
+
+/** Emoji whose label or tags contain every word of the query. */
+export function filterPickerEmoji(groups: PickerGroup[], query: string, limit = 120): PickerEmoji[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const out: PickerEmoji[] = [];
+  for (const group of groups) {
+    for (const e of group.emoji) {
+      const haystack = `${e.label} ${e.tags.join(' ')}`.toLowerCase();
+      if (words.every((w) => haystack.includes(w))) {
+        out.push(e);
+        if (out.length >= limit) return out;
+      }
+    }
+  }
+  return out;
+}
