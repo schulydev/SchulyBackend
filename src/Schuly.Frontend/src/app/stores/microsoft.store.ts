@@ -11,6 +11,7 @@ export interface MailMessage {
   receivedDateTime?: string | null;
   isRead?: boolean | null;
   webLink?: string | null;
+  toRecipients?: { emailAddress?: { name?: string | null; address?: string | null } | null }[] | null;
   from?: { emailAddress?: { name?: string | null; address?: string | null } | null } | null;
 }
 
@@ -64,15 +65,18 @@ export const MailStore = signalStore(
         address: m.from?.emailAddress?.address ?? null,
         subject: m.subject || '(no subject)',
         preview: m.bodyPreview ?? '',
+        to: (m.toRecipients ?? []).map((r) => r.emailAddress?.name || r.emailAddress?.address || '').filter(Boolean),
         received: m.receivedDateTime ?? null,
         unread: m.isRead === false,
         link: m.webLink ?? null,
       })),
     ),
     unreadOnly: computed(() => store.params()['unread'] === true),
+    folder: computed(() => String(store.params()['folder'] ?? 'inbox')),
   })),
   withMethods((store) => ({
     setUnreadOnly: (unread: boolean) => store.setParam('unread', unread),
+    setFolder: (folder: string) => store.setParam('folder', folder),
   })),
 );
 

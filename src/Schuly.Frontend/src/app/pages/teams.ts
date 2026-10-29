@@ -1,9 +1,7 @@
-import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, inject, signal, viewChildren } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideMessagesSquare } from '@ng-icons/lucide';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
-import { dayKey } from '../core/dates';
 import { ChatAvatar } from '../shared/chat-avatar';
 import { EmptyState } from '../shared/empty-state';
 import { ListTime } from '../shared/list-time';
@@ -19,7 +17,7 @@ const CHAT_POLL_MS = 60_000;
 
 @Component({
   selector: 'app-teams',
-  imports: [DatePipe, HlmSkeletonImports, NgIcon, ChatAvatar, EmptyState, ListTime, LoadMore, MicrosoftAccountPicker, MicrosoftProblem, SearchField, TeamsConversation],
+  imports: [HlmSkeletonImports, NgIcon, ChatAvatar, EmptyState, ListTime, LoadMore, MicrosoftAccountPicker, MicrosoftProblem, SearchField, TeamsConversation],
   providers: [provideIcons({ lucideMessagesSquare }), TeamsStore],
   template: `
     <div class="flex h-[calc(100svh-var(--header-height,3.0625rem))] min-h-0 flex-col">
@@ -27,19 +25,19 @@ const CHAT_POLL_MS = 60_000;
 
       <div class="flex min-h-0 flex-1">
         <section
-          class="flex min-h-0 w-full flex-col lg:w-80 lg:shrink-0 lg:border-e xl:w-96"
+          class="flex min-h-0 w-full flex-col lg:w-80 lg:shrink-0 lg:border-e"
           [class.max-lg:hidden]="store.openId()"
           aria-label="Chats"
         >
           @if (!store.problem()) {
-            <div class="p-3">
+            <div class="flex flex-col gap-2 px-4 pt-4 pb-2">
+              <h2 class="text-lg font-semibold">Chats</h2>
               <app-search-field class="[&_hlm-input-group]:w-full" [(value)]="query" label="Search chats" placeholder="Search chats" />
               @if (query().trim() && store.chatsMore()) {
-                <p class="text-muted-foreground mt-2 text-xs">Searching loaded items only. Scroll to load more.</p>
+                <p class="text-muted-foreground text-xs">Searching loaded items only. Scroll to load more.</p>
               }
             </div>
           }
-
           <div class="min-h-0 flex-1 overflow-y-auto">
             @if (store.waiting() || store.chatsLoading()) {
               <div class="flex flex-col gap-1 p-3" aria-busy="true">
@@ -55,45 +53,46 @@ const CHAT_POLL_MS = 60_000;
               </div>
             } @else if (store.problem(); as problem) {
               <div class="p-3"><app-microsoft-problem [problem]="problem" /></div>
-            } @else if (groups().length) {
-              @for (group of groups(); track group.key) {
-                <h2 class="text-muted-foreground px-4 pt-4 pb-1 text-xs font-medium">
-                  {{ group.label ?? (group.date | date: 'EEE, d MMM') }}
-                </h2>
-                <ul class="px-2" [attr.aria-busy]="store.chatsLoadingMore()">
-                  @for (chat of group.chats; track chat.id) {
-                    <li>
-                      <button
-                        #row
-                        type="button"
-                        class="hover:bg-muted/60 aria-[current=true]:bg-muted focus-visible:outline-ring flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left focus-visible:outline-2 focus-visible:-outline-offset-2"
-                        [attr.data-id]="chat.id"
-                        [attr.aria-current]="chat.id === store.openId() ? 'true' : null"
-                        (click)="open(chat.id)"
-                      >
-                        <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" />
-                        <span class="min-w-0 flex-1">
-                          <span class="flex items-baseline gap-2">
-                            <span class="min-w-0 flex-1 truncate text-sm" [class]="chat.unread ? 'font-semibold' : 'font-medium'">
-                              {{ chat.title }}
-                            </span>
-                            <span class="text-muted-foreground shrink-0 text-xs"><app-list-time [value]="chat.updated" /></span>
+            } @else if (visibleChats().length) {
+              <ul [attr.aria-busy]="store.chatsLoadingMore()">
+                @for (chat of visibleChats(); track chat.id) {
+                  <li>
+                    <button
+                      #row
+                      type="button"
+                      class="hover:bg-muted/60 aria-[current=true]:bg-muted focus-visible:outline-ring relative flex h-15 w-full items-center gap-3 px-3 text-left focus-visible:outline-2 focus-visible:-outline-offset-2"
+                      [attr.data-id]="chat.id"
+                      [attr.aria-current]="chat.id === store.openId() ? 'true' : null"
+                      (click)="open(chat.id)"
+                    >
+                      @if (chat.id === store.openId()) {
+                        <span class="bg-primary absolute inset-y-2 start-0 w-0.75 rounded-e-full" aria-hidden="true"></span>
+                      }
+                      <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" />
+                      <span class="min-w-0 flex-1">
+                        <span class="flex items-baseline gap-2">
+                          <span class="min-w-0 flex-1 truncate text-sm" [class]="chat.unread ? 'text-foreground font-bold' : 'font-medium'">
+                            {{ chat.title }}
                           </span>
-                          <span class="flex items-center gap-2">
-                            <span class="text-muted-foreground block min-w-0 flex-1 truncate text-xs">
-                              {{ chat.preview || 'No messages yet' }}
-                            </span>
-                            @if (chat.unread) {
-                              <span class="bg-primary size-2 shrink-0 rounded-full" aria-hidden="true"></span>
-                              <span class="sr-only">Unread</span>
-                            }
-                          </span>
+                          <span class="text-muted-foreground shrink-0 text-xs"><app-list-time [value]="chat.updated" [weekday]="true" /></span>
                         </span>
-                      </button>
-                    </li>
-                  }
-                </ul>
-              }
+                        <span class="flex items-center gap-2">
+                          <span
+                            class="block min-w-0 flex-1 truncate text-xs"
+                            [class]="chat.unread ? 'text-foreground font-semibold' : 'text-muted-foreground'"
+                          >
+                            {{ chat.preview || 'No messages yet' }}
+                          </span>
+                          @if (chat.unread) {
+                            <span class="bg-primary size-2 shrink-0 rounded-full" aria-hidden="true"></span>
+                            <span class="sr-only">Unread</span>
+                          }
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                }
+              </ul>
             } @else if (store.chatItems().length) {
               <app-empty-state icon="lucideMessagesSquare" title="No matching chats" description="Try a different search." />
             } @else {
@@ -131,28 +130,12 @@ export class Teams {
 
   protected readonly query = signal('');
 
-  protected readonly groups = computed(() => {
+  protected readonly visibleChats = computed(() => {
     const q = this.query().trim().toLowerCase();
-    const chats = this.store
+    return this.store
       .chatItems()
       .filter((c) => !q || c.title.toLowerCase().includes(q) || c.preview.toLowerCase().includes(q))
       .sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? ''));
-    const today = dayKey(new Date());
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterday = dayKey(yesterdayDate);
-    const groups: { key: string; label: string | null; date: string; chats: typeof chats }[] = [];
-    for (const chat of chats) {
-      const date = chat.updated ?? '';
-      const key = date ? dayKey(new Date(date)) : 'none';
-      let group = groups.at(-1);
-      if (!group || group.key !== key) {
-        group = { key, label: key === today ? 'Today' : key === yesterday ? 'Yesterday' : key === 'none' ? 'Earlier' : null, date, chats: [] };
-        groups.push(group);
-      }
-      group.chats.push(chat);
-    }
-    return groups;
   });
 
   constructor() {

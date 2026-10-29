@@ -167,7 +167,8 @@ export const TeamsStore = signalStore(
         const people = others.length ? others : members;
         const last = c.lastMessagePreview;
         const sender = last?.from?.user;
-        const text = last?.isDeleted ? 'This message was deleted' : bodyText(last?.body);
+        const text = last?.isDeleted ? 'This message has been deleted' : bodyText(last?.body);
+        const fromMe = !!mine && !!sender?.id && sender.id === mine;
         const read = c.viewpoint?.lastMessageReadDateTime;
         const lastAt = last?.createdDateTime ?? null;
         const unread =
@@ -178,7 +179,8 @@ export const TeamsStore = signalStore(
           kind: (c.chatType && chatKinds[c.chatType]) || null,
           oneOnOne: c.chatType === 'oneOnOne',
           people: people.map((m) => ({ id: m.userId ?? null, name: m.displayName ?? '' })),
-          preview: text && sender?.displayName && c.chatType !== 'oneOnOne' ? `${sender.displayName}: ${text}` : text,
+          memberCount: members.length,
+          preview: !text ? '' : fromMe ? `You: ${text}` : sender?.displayName && c.chatType !== 'oneOnOne' ? `${sender.displayName}: ${text}` : text,
           updated: lastAt ?? c.lastUpdatedDateTime ?? null,
           unread,
           link: c.webUrl ?? null,

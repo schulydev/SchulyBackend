@@ -8,7 +8,7 @@ export interface RenderedBody {
 
 const authImage = /graph\.microsoft\.com|hostedcontents/i;
 
-/** Prepares a Teams message body: drops auth-gated images, scripts and styles, bolds mentions and opens links in a new tab. */
+/** Prepares a Teams message body: drops auth-gated images, scripts and styles, marks mentions and opens links in a new tab. */
 export function renderBody(content: string | null | undefined, contentType: string | null | undefined): RenderedBody {
   const raw = content ?? '';
   if (contentType !== 'html') return { html: '', text: raw, removedImages: 0 };
@@ -25,7 +25,8 @@ export function renderBody(content: string | null | undefined, contentType: stri
     }
   });
   root.querySelectorAll('at').forEach((at) => {
-    const strong = root.ownerDocument.createElement('strong');
+    const strong = root.ownerDocument.createElement('span');
+    strong.className = 'mention';
     strong.textContent = at.textContent;
     at.replaceWith(strong);
   });
