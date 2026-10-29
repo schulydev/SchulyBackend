@@ -34,15 +34,6 @@ export interface TeamsChat {
   } | null;
 }
 
-/** OneNote notebook from me/onenote/notebooks (outnote `notebooks`). */
-export interface OneNoteNotebook {
-  id: string;
-  displayName?: string | null;
-  lastModifiedDateTime?: string | null;
-  isShared?: boolean | null;
-  links?: { oneNoteWebUrl?: { href?: string | null } | null } | null;
-}
-
 /**
  * OneDrive driveItem from me/drive/{path}/children (outnote `files`). Folders carry `folder`, files carry `file`;
  * `@microsoft.graph.downloadUrl` is a short-lived pre-authenticated link and only present on files.
@@ -127,24 +118,6 @@ export const ChatsStore = signalStore(
         };
       });
     }),
-  })),
-);
-
-export const NotebooksStore = signalStore(
-  withMicrosoftResource<OneNoteNotebook>('notebooks'),
-  withComputed((store) => ({
-    notebooks: computed(() =>
-      store
-        .items()
-        .map((n) => ({
-          id: n.id,
-          name: n.displayName || 'Untitled notebook',
-          shared: n.isShared === true,
-          modified: n.lastModifiedDateTime ?? null,
-          link: n.links?.oneNoteWebUrl?.href ?? null,
-        }))
-        .sort((a, b) => (b.modified ?? '').localeCompare(a.modified ?? '')),
-    ),
   })),
 );
 
