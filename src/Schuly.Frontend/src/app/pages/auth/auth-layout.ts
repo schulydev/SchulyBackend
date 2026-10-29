@@ -37,12 +37,13 @@ import { ThemeStore } from '../../stores/theme.store';
 
         <div class="hidden items-center min-[900px]:flex">
           <div
-            class="relative h-[min(44rem,calc(100svh-11rem))] w-full overflow-hidden [mask-image:linear-gradient(to_right,black_60%,transparent_100%)]"
+            class="relative h-[min(44rem,calc(100svh-11rem))] w-full overflow-hidden [container-type:size] [mask-image:linear-gradient(to_right,black_60%,transparent_100%)]"
           >
+            <!-- The screenshot is 16:10, so 160cqh is the widest it can be without cropping top and bottom. -->
             <img
               [src]="theme.dark() ? 'screens/overview-dark.png' : 'screens/overview-light.png'"
               alt="The Schuly web app showing the overview with grades, upcoming tests and absences"
-              class="absolute top-1/2 left-0 w-[64rem] max-w-none -translate-y-1/2 rounded-l-xl border border-r-0 shadow-sm"
+              class="absolute top-1/2 left-0 w-[min(64rem,160cqh)] max-w-none -translate-y-1/2 rounded-l-xl border border-r-0 shadow-sm"
             />
           </div>
         </div>
