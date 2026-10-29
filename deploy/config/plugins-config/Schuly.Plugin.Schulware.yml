@@ -3,3 +3,15 @@ SchulwareApi:
   BaseUrl: http://schulware:8000
 Schulware:
   DefaultApiBaseUrl: http://schulware:8000
+# Absence reasons offered when reporting an absence, per school (key = host of the school's Schulnetz URL, case-insensitive).
+# Schools not listed fall back to Default. Reasons a student already used are appended automatically.
+AbsenceReasons:
+  Default: []
+  Schools:
+    schulnetz.bbbaden.ch:
+      - Krankheit
+      - Unfall
+      - Militär
+      - gültiges Arztzeugnis für Sport
+      - Andere Absenz
+      - Urlaubsgesuch
