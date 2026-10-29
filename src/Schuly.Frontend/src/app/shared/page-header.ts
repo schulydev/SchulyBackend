@@ -1,17 +1,12 @@
-import { Component, input } from '@angular/core';
+import { Component } from '@angular/core';
 
-/** Page title on the left, compact controls (search, filter, primary action) on the right of the same row. */
+/** Compact page controls (search, filter, primary action), right-aligned. The page title lives in the shell's top bar. */
 @Component({
   selector: 'app-page-header',
   template: `
-    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-      <h2 class="text-2xl font-semibold tracking-tight">{{ title() }}</h2>
-      <div class="flex items-center gap-2">
-        <ng-content />
-      </div>
+    <div class="flex flex-wrap items-center justify-end gap-2">
+      <ng-content />
     </div>
   `,
 })
-export class PageHeader {
-  readonly title = input.required<string>();
-}
+export class PageHeader {}
