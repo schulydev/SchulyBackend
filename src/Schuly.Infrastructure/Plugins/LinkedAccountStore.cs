@@ -57,7 +57,25 @@ namespace Schuly.Infrastructure.Plugins
                 existing.UpdatedAt = DateTime.UtcNow;
             }
 
-            await db.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException) when (db.Entry(existing).State == EntityState.Added)
+            {
+                // A concurrent save of the same external account won the unique index: link to its row instead of failing.
+                db.Entry(existing).State = EntityState.Detached;
+                var winner = await db.LinkedAccounts.FirstOrDefaultAsync(a => a.ApplicationUserId == applicationUserId && a.Provider == account.Provider && a.ExternalId == account.ExternalId, cancellationToken);
+                if (winner is null)
+                    throw;
+
+                winner.Email = account.Email;
+                winner.DisplayName = account.DisplayName;
+                winner.UpdatedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
+                existing = winner;
+            }
+
             return ToContract(existing);
         }
 
