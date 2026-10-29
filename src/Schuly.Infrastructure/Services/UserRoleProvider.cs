@@ -10,24 +10,32 @@ namespace Schuly.Infrastructure.Services
         public async Task<IReadOnlyList<string>> GetRolesAsync(ToamaisutaaUser user, CancellationToken cancellationToken = default)
         {
             var administrators = configuration.GetSection("Auth:Administrators").Get<string[]>() ?? [];
-            var isAdministrator = administrators.Any(entry => string.Equals(entry, user.UserName, StringComparison.OrdinalIgnoreCase))
-                || (administrators.Any(entry => string.Equals(entry, user.Email, StringComparison.OrdinalIgnoreCase)) && await HasProvenEmailAsync(user, cancellationToken));
 
-            return isAdministrator ? [nameof(Roles.Administrator)] : [];
+            // Entries with an @ are addresses: they only ever match a proven email, never a user name.
+            var byUserName = administrators.Any(entry => !entry.Contains('@') && string.Equals(entry, user.UserName, StringComparison.OrdinalIgnoreCase));
+            var byEmail = !string.IsNullOrWhiteSpace(user.Email)
+                && administrators.Any(entry => entry.Contains('@') && string.Equals(entry, user.Email, StringComparison.OrdinalIgnoreCase))
+                && await HasProvenEmailAsync(user.Id, user.Email, cancellationToken);
+
+            return byUserName || byEmail ? [nameof(Roles.Administrator)] : [];
         }
 
         /// <summary>
-        /// Whether the user's email counts for an administrator match. A password account must have proven it, or anyone
-        /// registering the configured address first would become administrator. An account without a password only gets
-        /// an email from a sign-in provider that marked it verified (<c>TrustEmailVerified</c>).
+        /// Positive proof that the user controls <paramref name="email"/>: the password account confirmed it, or a linked
+        /// sign-in provider marked it verified. Anything else fails closed, so registering the configured address first
+        /// without proving it never makes someone administrator.
         /// </summary>
-        private async Task<bool> HasProvenEmailAsync(ToamaisutaaUser user, CancellationToken cancellationToken)
+        private async Task<bool> HasProvenEmailAsync(Guid userId, string email, CancellationToken cancellationToken)
         {
-            var credential = await db.Set<ToamaisutaaPasswordCredential>().AsNoTracking().Where(c => c.UserId == user.Id).Select(c => new { c.Email, c.EmailConfirmedAt }).FirstOrDefaultAsync(cancellationToken);
-            if (credential is null)
+            var normalized = email.ToUpperInvariant();
+
+            var confirmedByPassword = await db.Set<ToamaisutaaPasswordCredential>().AsNoTracking()
+                .AnyAsync(c => c.UserId == userId && c.EmailConfirmedAt != null && c.Email != null && c.Email.ToUpper() == normalized, cancellationToken);
+            if (confirmedByPassword)
                 return true;
 
-            return credential.EmailConfirmedAt is not null && string.Equals(credential.Email, user.Email, StringComparison.OrdinalIgnoreCase);
+            return await db.Set<ToamaisutaaExternalLogin>().AsNoTracking()
+                .AnyAsync(l => l.UserId == userId && l.EmailVerified && l.Email != null && l.Email.ToUpper() == normalized, cancellationToken);
         }
     }
 }
