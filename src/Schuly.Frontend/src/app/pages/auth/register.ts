@@ -6,6 +6,7 @@ import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
+import { takeReturnUrl } from '../../core/return-url';
 import { AuthStore, authErrorMessage } from '../../stores/auth.store';
 import { AuthLayout } from './auth-layout';
 import { ConfirmEmail, confirmEmailHint } from './confirm-email';
@@ -118,7 +119,7 @@ export class Register {
   }
 
   protected async finish(): Promise<void> {
-    await this.router.navigateByUrl('/');
+    await this.router.navigateByUrl(takeReturnUrl());
   }
 
   protected toSignIn(): void {
@@ -144,7 +145,7 @@ export class Register {
     try {
       const result = await this.auth.register(userName.trim(), email.trim(), password);
       if (result === 'email') this.confirming.set(true);
-      else await this.router.navigateByUrl('/');
+      else await this.router.navigateByUrl(takeReturnUrl());
     } catch (error) {
       this.error.set(authErrorMessage(error, 'That username or email is already taken.'));
     }

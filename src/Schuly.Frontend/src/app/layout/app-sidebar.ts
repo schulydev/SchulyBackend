@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideCalendarDays, lucideChartColumn, lucideClipboardList, lucideFileText, lucideHardDrive, lucideLayoutDashboard, lucideMail, lucideMessagesSquare, lucideNotebook, lucideUserX } from '@ng-icons/lucide';
+import { lucideCalendarDays, lucideChartColumn, lucideClipboardList, lucideFileText, lucideHardDrive, lucideLayoutDashboard, lucideMail, lucideMessagesSquare, lucideNotebook, lucidePlug, lucideUserX } from '@ng-icons/lucide';
 import { HlmSidebarImports } from '@spartan-ng/helm/sidebar';
 import { MicrosoftAccountsStore } from '../stores/microsoft-accounts.store';
 import { NavUser } from './nav-user';
@@ -9,13 +9,16 @@ import { NavUser } from './nav-user';
 interface NavItem {
   title: string;
   url: string;
-  icon: string;
+  /** Name of an ng-icon. Ignored when image is set. */
+  icon?: string;
+  /** Decorative image path used instead of an icon. */
+  image?: string;
 }
 
 @Component({
   selector: 'app-sidebar',
   imports: [HlmSidebarImports, NgIcon, RouterLink, RouterLinkActive, NavUser],
-  providers: [provideIcons({ lucideLayoutDashboard, lucideChartColumn, lucideClipboardList, lucideCalendarDays, lucideUserX, lucideFileText, lucideHardDrive, lucideMail, lucideMessagesSquare, lucideNotebook })],
+  providers: [provideIcons({ lucideLayoutDashboard, lucideChartColumn, lucideClipboardList, lucideCalendarDays, lucideUserX, lucideFileText, lucideHardDrive, lucideMail, lucideMessagesSquare, lucideNotebook, lucidePlug })],
   template: `
     <hlm-sidebar collapsible="icon">
       <div hlmSidebarHeader class="border-b">
@@ -45,7 +48,11 @@ interface NavItem {
                       [isActive]="rla.isActive"
                       [tooltip]="item.title"
                     >
-                      <ng-icon [name]="item.icon" />
+                      @if (item.image) {
+                        <img [src]="item.image" alt="" class="size-4 shrink-0" />
+                      } @else {
+                        <ng-icon [name]="item.icon!" />
+                      }
                       <span>{{ item.title }}</span>
                     </a>
                   </li>
@@ -74,9 +81,18 @@ export class AppSidebar {
     ],
   };
 
+  private readonly aiGroup = {
+    label: 'AI',
+    items: [
+      { title: 'Helply', url: '/ai/helply', image: 'helply-avatar.svg' },
+      { title: 'MCP', url: '/ai/mcp', icon: 'lucidePlug' },
+    ],
+  };
+
   protected readonly groups = computed<{ label: string; items: NavItem[] }[]>(() => [
     ...this.schoolGroups,
     ...(this.microsoft.hasAccounts() ? [this.microsoftGroup] : []),
+    this.aiGroup,
   ]);
 
   private readonly schoolGroups: { label: string; items: NavItem[] }[] = [

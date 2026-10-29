@@ -35,8 +35,12 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   );
 };
 
-export const authGuard: CanActivateFn = () =>
-  inject(AuthStore).status() === 'signedIn' || inject(Router).createUrlTree(['/login']);
+/** Sends signed-out users to /login and remembers the full URL (query string included) to return to. */
+export const authGuard: CanActivateFn = (_route, state) => {
+  if (inject(AuthStore).status() === 'signedIn') return true;
+  const returnUrl = state.url === '/' ? undefined : state.url;
+  return inject(Router).createUrlTree(['/login'], { queryParams: returnUrl ? { returnUrl } : {} });
+};
 
 export const guestGuard: CanActivateFn = () =>
   inject(AuthStore).status() !== 'signedIn' || inject(Router).createUrlTree(['/']);

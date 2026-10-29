@@ -86,6 +86,14 @@ Applied at startup by `ApplyMigrations()` in `Program.cs`.
 - Locally, mail goes to an SMTP catcher on `localhost:1025` (e.g. mailpit). Get a token with `POST /auth/register` then `POST /auth/login`.
 - Default policy requires auth; `/api/app` and the public `/auth` endpoints are anonymous.
 
+## MCP server (`/mcp`)
+
+- Official C# SDK (`ModelContextProtocol.AspNetCore`, pinned), Streamable HTTP, **stateless**. Tools live in `Schuly.API/Mcp/Tools`; host data goes through Mediator, plugin data through `InProcessPluginApi` (the app's own routing/authorization/plugin-scope pipeline, in process, with the caller's principal).
+- Auth is our own OAuth 2.1 authorization server in `Schuly.Infrastructure/Mcp` (DCR, code + PKCE S256, rotating refresh tokens, opaque tokens hashed with SHA-256) plus user API keys (`schuly_mcp_...`). Both are accepted **only** by the `SchulyMcpToken` scheme on `/mcp`; `/api` JWTs are refused there and MCP tokens do nothing on `/api`.
+- Every tool carries `[McpAccess(area, level)]` (and `[McpDestructive]` for deletes). Permissions live on the grant/key and are read on every request, so edits apply live. A new tool without `[McpAccess]` is visible to every connection: always add one.
+- Consent page is the SPA route `/connect/authorize`; the decision API is `/api/mcp/*`. `Mcp:PublicUrl` and `Mcp:AllowedOrigins` (CORS + Origin check, no wildcard) are the only settings.
+- Helply hooks: `McpInternalTokens` (short-lived token with its own permission set) and `Helply:BaseUrl`/`ApiKey`/`Model` from env only; never log or return them.
+
 ## Versioning + release
 
 Single source of truth: `application.properties`. `src/Directory.Build.props` reads via `XmlPeek`. Cutting a release triggers `docker-publish-release.yaml`:
