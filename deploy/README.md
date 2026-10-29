@@ -11,13 +11,14 @@ with a real domain.
 | `caddy` | `caddy:2` | **80 / 443** (the only public ports) |
 | `backend` | `ghcr.io/schulydev/schuly` | via Caddy → `https://${API_HOST}` |
 | `schulware` | `ghcr.io/pianonic/schulwareapi` | internal |
+| `schulymicrosoft` | `ghcr.io/schulydev/schulymicrosoft` | internal (Microsoft 365 access for the Microsoft plugin) |
 | `postgres` | `postgres:18.1` | internal (DBs: `schuly`, `schuly_plugin_*`) |
 | `seaweedfs` | `chrislusf/seaweedfs` | internal (S3 document storage) |
 
 Sign-in is built into the backend - there is no separate identity provider. The
-backend issues and validates its own tokens, and loads the **Schulware plugin**
-declared in `config/plugins.yml` on startup (downloaded from the registry - no DLL
-baked into the image).
+backend issues and validates its own tokens, and loads the **Schulware** and
+**Microsoft** plugins declared in `config/plugins.yml` on startup (downloaded from the
+registry - no DLL baked into the image).
 
 ## Setup
 

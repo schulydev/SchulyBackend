@@ -18,6 +18,7 @@ flowchart TB
     backend -->|SQL| pg[("PostgreSQL")]
     backend -->|S3| s3[("SeaweedFS - documents")]
     backend -->|scraper bridge| sw["schulware"]
+    backend -->|Microsoft 365| ms["schulymicrosoft"]
 ```
 
 | Service | Image | Exposed |
@@ -27,6 +28,7 @@ flowchart TB
 | `postgres` | `postgres:18.1` | internal (database `schuly`) |
 | `seaweedfs` | `chrislusf/seaweedfs` | internal - S3 document storage |
 | `schulware` | `ghcr.io/pianonic/schulwareapi` | internal - Schulnetz bridge for the Schulware plugin |
+| `schulymicrosoft` | `ghcr.io/schulydev/schulymicrosoft` | internal - Microsoft 365 access for the Microsoft plugin. Stores nothing. |
 
 Sign-in is built into the backend: it issues and validates its own tokens and keeps
 the accounts in the `schuly` database. There is no separate identity provider. The
@@ -62,6 +64,7 @@ deploy/
 │   ├── backend.env
 │   ├── plugins.yml
 │   ├── plugins-config/
+│   │   ├── Schuly.Plugin.Microsoft.yml
 │   │   └── Schuly.Plugin.Schulware.yml
 │   └── seaweedfs/
 │       └── s3-config.json
@@ -110,6 +113,7 @@ cp .env.example .env
 | `S3_SECRET_KEY` | SeaweedFS S3 secret key. |
 | `AVATAR_SIGNING_KEY` | HMAC key for signing avatar URLs (required). Generate with `openssl rand -hex 32`. |
 | `DOCUMENTS_ENCRYPTION_KEY` | Master key for encrypting student documents at rest (required). Base64 of 32 bytes - generate with `openssl rand -base64 32`. Losing it makes stored documents unreadable. |
+| `VAULT_MASTER_KEY` | Master key for the plugin vault, which holds the school and Microsoft sign-ins plugins sync with (required - the backend refuses to start without it). Base64 of 32 bytes - generate with `openssl rand -base64 32`. A new key makes every stored sign-in unreadable, so everyone has to reconnect their school. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_USER`, `SMTP_PASSWORD` | Mail server for email verification and password reset. |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | Optional. Base64 of a Firebase service-account JSON, for push notifications - generate with `base64 -w0 service-account.json`. Leave unset to run without push. |
 
@@ -150,7 +154,11 @@ picture of the stack rather than a wall of environment variables.
 ## 4. (Optional) Review the plugins
 
 `config/plugins.yml` lists the plugins the backend loads on startup (the Schulware
-plugin by default), and `config/plugins-config/` holds each plugin's configuration.
+and Microsoft plugins by default), and `config/plugins-config/` holds each plugin's
+configuration. The Microsoft plugin talks to the `schulymicrosoft` service through
+`MicrosoftApi.BaseUrl` in `Schuly.Plugin.Microsoft.yml`; it refuses to start without
+that setting. To run without Microsoft 365, drop the plugin from `plugins.yml` and the
+`schulymicrosoft` service from the compose file.
 Each plugin also **provides its own school-system catalog entry** - the system the
 app shows in its picker (Schulware contributes `schulnetz`, OdaOrg `odaorg`) - so
 installing a plugin adds its system automatically, with no catalog config. The
@@ -236,6 +244,7 @@ deploy/
 │   ├── backend.env        ← edit: http mail links
 │   ├── plugins.yml         (unchanged)
 │   ├── plugins-config/
+│   │   ├── Schuly.Plugin.Microsoft.yml   (unchanged)
 │   │   └── Schuly.Plugin.Schulware.yml   (unchanged)
 │   └── seaweedfs/
 │       └── s3-config.json                (unchanged)
@@ -256,6 +265,7 @@ S3_ACCESS_KEY=schuly-access
 S3_SECRET_KEY=change-me-s3-secret
 AVATAR_SIGNING_KEY=change-me-avatar-signing-key
 DOCUMENTS_ENCRYPTION_KEY=change-me-documents-encryption-key
+VAULT_MASTER_KEY=<openssl rand -base64 32>
 ```
 
 Keep the `SMTP_*` values, or point them at an SMTP catcher on your network, so the
@@ -389,9 +399,17 @@ services:
   schulware:
     image: ghcr.io/pianonic/schulwareapi:latest
     restart: unless-stopped
+    init: true
+    ipc: host
     environment:
       # Schulnetz client id + PWA host are baked into the SchulwareAPI image as
       # defaults, so no Schulnetz config is needed here.
+      PYTHONUNBUFFERED: "1"
+
+  schulymicrosoft:
+    image: ghcr.io/schulydev/schulymicrosoft:latest
+    restart: unless-stopped
+    environment:
       PYTHONUNBUFFERED: "1"
 
   backend:
