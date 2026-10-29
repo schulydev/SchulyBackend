@@ -87,7 +87,8 @@ export const UserStore = signalStore(
                 download: 'schuly-export.json',
               });
               link.click();
-              URL.revokeObjectURL(url);
+              // Revoking right after click() cancels the download in some browsers.
+              setTimeout(() => URL.revokeObjectURL(url), 60_000);
               patchState(store, { busy: false });
             },
             error: () => patchState(store, { busy: false }),
