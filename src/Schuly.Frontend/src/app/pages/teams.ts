@@ -1,100 +1,179 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { Component, DestroyRef, ElementRef, Injector, afterNextRender, computed, inject, signal, viewChildren } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideExternalLink, lucideMessagesSquare } from '@ng-icons/lucide';
-import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
-import { HlmButton } from '@spartan-ng/helm/button';
+import { lucideMessagesSquare } from '@ng-icons/lucide';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
-import { initials } from '../core/initials';
+import { dayKey } from '../core/dates';
+import { ChatAvatar } from '../shared/chat-avatar';
 import { EmptyState } from '../shared/empty-state';
 import { ListTime } from '../shared/list-time';
 import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
 import { MicrosoftProblem } from '../shared/microsoft-problem';
-import { PageHeader } from '../shared/page-header';
 import { SearchField } from '../shared/search-field';
-import { StatusPill } from '../shared/status-pill';
-import { ChatsStore } from '../stores/microsoft.store';
+import { TeamsStore } from '../stores/teams.store';
+import { TeamsConversation } from './teams-conversation';
+
+const MESSAGE_POLL_MS = 15_000;
+const CHAT_POLL_MS = 60_000;
 
 @Component({
   selector: 'app-teams',
-  imports: [HlmAvatarImports, HlmButton, HlmSkeletonImports, NgIcon, EmptyState, ListTime, MicrosoftAccountPicker, MicrosoftProblem, PageHeader, SearchField, StatusPill],
-  providers: [provideIcons({ lucideExternalLink, lucideMessagesSquare }), ChatsStore],
+  imports: [DatePipe, HlmSkeletonImports, NgIcon, ChatAvatar, EmptyState, ListTime, MicrosoftAccountPicker, MicrosoftProblem, SearchField, TeamsConversation],
+  providers: [provideIcons({ lucideMessagesSquare }), TeamsStore],
   template: `
-    <div class="flex flex-col gap-4 p-4 lg:p-6">
-      <app-microsoft-account-picker />
+    <div class="flex h-[calc(100svh-var(--header-height,3.0625rem))] min-h-0 flex-col">
+      <div class="px-4 has-[label]:pt-4 lg:px-6"><app-microsoft-account-picker /></div>
 
-      <app-page-header>
-        @if (!store.problem()) {
-          <app-search-field [(value)]="query" label="Search chats" placeholder="Search chats" />
-        }
-      </app-page-header>
-
-      @if (store.waiting() || store.loading()) {
-        <div class="flex flex-col gap-2">
-          @for (i of [1, 2, 3, 4]; track i) {
-            <hlm-skeleton class="h-14 w-full" />
+      <div class="flex min-h-0 flex-1">
+        <section
+          class="flex min-h-0 w-full flex-col lg:w-80 lg:shrink-0 lg:border-e xl:w-96"
+          [class.max-lg:hidden]="store.openId()"
+          aria-label="Chats"
+        >
+          @if (!store.problem()) {
+            <div class="p-3">
+              <app-search-field class="[&_hlm-input-group]:w-full" [(value)]="query" label="Search chats" placeholder="Search chats" />
+            </div>
           }
-        </div>
-      } @else if (store.problem(); as problem) {
-        <app-microsoft-problem [problem]="problem" />
-      } @else if (filtered().length) {
-        <div class="@container">
-          <div
-            class="text-muted-foreground bg-muted/40 hidden grid-cols-[2.5rem_minmax(0,1fr)_6rem_4rem_2.5rem] gap-x-4 border-y px-3 py-2 text-xs font-medium @2xl:grid"
-            aria-hidden="true"
-          >
-            <span></span>
-            <span>Chat</span>
-            <span>Type</span>
-            <span class="text-right">Updated</span>
-            <span></span>
-          </div>
-          <ul class="divide-y border-b">
-            @for (chat of filtered(); track chat.id) {
-              <li
-                class="grid grid-cols-[2.5rem_minmax(0,1fr)_auto_2.5rem] items-center gap-x-4 gap-y-1 px-3 py-4 @2xl:grid-cols-[2.5rem_minmax(0,1fr)_6rem_4rem_2.5rem]"
-              >
-                <hlm-avatar class="row-span-2 @2xl:row-span-1">
-                  <span hlmAvatarFallback>{{ chat.initials }}</span>
-                </hlm-avatar>
-                <div class="min-w-0">
-                  <div class="truncate text-sm font-medium">{{ chat.title }}</div>
-                  @if (chat.preview) {
-                    <div class="text-muted-foreground truncate text-xs">{{ chat.preview }}</div>
+
+          <div class="min-h-0 flex-1 overflow-y-auto">
+            @if (store.waiting() || store.chatsLoading()) {
+              <div class="flex flex-col gap-1 p-3" aria-busy="true">
+                @for (i of [1, 2, 3, 4, 5]; track i) {
+                  <div class="flex items-center gap-3 py-2">
+                    <hlm-skeleton class="size-10 shrink-0 rounded-full" />
+                    <div class="flex flex-1 flex-col gap-2">
+                      <hlm-skeleton class="h-3.5 w-1/2" />
+                      <hlm-skeleton class="h-3 w-4/5" />
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else if (store.problem(); as problem) {
+              <div class="p-3"><app-microsoft-problem [problem]="problem" /></div>
+            } @else if (groups().length) {
+              @for (group of groups(); track group.key) {
+                <h2 class="text-muted-foreground px-4 pt-4 pb-1 text-xs font-medium">
+                  {{ group.label ?? (group.date | date: 'EEE, d MMM') }}
+                </h2>
+                <ul class="px-2">
+                  @for (chat of group.chats; track chat.id) {
+                    <li>
+                      <button
+                        #row
+                        type="button"
+                        class="hover:bg-muted/60 aria-[current=true]:bg-muted focus-visible:outline-ring flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left focus-visible:outline-2 focus-visible:-outline-offset-2"
+                        [attr.data-id]="chat.id"
+                        [attr.aria-current]="chat.id === store.openId() ? 'true' : null"
+                        (click)="open(chat.id)"
+                      >
+                        <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" />
+                        <span class="min-w-0 flex-1">
+                          <span class="flex items-baseline gap-2">
+                            <span class="min-w-0 flex-1 truncate text-sm" [class]="chat.unread ? 'font-semibold' : 'font-medium'">
+                              {{ chat.title }}
+                            </span>
+                            <span class="text-muted-foreground shrink-0 text-xs"><app-list-time [value]="chat.updated" /></span>
+                          </span>
+                          <span class="flex items-center gap-2">
+                            <span class="text-muted-foreground block min-w-0 flex-1 truncate text-xs">
+                              {{ chat.preview || 'No messages yet' }}
+                            </span>
+                            @if (chat.unread) {
+                              <span class="bg-primary size-2 shrink-0 rounded-full" aria-hidden="true"></span>
+                              <span class="sr-only">Unread</span>
+                            }
+                          </span>
+                        </span>
+                      </button>
+                    </li>
                   }
-                </div>
-                <span class="@2xl:order-none">
-                  @if (chat.kind) {
-                    <app-status-pill>{{ chat.kind }}</app-status-pill>
-                  }
-                </span>
-                <span class="text-muted-foreground hidden text-right text-xs @2xl:block"><app-list-time [value]="chat.updated" /></span>
-                <span class="row-span-2 @2xl:row-span-1">
-                  @if (chat.link) {
-                    <a hlmBtn variant="ghost" size="icon-sm" [href]="chat.link" target="_blank" rel="noopener">
-                      <ng-icon name="lucideExternalLink" aria-hidden="true" />
-                      <span class="sr-only">Open {{ chat.title }} in Teams (opens in a new tab)</span>
-                    </a>
-                  }
-                </span>
-              </li>
+                </ul>
+              }
+            } @else if (store.chatItems().length) {
+              <app-empty-state icon="lucideMessagesSquare" title="No matching chats" description="Try a different search." />
+            } @else {
+              <app-empty-state icon="lucideMessagesSquare" title="No chats yet" description="Your recent Teams chats appear here." />
             }
-          </ul>
-        </div>
-      } @else if (store.chats().length) {
-        <app-empty-state icon="lucideMessagesSquare" title="No matching chats" description="Try a different search." />
-      } @else {
-        <app-empty-state icon="lucideMessagesSquare" title="No chats" description="Your recent Teams chats appear here." />
-      }
+          </div>
+        </section>
+
+        <section class="min-w-0 flex-1 flex-col max-lg:w-full" [class]="store.openId() ? 'flex' : 'hidden lg:flex'" aria-label="Conversation">
+          @if (store.openId()) {
+            <app-teams-conversation (back)="close()" />
+          } @else {
+            <div class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 text-sm">
+              <ng-icon name="lucideMessagesSquare" class="text-2xl" aria-hidden="true" />
+              Select a chat to start reading
+            </div>
+          }
+        </section>
+      </div>
     </div>
   `,
 })
 export class Teams {
-  protected readonly store = inject(ChatsStore);
+  protected readonly store = inject(TeamsStore);
+  private readonly injector = inject(Injector);
+  private readonly rows = viewChildren<ElementRef<HTMLElement>>('row');
+
   protected readonly query = signal('');
 
-  protected readonly filtered = computed(() => {
+  protected readonly groups = computed(() => {
     const q = this.query().trim().toLowerCase();
-    const chats = this.store.chats().map((c) => ({ ...c, initials: initials(c.title) || '?' }));
-    return q ? chats.filter((c) => c.title.toLowerCase().includes(q) || c.preview.toLowerCase().includes(q)) : chats;
+    const chats = this.store
+      .chatItems()
+      .filter((c) => !q || c.title.toLowerCase().includes(q) || c.preview.toLowerCase().includes(q))
+      .sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? ''));
+    const today = dayKey(new Date());
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterday = dayKey(yesterdayDate);
+    const groups: { key: string; label: string | null; date: string; chats: typeof chats }[] = [];
+    for (const chat of chats) {
+      const date = chat.updated ?? '';
+      const key = date ? dayKey(new Date(date)) : 'none';
+      let group = groups.at(-1);
+      if (!group || group.key !== key) {
+        group = { key, label: key === today ? 'Today' : key === yesterday ? 'Yesterday' : key === 'none' ? 'Earlier' : null, date, chats: [] };
+        groups.push(group);
+      }
+      group.chats.push(chat);
+    }
+    return groups;
   });
+
+  constructor() {
+    const visible = () => document.visibilityState === 'visible';
+    const messages = setInterval(() => {
+      if (visible() && this.store.openId()) void this.store.refreshMessages();
+    }, MESSAGE_POLL_MS);
+    const chats = setInterval(() => {
+      if (visible()) void this.store.loadChats(true);
+    }, CHAT_POLL_MS);
+    const onVisible = () => {
+      if (!visible()) return;
+      void this.store.loadChats(true);
+      if (this.store.openId()) void this.store.refreshMessages();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(messages);
+      clearInterval(chats);
+      document.removeEventListener('visibilitychange', onVisible);
+    });
+  }
+
+  protected open(id: string): void {
+    if (this.store.openId() === id) return;
+    void this.store.open(id);
+  }
+
+  protected close(): void {
+    const id = this.store.openId();
+    this.store.close();
+    afterNextRender(() => this.rows().find((r) => r.nativeElement.dataset['id'] === id)?.nativeElement.focus(), {
+      injector: this.injector,
+    });
+  }
 }
