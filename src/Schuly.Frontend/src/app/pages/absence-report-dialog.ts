@@ -1,10 +1,12 @@
 import {
   afterNextRender,
   Component,
+  effect,
   ElementRef,
   inject,
   Injector,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { form, FormField, FormRoot, validate } from '@angular/forms/signals';
@@ -20,7 +22,6 @@ import { HlmNativeSelectImports } from '@spartan-ng/helm/native-select';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { HlmSwitch } from '@spartan-ng/helm/switch';
 import { HlmTextarea } from '@spartan-ng/helm/textarea';
-import { ABSENCE_REASONS } from '../core/absence-reasons';
 import { startOfToday, toIsoDate } from '../core/dates';
 import {
   AbsenceReportRequest,
@@ -166,14 +167,22 @@ const emptyModel = (): ReportModel => {
             }
 
             <div hlmField>
-              <label hlmFieldLabel for="absence-reason-choice">Reason (optional)</label>
+              <div class="flex items-center gap-2">
+                <label hlmFieldLabel for="absence-reason-choice">Reason (optional)</label>
+                @if (reasonsLoading()) {
+                  <hlm-spinner aria-hidden="true" class="size-3.5" />
+                  <span class="sr-only" role="status">Loading reasons</span>
+                }
+              </div>
               <hlm-native-select
                 selectId="absence-reason-choice"
+                [disabled]="reasonsLoading()"
+                [attr.aria-busy]="reasonsLoading()"
                 [value]="model().reasonChoice"
                 (valueChange)="setReasonChoice($event ?? '')"
               >
                 <option hlmNativeSelectOption value="">No reason</option>
-                @for (reason of reasonOptions; track reason) {
+                @for (reason of reasonOptions(); track reason) {
                   <option hlmNativeSelectOption [value]="reason">{{ reason }}</option>
                 }
                 <option hlmNativeSelectOption [value]="otherReason">Other…</option>
@@ -244,7 +253,8 @@ export class AbsenceReportDialog {
   private readonly injector = inject(Injector);
   private readonly customReason = viewChild<ElementRef<HTMLInputElement>>('customReason');
 
-  protected readonly reasonOptions = ABSENCE_REASONS;
+  protected readonly reasonOptions = signal<string[]>([]);
+  protected readonly reasonsLoading = signal(false);
   protected readonly otherReason = OTHER_REASON;
 
   protected readonly open = signal(false);
@@ -296,6 +306,25 @@ export class AbsenceReportDialog {
     },
     { submission: { action: () => this.send() } },
   );
+
+  constructor() {
+    effect(() => {
+      const id = this.accountId();
+      if (this.open() && id) untracked(() => void this.loadReasons(id));
+    });
+  }
+
+  private async loadReasons(accountId: string): Promise<void> {
+    this.reasonsLoading.set(true);
+    const reasons = await this.reports.loadReasons(accountId);
+    if (this.accountId() !== accountId) return;
+    this.reasonOptions.set(reasons);
+    this.reasonsLoading.set(false);
+    const { reasonChoice } = this.model();
+    if (reasonChoice && reasonChoice !== OTHER_REASON && !reasons.includes(reasonChoice)) {
+      this.model.update((m) => ({ ...m, reasonChoice: '', reason: '' }));
+    }
+  }
 
   protected submitting(): boolean {
     return this.report().submitting();

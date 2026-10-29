@@ -35,6 +35,7 @@ interface AbsenceReportsState {
   reports: ReportedAbsence[];
   loading: boolean;
   unavailable: boolean;
+  reasons: Record<string, string[]>;
 }
 
 const base = (accountId: string) =>
@@ -61,7 +62,7 @@ export function absenceErrorMessage(error: unknown, fallback: string): string {
 }
 
 export const AbsenceReportsStore = signalStore(
-  withState<AbsenceReportsState>({ reports: [], loading: false, unavailable: false }),
+  withState<AbsenceReportsState>({ reports: [], loading: false, unavailable: false, reasons: {} }),
   withComputed((store, connections = inject(ConnectionsStore)) => ({
     accounts: connections.schulnetzAccounts,
     available: computed(() => !store.unavailable() && connections.schulnetzAccounts().length > 0),
@@ -95,6 +96,21 @@ export const AbsenceReportsStore = signalStore(
         unavailable: accounts.length > 0 && missing === accounts.length,
         loading: false,
       });
+    },
+    /** Reasons the school offers, cached per account; any failure yields an empty list (not cached). */
+    async loadReasons(accountId: string): Promise<string[]> {
+      const cached = store.reasons()[accountId];
+      if (cached) return cached;
+      try {
+        const rows = await firstValueFrom(http.get<string[]>(`${base(accountId)}/reasons`));
+        const reasons = Array.isArray(rows)
+          ? rows.filter((r): r is string => typeof r === 'string' && r.trim() !== '')
+          : [];
+        patchState(store, (s) => ({ reasons: { ...s.reasons, [accountId]: reasons } }));
+        return reasons;
+      } catch {
+        return [];
+      }
     },
     async report(accountId: string, request: AbsenceReportRequest): Promise<void> {
       await firstValueFrom(http.post(base(accountId), request));
