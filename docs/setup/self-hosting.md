@@ -156,7 +156,11 @@ picture of the stack rather than a wall of environment variables.
 OdaOrg and Microsoft plugins by default), and `config/plugins-config/` holds each plugin's
 configuration. The Microsoft plugin talks to the `schulymicrosoft` service through
 `MicrosoftApi.BaseUrl` in `Schuly.Plugin.Microsoft.yml`; it refuses to start without
-that setting. To run without Microsoft 365, drop the plugin from `plugins.yml` and the
+that setting. The web app's Microsoft password sign-in (email and password, then an
+Authenticator approval or code) also needs `MICROSOFT_SERVICE_KEY` in `.env`: the same key
+reaches the plugin and the `schulymicrosoft` service, which refuses password sign-ins without
+it. Leave it empty and the web offers no Microsoft sign-in; the mobile app's browser sign-in
+still works. To run without Microsoft 365, drop the plugin from `plugins.yml` and the
 `schulymicrosoft` service from the compose file.
 The absence reasons offered per school are configured under `AbsenceReasons` in `Schuly.Plugin.Schulware.yml`, keyed by the host of the school's Schulnetz URL.
 Each plugin also **provides its own school-system catalog entry** - the system the
