@@ -15,7 +15,16 @@ export interface ChallengeResponse {
   expires_in: number;
 }
 
-export type SignInResponse = TokenResponse | ChallengeResponse;
+export interface EmailVerificationResponse {
+  email_verification_required: true;
+  challenge: string;
+  expires_in: number;
+  method: string;
+  email?: string | null;
+}
+
+export type SignInResponse = TokenResponse | ChallengeResponse | EmailVerificationResponse;
+export type RegisterResponse = TokenResponse | EmailVerificationResponse;
 
 export interface TwoFactorStatus {
   enabled: boolean;
@@ -54,6 +63,12 @@ export interface SignInProof {
   code?: string;
 }
 
+export function isEmailVerification(
+  response: SignInResponse,
+): response is EmailVerificationResponse {
+  return 'email_verification_required' in response && response.email_verification_required === true;
+}
+
 export function isChallenge(response: SignInResponse): response is ChallengeResponse {
   return 'two_factor_required' in response && response.two_factor_required === true;
 }
@@ -84,12 +99,24 @@ export class AuthApi {
     );
   }
 
-  register(userName: string, email: string, password: string): Observable<TokenResponse> {
-    return this.http.post<TokenResponse>(
+  register(userName: string, email: string, password: string): Observable<RegisterResponse> {
+    return this.http.post<RegisterResponse>(
       '/auth/register',
       { userName, email, password },
       { headers: web },
     );
+  }
+
+  verifyEmailCode(challenge: string, code: string): Observable<SignInResponse> {
+    return this.http.post<SignInResponse>(
+      '/auth/email/verify-code',
+      { challenge, code },
+      { headers: web },
+    );
+  }
+
+  resendEmailCode(challenge: string): Observable<void> {
+    return this.http.post<void>('/auth/email/resend-code', { challenge });
   }
 
   refresh(): Observable<TokenResponse> {
