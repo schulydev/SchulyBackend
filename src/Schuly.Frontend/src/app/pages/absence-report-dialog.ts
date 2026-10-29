@@ -1,5 +1,6 @@
 import {
   afterNextRender,
+  computed,
   Component,
   effect,
   ElementRef,
@@ -12,17 +13,19 @@ import {
 import { form, FormField, FormRoot, validate } from '@angular/forms/signals';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideSend } from '@ng-icons/lucide';
+import { provideBrnCalendarI18n } from '@spartan-ng/brain/calendar';
 import { toast } from '@spartan-ng/brain/sonner';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmDialogImports } from '@spartan-ng/helm/dialog';
 import { HlmFieldImports } from '@spartan-ng/helm/field';
 import { HlmInput } from '@spartan-ng/helm/input';
-import { HlmNativeSelectImports } from '@spartan-ng/helm/native-select';
+import { HlmDatePickerImports, provideHlmDatePickerConfig } from '@spartan-ng/helm/date-picker';
+import { HlmSelectImports } from '@spartan-ng/helm/select';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { HlmSwitch } from '@spartan-ng/helm/switch';
 import { HlmTextarea } from '@spartan-ng/helm/textarea';
-import { startOfToday, toIsoDate } from '../core/dates';
+import { fromIsoDate, startOfToday, toIsoDate } from '../core/dates';
 import {
   AbsenceReportRequest,
   AbsenceReportsStore,
@@ -31,6 +34,18 @@ import {
 
 const MAX_LENGTH = 500;
 const OTHER_REASON = '__other__';
+const NO_REASON = '__none__';
+
+const LOCALE = 'en-GB';
+const DATE_FORMAT = new Intl.DateTimeFormat(LOCALE, {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
+const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const longMonth = (month: number, year = 2000) =>
+  new Date(year, month).toLocaleDateString(LOCALE, { month: 'long' });
 
 interface ReportModel {
   dateFrom: string;
@@ -68,12 +83,29 @@ const emptyModel = (): ReportModel => {
     HlmDialogImports,
     HlmFieldImports,
     HlmInput,
-    HlmNativeSelectImports,
+    HlmDatePickerImports,
+    HlmSelectImports,
     HlmSpinner,
     HlmSwitch,
     HlmTextarea,
   ],
-  providers: [provideIcons({ lucideSend })],
+  providers: [
+    provideIcons({ lucideSend }),
+    provideHlmDatePickerConfig<Date>({
+      autoCloseOnSelect: true,
+      formatDate: (date) => DATE_FORMAT.format(date),
+      formatInputDate: (date) => DATE_FORMAT.format(date),
+    }),
+    provideBrnCalendarI18n({
+      firstDayOfWeek: () => 1,
+      formatWeekdayName: (index) => WEEKDAYS[index],
+      formatHeader: (month, year) =>
+        new Date(year, month).toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' }),
+      formatMonth: (month) => longMonth(month),
+      formatYear: (year) => String(year),
+      months: () => Array.from({ length: 12 }, (_, i) => longMonth(i)) as never,
+    }),
+  ],
   template: `
     <button hlmBtn type="button" (click)="show()">
       <ng-icon name="lucideSend" aria-hidden="true" />
@@ -98,35 +130,53 @@ const emptyModel = (): ReportModel => {
             @if (reports.accounts().length > 1) {
               <div hlmField>
                 <label hlmFieldLabel for="absence-account">School</label>
-                <hlm-native-select
-                  selectId="absence-account"
-                  [value]="accountId()"
-                  (valueChange)="accountId.set($event ?? '')"
-                >
-                  @for (account of reports.accounts(); track account.id) {
-                    <option hlmNativeSelectOption [value]="account.id">{{ account.title }}</option>
-                  }
-                </hlm-native-select>
+                <hlm-select [value]="accountId()" (valueChange)="accountId.set($event ?? '')">
+                  <hlm-select-trigger buttonId="absence-account" class="w-full">
+                    <hlm-select-value />
+                  </hlm-select-trigger>
+                  <hlm-select-content *hlmSelectPortal>
+                    <hlm-select-group>
+                      @for (account of reports.accounts(); track account.id) {
+                        <hlm-select-item [value]="account.id">{{ account.title }}</hlm-select-item>
+                      }
+                    </hlm-select-group>
+                  </hlm-select-content>
+                </hlm-select>
               </div>
             }
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div hlmField>
-                <label hlmFieldLabel for="absence-from">From</label>
-                <input
-                  hlmInput
-                  id="absence-from"
-                  type="date"
-                  [formField]="report.dateFrom"
-                  (change)="fromChanged()"
-                />
+                <label hlmFieldLabel for="absence-from"
+                  >From<span class="sr-only">, {{ dateLabel(model().dateFrom) }}</span></label
+                >
+                <hlm-date-picker
+                  [date]="fromDate()"
+                  [autoCloseOnSelect]="true"
+                  (dateChange)="setFrom($event)"
+                >
+                  <hlm-date-picker-trigger buttonId="absence-from" class="w-full">
+                    Pick a date
+                  </hlm-date-picker-trigger>
+                </hlm-date-picker>
                 @if (report.dateFrom().touched() && report.dateFrom().invalid()) {
                   <hlm-field-error>{{ report.dateFrom().errors()[0]?.message }}</hlm-field-error>
                 }
               </div>
               <div hlmField>
-                <label hlmFieldLabel for="absence-to">To</label>
-                <input hlmInput id="absence-to" type="date" [formField]="report.dateTo" />
+                <label hlmFieldLabel for="absence-to"
+                  >To<span class="sr-only">, {{ dateLabel(model().dateTo) }}</span></label
+                >
+                <hlm-date-picker
+                  [date]="toDate()"
+                  [minDate]="fromDate()"
+                  [autoCloseOnSelect]="true"
+                  (dateChange)="setTo($event)"
+                >
+                  <hlm-date-picker-trigger buttonId="absence-to" class="w-full">
+                    Pick a date
+                  </hlm-date-picker-trigger>
+                </hlm-date-picker>
                 @if (report.dateTo().touched() && report.dateTo().invalid()) {
                   <hlm-field-error>{{ report.dateTo().errors()[0]?.message }}</hlm-field-error>
                 }
@@ -174,19 +224,25 @@ const emptyModel = (): ReportModel => {
                   <span class="sr-only" role="status">Loading reasons</span>
                 }
               </div>
-              <hlm-native-select
-                selectId="absence-reason-choice"
+              <hlm-select
                 [disabled]="reasonsLoading()"
                 [attr.aria-busy]="reasonsLoading()"
-                [value]="model().reasonChoice"
-                (valueChange)="setReasonChoice($event ?? '')"
+                [value]="model().reasonChoice || noReason"
+                (valueChange)="setReasonChoice($event === noReason ? '' : ($event ?? ''))"
               >
-                <option hlmNativeSelectOption value="">No reason</option>
-                @for (reason of reasonOptions(); track reason) {
-                  <option hlmNativeSelectOption [value]="reason">{{ reason }}</option>
-                }
-                <option hlmNativeSelectOption [value]="otherReason">Other…</option>
-              </hlm-native-select>
+                <hlm-select-trigger buttonId="absence-reason-choice" class="w-full">
+                  <hlm-select-value />
+                </hlm-select-trigger>
+                <hlm-select-content *hlmSelectPortal>
+                  <hlm-select-group>
+                    <hlm-select-item [value]="noReason">No reason</hlm-select-item>
+                    @for (reason of reasonOptions(); track reason) {
+                      <hlm-select-item [value]="reason">{{ reason }}</hlm-select-item>
+                    }
+                    <hlm-select-item [value]="otherReason">Other…</hlm-select-item>
+                  </hlm-select-group>
+                </hlm-select-content>
+              </hlm-select>
             </div>
 
             @if (model().reasonChoice === otherReason) {
@@ -256,6 +312,7 @@ export class AbsenceReportDialog {
   protected readonly reasonOptions = signal<string[]>([]);
   protected readonly reasonsLoading = signal(false);
   protected readonly otherReason = OTHER_REASON;
+  protected readonly noReason = NO_REASON;
 
   protected readonly open = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -263,6 +320,8 @@ export class AbsenceReportDialog {
 
   protected readonly model = signal<ReportModel>(emptyModel());
   private lastFrom = this.model().dateFrom;
+  protected readonly fromDate = computed(() => fromIsoDate(this.model().dateFrom));
+  protected readonly toDate = computed(() => fromIsoDate(this.model().dateTo));
 
   protected readonly report = form(
     this.model,
@@ -339,7 +398,23 @@ export class AbsenceReportDialog {
     this.open.set(true);
   }
 
-  protected fromChanged(): void {
+  protected dateLabel(value: string): string {
+    const date = fromIsoDate(value);
+    return date ? DATE_FORMAT.format(date) : 'no date chosen';
+  }
+
+  protected setFrom(date: Date | null): void {
+    this.model.update((m) => ({ ...m, dateFrom: date ? toIsoDate(date) : '' }));
+    this.report.dateFrom().markAsTouched();
+    this.fromChanged();
+  }
+
+  protected setTo(date: Date | null): void {
+    this.model.update((m) => ({ ...m, dateTo: date ? toIsoDate(date) : '' }));
+    this.report.dateTo().markAsTouched();
+  }
+
+  private fromChanged(): void {
     const { dateFrom, dateTo } = this.model();
     if (!dateTo || dateTo === this.lastFrom || dateTo < dateFrom) {
       this.model.update((m) => ({ ...m, dateTo: dateFrom }));
