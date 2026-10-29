@@ -69,7 +69,7 @@ function formatSize(bytes: number): string {
     <div class="flex flex-col gap-4 p-4 lg:p-6">
       <app-microsoft-account-picker />
 
-      <app-page-header title="Drive">
+      <app-page-header>
         @if (!store.problem()) {
           <app-search-field [(value)]="query" label="Search files" placeholder="Search files" />
         }

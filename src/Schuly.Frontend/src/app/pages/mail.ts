@@ -37,7 +37,7 @@ import { MailStore } from '../stores/microsoft.store';
       <app-microsoft-account-picker />
 
       <div [class]="selected() ? 'max-lg:hidden' : ''">
-        <app-page-header title="Mail">
+        <app-page-header>
           @if (!mail.problem()) {
             <app-search-field [(value)]="query" label="Search mail" placeholder="Search mail" />
             <button

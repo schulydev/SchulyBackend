@@ -22,7 +22,7 @@ import { ChatsStore } from '../stores/microsoft.store';
     <div class="flex flex-col gap-4 p-4 lg:p-6">
       <app-microsoft-account-picker />
 
-      <app-page-header title="Teams">
+      <app-page-header>
         @if (!store.problem()) {
           <app-search-field [(value)]="query" label="Search chats" placeholder="Search chats" />
         }
