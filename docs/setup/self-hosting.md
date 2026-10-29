@@ -153,8 +153,8 @@ picture of the stack rather than a wall of environment variables.
 
 ## 4. (Optional) Review the plugins
 
-`config/plugins.yml` lists the plugins the backend loads on startup (the Schulware
-and Microsoft plugins by default), and `config/plugins-config/` holds each plugin's
+`config/plugins.yml` lists the plugins the backend loads on startup (the Schulware,
+OdaOrg and Microsoft plugins by default), and `config/plugins-config/` holds each plugin's
 configuration. The Microsoft plugin talks to the `schulymicrosoft` service through
 `MicrosoftApi.BaseUrl` in `Schuly.Plugin.Microsoft.yml`; it refuses to start without
 that setting. To run without Microsoft 365, drop the plugin from `plugins.yml` and the
