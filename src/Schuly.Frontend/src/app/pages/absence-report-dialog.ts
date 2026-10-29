@@ -1,4 +1,12 @@
-import { Component, inject, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  ElementRef,
+  inject,
+  Injector,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { form, FormField, FormRoot, validate } from '@angular/forms/signals';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideSend } from '@ng-icons/lucide';
@@ -12,6 +20,7 @@ import { HlmNativeSelectImports } from '@spartan-ng/helm/native-select';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { HlmSwitch } from '@spartan-ng/helm/switch';
 import { HlmTextarea } from '@spartan-ng/helm/textarea';
+import { ABSENCE_REASONS } from '../core/absence-reasons';
 import { startOfToday, toIsoDate } from '../core/dates';
 import {
   AbsenceReportRequest,
@@ -20,6 +29,7 @@ import {
 } from '../stores/absence-reports.store';
 
 const MAX_LENGTH = 500;
+const OTHER_REASON = '__other__';
 
 interface ReportModel {
   dateFrom: string;
@@ -27,6 +37,7 @@ interface ReportModel {
   partial: boolean;
   timeFrom: string;
   timeTo: string;
+  reasonChoice: string;
   reason: string;
   comment: string;
 }
@@ -39,6 +50,7 @@ const emptyModel = (): ReportModel => {
     partial: false,
     timeFrom: '',
     timeTo: '',
+    reasonChoice: '',
     reason: '',
     comment: '',
   };
@@ -154,18 +166,36 @@ const emptyModel = (): ReportModel => {
             }
 
             <div hlmField>
-              <label hlmFieldLabel for="absence-reason">Reason (optional)</label>
-              <input
-                hlmInput
-                id="absence-reason"
-                autocomplete="off"
-                placeholder="Illness"
-                [formField]="report.reason"
-              />
-              @if (report.reason().touched() && report.reason().invalid()) {
-                <hlm-field-error>{{ report.reason().errors()[0]?.message }}</hlm-field-error>
-              }
+              <label hlmFieldLabel for="absence-reason-choice">Reason (optional)</label>
+              <hlm-native-select
+                selectId="absence-reason-choice"
+                [value]="model().reasonChoice"
+                (valueChange)="setReasonChoice($event ?? '')"
+              >
+                <option hlmNativeSelectOption value="">No reason</option>
+                @for (reason of reasonOptions; track reason) {
+                  <option hlmNativeSelectOption [value]="reason">{{ reason }}</option>
+                }
+                <option hlmNativeSelectOption [value]="otherReason">Other…</option>
+              </hlm-native-select>
             </div>
+
+            @if (model().reasonChoice === otherReason) {
+              <div hlmField>
+                <label hlmFieldLabel for="absence-reason">Your reason</label>
+                <input
+                  #customReason
+                  hlmInput
+                  id="absence-reason"
+                  autocomplete="off"
+                  aria-required="true"
+                  [formField]="report.reason"
+                />
+                @if (report.reason().touched() && report.reason().invalid()) {
+                  <hlm-field-error>{{ report.reason().errors()[0]?.message }}</hlm-field-error>
+                }
+              </div>
+            }
 
             <div hlmField>
               <label hlmFieldLabel for="absence-comment">Comment (optional)</label>
@@ -211,6 +241,11 @@ const emptyModel = (): ReportModel => {
 })
 export class AbsenceReportDialog {
   protected readonly reports = inject(AbsenceReportsStore);
+  private readonly injector = inject(Injector);
+  private readonly customReason = viewChild<ElementRef<HTMLInputElement>>('customReason');
+
+  protected readonly reasonOptions = ABSENCE_REASONS;
+  protected readonly otherReason = OTHER_REASON;
 
   protected readonly open = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -246,11 +281,13 @@ export class AbsenceReportDialog {
           ? { kind: 'range', message: 'The end time must be after the start time.' }
           : undefined;
       });
-      validate(path.reason, ({ value }) =>
-        value().length > MAX_LENGTH
+      validate(path.reason, ({ value, valueOf }) => {
+        if (valueOf(path.reasonChoice) !== OTHER_REASON) return undefined;
+        if (!value().trim()) return { kind: 'required', message: 'Enter your reason.' };
+        return value().length > MAX_LENGTH
           ? { kind: 'maxLength', message: `Use ${MAX_LENGTH} characters or fewer.` }
-          : undefined,
-      );
+          : undefined;
+      });
       validate(path.comment, ({ value }) =>
         value().length > MAX_LENGTH
           ? { kind: 'maxLength', message: `Use ${MAX_LENGTH} characters or fewer.` }
@@ -285,6 +322,15 @@ export class AbsenceReportDialog {
     this.model.update((m) => ({ ...m, partial }));
   }
 
+  protected setReasonChoice(reasonChoice: string): void {
+    this.model.update((m) => ({ ...m, reasonChoice, reason: '' }));
+    if (reasonChoice === OTHER_REASON) {
+      afterNextRender(() => this.customReason()?.nativeElement.focus(), {
+        injector: this.injector,
+      });
+    }
+  }
+
   private async send(): Promise<undefined> {
     this.error.set(null);
     const m = this.model();
@@ -293,7 +339,8 @@ export class AbsenceReportDialog {
       request.hourFrom = m.timeFrom;
       request.hourTo = m.timeTo;
     }
-    if (m.reason.trim()) request.reason = m.reason.trim();
+    const reason = m.reasonChoice === OTHER_REASON ? m.reason.trim() : m.reasonChoice;
+    if (reason) request.reason = reason;
     if (m.comment.trim()) request.comment = m.comment.trim();
     try {
       await this.reports.report(this.accountId() || this.reports.accounts()[0].id, request);
