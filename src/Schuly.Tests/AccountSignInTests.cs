@@ -18,16 +18,54 @@ namespace Schuly.Tests
         [Test]
         public async Task Configured_email_or_username_gets_the_administrator_role()
         {
-            var provider = new UserRoleProvider(Config("Admin@Example.com", "opsuser"));
+            var db = TestDb.NewContext(Guid.NewGuid().ToString());
+            var admin = new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com", UserName = "someone" };
+            db.Set<ToamaisutaaPasswordCredential>().Add(Credential(admin, confirmed: true));
+            await db.SaveChangesAsync();
+            var provider = new UserRoleProvider(Config("Admin@Example.com", "opsuser"), db);
 
-            var byEmail = await provider.GetRolesAsync(new ToamaisutaaUser { Email = "admin@example.com", UserName = "someone" });
-            var byName = await provider.GetRolesAsync(new ToamaisutaaUser { Email = "ops@example.com", UserName = "OpsUser" });
-            var other = await provider.GetRolesAsync(new ToamaisutaaUser { Email = "student@example.com", UserName = "student" });
+            var byEmail = await provider.GetRolesAsync(admin);
+            var byName = await provider.GetRolesAsync(new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "ops@example.com", UserName = "OpsUser" });
+            var other = await provider.GetRolesAsync(new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "student@example.com", UserName = "student" });
 
             await Assert.That(byEmail).Contains("Administrator");
             await Assert.That(byName).Contains("Administrator");
             await Assert.That(other).IsEmpty();
         }
+
+        [Test]
+        public async Task An_unconfirmed_administrator_email_gets_no_role()
+        {
+            var db = TestDb.NewContext(Guid.NewGuid().ToString());
+            var squatter = new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com", UserName = "squatter" };
+            db.Set<ToamaisutaaPasswordCredential>().Add(Credential(squatter, confirmed: false));
+            await db.SaveChangesAsync();
+            var provider = new UserRoleProvider(Config("admin@example.com"), db);
+
+            await Assert.That(await provider.GetRolesAsync(squatter)).IsEmpty();
+        }
+
+        [Test]
+        public async Task A_provider_only_account_with_the_administrator_email_gets_the_role()
+        {
+            var db = TestDb.NewContext(Guid.NewGuid().ToString());
+            var provider = new UserRoleProvider(Config("admin@example.com"), db);
+
+            var roles = await provider.GetRolesAsync(new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com" });
+
+            await Assert.That(roles).Contains("Administrator");
+        }
+
+        private static ToamaisutaaPasswordCredential Credential(ToamaisutaaUser user, bool confirmed) => new()
+        {
+            UserId = user.Id,
+            UserName = user.UserName!,
+            NormalizedUserName = user.UserName!.ToUpperInvariant(),
+            Email = user.Email,
+            NormalizedEmail = user.Email?.ToUpperInvariant(),
+            EmailConfirmedAt = confirmed ? DateTimeOffset.UtcNow : null,
+            PasswordHash = "x",
+        };
 
         [Test]
         public async Task Avatar_upload_replaces_the_previous_picture()
