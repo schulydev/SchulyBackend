@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideCalendarDays, lucideChartColumn, lucideClipboardList, lucideFileText, lucideHardDrive, lucideLayoutDashboard, lucideMail, lucideMessagesSquare, lucideNotebook, lucideSettings, lucideUserX } from '@ng-icons/lucide';
+import { lucideCalendarDays, lucideChartColumn, lucideClipboardList, lucideFileText, lucideHardDrive, lucideLayoutDashboard, lucideMail, lucideMessagesSquare, lucideNotebook, lucideUserX } from '@ng-icons/lucide';
 import { HlmSidebarImports } from '@spartan-ng/helm/sidebar';
 import { MicrosoftAccountsStore } from '../stores/microsoft-accounts.store';
 import { NavUser } from './nav-user';
@@ -15,7 +15,7 @@ interface NavItem {
 @Component({
   selector: 'app-sidebar',
   imports: [HlmSidebarImports, NgIcon, RouterLink, RouterLinkActive, NavUser],
-  providers: [provideIcons({ lucideLayoutDashboard, lucideChartColumn, lucideClipboardList, lucideCalendarDays, lucideUserX, lucideFileText, lucideHardDrive, lucideMail, lucideMessagesSquare, lucideNotebook, lucideSettings })],
+  providers: [provideIcons({ lucideLayoutDashboard, lucideChartColumn, lucideClipboardList, lucideCalendarDays, lucideUserX, lucideFileText, lucideHardDrive, lucideMail, lucideMessagesSquare, lucideNotebook })],
   template: `
     <hlm-sidebar collapsible="icon">
       <div hlmSidebarHeader class="border-b">
@@ -54,18 +54,6 @@ interface NavItem {
             </div>
           </div>
         }
-        <div hlmSidebarGroup class="mt-auto">
-          <div hlmSidebarGroupContent>
-            <ul hlmSidebarMenu>
-              <li hlmSidebarMenuItem>
-                <a hlmSidebarMenuButton routerLink="/settings" routerLinkActive #settings="routerLinkActive" [isActive]="settings.isActive" tooltip="Settings">
-                  <ng-icon name="lucideSettings" />
-                  <span>Settings</span>
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
       </div>
       <div hlmSidebarFooter>
         <app-nav-user />

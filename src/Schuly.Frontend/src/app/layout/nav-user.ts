@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideEllipsisVertical, lucideLogOut, lucideSettings, lucideUserRound } from '@ng-icons/lucide';
+import { lucideEllipsisVertical, lucideLogOut, lucideUserRound } from '@ng-icons/lucide';
 import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
 import { HlmDropdownMenuImports } from '@spartan-ng/helm/dropdown-menu';
 import { HlmSidebarImports, HlmSidebarService } from '@spartan-ng/helm/sidebar';
@@ -10,7 +10,7 @@ import { UserStore } from '../stores/user.store';
 @Component({
   selector: 'app-nav-user',
   imports: [HlmSidebarImports, HlmAvatarImports, HlmDropdownMenuImports, NgIcon, RouterLink],
-  providers: [provideIcons({ lucideEllipsisVertical, lucideLogOut, lucideSettings, lucideUserRound })],
+  providers: [provideIcons({ lucideEllipsisVertical, lucideLogOut, lucideUserRound })],
   template: `
     <ul hlmSidebarMenu>
       <li hlmSidebarMenuItem>
@@ -58,10 +58,6 @@ import { UserStore } from '../stores/user.store';
           <a hlmDropdownMenuItem routerLink="/settings">
             <ng-icon name="lucideUserRound" />
             <span>Account</span>
-          </a>
-          <a hlmDropdownMenuItem routerLink="/settings">
-            <ng-icon name="lucideSettings" />
-            <span>Settings</span>
           </a>
         </hlm-dropdown-menu-group>
         <hlm-dropdown-menu-separator />
