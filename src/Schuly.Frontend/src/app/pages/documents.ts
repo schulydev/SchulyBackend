@@ -2,19 +2,26 @@ import { DatePipe } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideDownload, lucideFileText } from '@ng-icons/lucide';
+import { HlmAlertImports } from '@spartan-ng/helm/alert';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
+import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import { EmptyState } from '../shared/empty-state';
 import { DocumentsStore } from '../stores/documents.store';
 
 @Component({
   selector: 'app-documents',
-  imports: [HlmTableImports, HlmBadge, HlmButton, HlmSkeletonImports, NgIcon, DatePipe, EmptyState],
+  imports: [HlmAlertImports, HlmTableImports, HlmBadge, HlmButton, HlmSkeletonImports, HlmSpinner, NgIcon, DatePipe, EmptyState],
   providers: [provideIcons({ lucideDownload, lucideFileText })],
   template: `
     <div class="flex flex-col gap-4 p-4 lg:p-6">
+      @if (documents.downloadError()) {
+        <div hlmAlert variant="destructive">
+          <p hlmAlertDescription>{{ documents.downloadError() }}</p>
+        </div>
+      }
       @if (documents.loading()) {
         <div class="flex flex-col gap-2">
           @for (i of [1, 2, 3]; track i) {
@@ -68,9 +75,18 @@ import { DocumentsStore } from '../stores/documents.store';
                           variant="ghost"
                           size="icon-sm"
                           (click)="documents.download(document)"
-                          [attr.aria-label]="'Download ' + document.title"
+                          [disabled]="documents.isDownloading(document.id)"
+                          [attr.aria-busy]="documents.isDownloading(document.id)"
+                          [attr.aria-label]="
+                            (documents.isDownloading(document.id) ? 'Downloading ' : 'Download ') +
+                            document.title
+                          "
                         >
-                          <ng-icon name="lucideDownload" />
+                          @if (documents.isDownloading(document.id)) {
+                            <hlm-spinner />
+                          } @else {
+                            <ng-icon name="lucideDownload" />
+                          }
                         </button>
                       }
                     </td>
