@@ -15,6 +15,7 @@ import { HlmCardImports } from '@spartan-ng/helm/card';
 import { HlmProgressImports } from '@spartan-ng/helm/progress';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { HlmTableImports } from '@spartan-ng/helm/table';
+import { dateOnly } from '../core/calendar';
 import { AgendaTypeBadge } from '../shared/agenda-type-badge';
 import { EmptyState } from '../shared/empty-state';
 import { GradeBadge } from '../shared/grade-badge';
@@ -234,17 +235,16 @@ import { UserStore } from '../stores/user.store';
               <div class="flex items-start gap-3">
                 <div class="bg-muted flex w-12 shrink-0 flex-col items-center rounded-md py-1.5">
                   <span class="text-muted-foreground text-[10px] font-medium uppercase">{{
-                    entry.date | date: 'MMM'
+                    entry.start | date: 'MMM'
                   }}</span>
                   <span class="text-lg leading-none font-semibold tabular-nums">{{
-                    entry.date | date: 'd'
+                    entry.start | date: 'd'
                   }}</span>
                 </div>
                 <div class="grid flex-1 gap-0.5">
                   <span class="truncate text-sm font-medium">{{ entry.title }}</span>
                   <span class="text-muted-foreground truncate text-xs"
-                    >{{ entry.date | date: 'EEEE, HH:mm'
-                    }}{{ entry.place ? ' - ' + entry.place : '' }}</span
+                    >@if (entry.end) {{{ entry.start | date: 'EEE, d MMM' }} - {{ entry.end | date: 'EEE, d MMM' }}} @else if (entry.allDay) {{{ entry.start | date: 'EEEE' }}, all day} @else {{{ entry.start | date: 'EEEE, HH:mm' }}}{{ entry.place ? ' - ' + entry.place : '' }}</span
                   >
                 </div>
                 <app-agenda-type-badge [type]="entry.entryType" />
@@ -299,11 +299,20 @@ export class Overview {
 
   protected readonly firstName = computed(() => this.user.name().split(' ')[0]);
   protected readonly recentGrades = computed(() => this.grades.grades().slice(0, 6));
+  /** All-day entries arrive as midnight UTC (the calendar's rule), so they show a date or a range instead of 01:00. */
   protected readonly comingUp = computed(() =>
     this.agenda
       .upcoming()
       .filter((entry) => entry.entryType !== 'Lesson')
-      .slice(0, 5),
+      .slice(0, 5)
+      .map((entry) => {
+        const startDay = dateOnly(entry.date);
+        const endDay = entry.endDate ? dateOnly(entry.endDate) : startDay;
+        const allDay = startDay !== null && endDay !== null;
+        const start = allDay ? startDay : new Date(entry.date);
+        const end = allDay && endDay.getTime() !== startDay.getTime() ? endDay : null;
+        return { ...entry, start, end, allDay };
+      }),
   );
   protected readonly upcoming = computed(() =>
     [
