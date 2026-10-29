@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { patchState, signalStore, withHooks, withMethods, withState } from '@ngrx/signals';
+import { computed, inject } from '@angular/core';
+import { patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
 import { catchError, firstValueFrom, of } from 'rxjs';
 import { MicrosoftAccountsStore } from './microsoft-accounts.store';
 
@@ -45,6 +45,9 @@ const host = (url?: string | null): string | null => {
 
 export const ConnectionsStore = signalStore(
   withState<ConnectionsState>({ connections: [], loading: false, busy: false, error: null }),
+  withComputed((store) => ({
+    schulnetzAccounts: computed(() => store.connections().filter((c) => c.source === 'schulware')),
+  })),
   withMethods((store, http = inject(HttpClient), microsoft = inject(MicrosoftAccountsStore)) => {
     const loadPlugin = async (source: (typeof pluginSources)[number]): Promise<Connection[]> => {
       const accounts = await firstValueFrom(

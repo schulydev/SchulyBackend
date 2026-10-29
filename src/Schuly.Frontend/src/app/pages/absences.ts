@@ -8,6 +8,9 @@ import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { HlmTableImports } from '@spartan-ng/helm/table';
 import { HlmToggleGroupImports } from '@spartan-ng/helm/toggle-group';
 import { EmptyState } from '../shared/empty-state';
+import { AbsenceReportDialog } from './absence-report-dialog';
+import { AbsenceReportsCard } from './absence-reports-card';
+import { AbsenceReportsStore } from '../stores/absence-reports.store';
 import { AbsenceFilter, AbsencesStore } from '../stores/absences.store';
 
 @Component({
@@ -21,8 +24,10 @@ import { AbsenceFilter, AbsencesStore } from '../stores/absences.store';
     DatePipe,
     DecimalPipe,
     EmptyState,
+    AbsenceReportDialog,
+    AbsenceReportsCard,
   ],
-  providers: [provideIcons({ lucideUserX })],
+  providers: [provideIcons({ lucideUserX }), AbsenceReportsStore],
   template: `
     <div class="flex flex-col gap-4 p-4 md:gap-6 lg:p-6">
       <div class="grid grid-cols-3 gap-2 sm:gap-4">
@@ -52,6 +57,9 @@ import { AbsenceFilter, AbsencesStore } from '../stores/absences.store';
         </div>
       </div>
 
+      <app-absence-reports-card />
+
+      <div class="flex flex-wrap items-center justify-between gap-2">
       <hlm-toggle-group
         type="single"
         variant="outline"
@@ -66,6 +74,10 @@ import { AbsenceFilter, AbsencesStore } from '../stores/absences.store';
         <button hlmToggleGroupItem value="Absence" class="px-3">Absences</button>
         <button hlmToggleGroupItem value="Delay" class="px-3">Delays</button>
       </hlm-toggle-group>
+      @if (reports.available()) {
+        <app-absence-report-dialog />
+      }
+      </div>
 
       @if (absences.loading()) {
         <div class="flex flex-col gap-2">
@@ -136,6 +148,7 @@ import { AbsenceFilter, AbsencesStore } from '../stores/absences.store';
 })
 export class Absences {
   protected readonly absences = inject(AbsencesStore);
+  protected readonly reports = inject(AbsenceReportsStore);
 
   protected setFilter(value: unknown): void {
     if (typeof value === 'string') this.absences.setFilter(value as AbsenceFilter);
