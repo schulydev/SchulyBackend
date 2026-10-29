@@ -9,7 +9,7 @@ export interface McpClientGuide {
   id: string;
   name: string;
   icon: string;
-  /** A monochrome brand logo where the brand allows it; otherwise the Lucide icon is shown. */
+  /** A monochrome client logo; the Lucide icon is the fallback. */
   brand?: BrandName;
   steps: string[];
   snippet: McpSnippet;
@@ -80,6 +80,7 @@ export function mcpClientGuides(url: string): McpClientGuide[] {
       id: 'chatgpt',
       name: 'ChatGPT',
       icon: 'lucideMessageSquare',
+      brand: 'chatgpt',
       steps: [
         'Open Settings, then Apps & Connectors, then Advanced settings, and turn on Developer mode.',
         'Choose Create (or open chatgpt.com/plugins, choose +, then Add custom MCP server).',
@@ -117,13 +118,16 @@ export function mcpClientGuides(url: string): McpClientGuide[] {
       id: 'vscode',
       name: 'VS Code',
       icon: 'lucideCode',
-      brand: 'githubcopilot',
+      brand: 'vscode',
       steps: [
         'Use the install button, or add this to .vscode/mcp.json.',
         'Start the Schuly server from the file or the MCP view.',
         'Choose Allow when asked to sign in, and finish the sign-in in your browser.',
       ],
-      snippet: { title: '.vscode/mcp.json', code: json({ servers: { schuly: { type: 'http', url } } }) },
+      snippet: {
+        title: '.vscode/mcp.json',
+        code: json({ servers: { schuly: { type: 'http', url } } }),
+      },
       note: 'VS Code (GitHub Copilot) uses the key "servers", not "mcpServers".',
       installLink: { label: 'Install in VS Code', href: vscodeInstallLink(url) },
       key: {
@@ -132,10 +136,19 @@ export function mcpClientGuides(url: string): McpClientGuide[] {
           title: '.vscode/mcp.json',
           code: json({
             inputs: [
-              { type: 'promptString', id: 'schuly_key', description: 'Schuly MCP API key', password: true },
+              {
+                type: 'promptString',
+                id: 'schuly_key',
+                description: 'Schuly MCP API key',
+                password: true,
+              },
             ],
             servers: {
-              schuly: { type: 'http', url, headers: { Authorization: 'Bearer ${input:schuly_key}' } },
+              schuly: {
+                type: 'http',
+                url,
+                headers: { Authorization: 'Bearer ${input:schuly_key}' },
+              },
             },
           }),
         },
@@ -170,6 +183,7 @@ export function mcpClientGuides(url: string): McpClientGuide[] {
       id: 'gemini-cli',
       name: 'Gemini CLI',
       icon: 'lucideTerminal',
+      brand: 'gemini',
       steps: [
         'Run this command, or add the server to ~/.gemini/settings.json.',
         'Start Gemini CLI and run /mcp auth schuly.',
@@ -189,6 +203,7 @@ export function mcpClientGuides(url: string): McpClientGuide[] {
       id: 'codex-cli',
       name: 'Codex CLI',
       icon: 'lucideTerminal',
+      brand: 'codex',
       steps: [
         'Run these commands, or add the server to ~/.codex/config.toml.',
         'Finish the sign-in in your browser when codex mcp login opens it.',
