@@ -349,3 +349,26 @@ test('link school account -> syncing shown -> poll returns ok -> grades visible 
   await expect(page.getByText('Algebra test')).toHaveCount(0);
   expect(await page.evaluate(() => (window as unknown as { __marker: string }).__marker)).toBe('still-here');
 });
+
+test('a host-callback return (?linkSession=) reads the finished session, toasts and reloads the accounts', async ({ page }) => {
+  server.pollReplies = [doneStep('b1', 'Mia Beta')];
+  server.onDone = () => {
+    server.accounts = [BETA_ACCOUNT];
+  };
+  await page.goto('/settings?linkSession=session-1');
+  await expect(page.getByText('Linked Mia Beta')).toBeVisible();
+  await expect(page.locator('section[aria-labelledby="accounts-title"]').getByText('Mia Beta')).toBeVisible();
+  await expect(page).not.toHaveURL(/linkSession/);
+});
+
+test('a provider that failed to list its accounts shows an error row without unlink or re-authenticate', async ({ page }) => {
+  server.accounts = [
+    { providerId: 'beta', providerName: 'Beta Cloud', id: '', title: '', status: 'error', message: 'Beta Cloud is not answering.', capabilities: [], canReauth: false },
+    ALPHA_ACCOUNT,
+  ];
+  await page.goto('/settings');
+  const card = page.locator('section[aria-labelledby="accounts-title"]');
+  await expect(card.getByText('Beta Cloud is not answering.')).toBeVisible();
+  await expect(card.getByRole('button', { name: /Unlink/ })).toHaveCount(1);
+  await expectAccessible(page, 'section[aria-labelledby="accounts-title"]');
+});

@@ -268,7 +268,7 @@ export class AuthenticationService extends BaseService {
 
     /**
      * Signs in with a password, or asks for a second factor.
-     * **Two success shapes, both 200.** Usually a token pair. For a user with a confirmed second factor it is instead a challenge and no tokens:  &#x60;&#x60;&#x60;json { \&quot;two_factor_required\&quot;: true, \&quot;challenge\&quot;: \&quot;No1CXq9-...\&quot;, \&quot;expires_in\&quot;: 300 } &#x60;&#x60;&#x60;  Branch on &#x60;two_factor_required&#x60;, which is absent from the token shape. Present the challenge with a code to &#x60;/auth/2fa/verify&#x60; to finish signing in.
+     * **Two success shapes, both 200.** Usually a token pair. For a user with a confirmed second factor it is instead a challenge and no tokens:  &#x60;&#x60;&#x60;json { \&quot;two_factor_required\&quot;: true, \&quot;challenge\&quot;: \&quot;No1CXq9-...\&quot;, \&quot;expires_in\&quot;: 300 } &#x60;&#x60;&#x60;  Branch on &#x60;two_factor_required&#x60;, which is absent from the token shape. Present the challenge with a code to &#x60;/auth/2fa/verify&#x60; to finish signing in.  With &#x60;LocalLogin:RequireVerifiedEmailForSignIn&#x60; on, an account whose address was never confirmed gets a third: &#x60;{ \&quot;email_verification_required\&quot;: true, \&quot;challenge\&quot;: \&quot;...\&quot;, \&quot;method\&quot;: \&quot;code\&quot;, ... }&#x60;, answered at &#x60;/auth/email/verify-code&#x60;.
      * @endpoint post /auth/login
      * @param loginRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -477,7 +477,7 @@ export class AuthenticationService extends BaseService {
 
     /**
      * Creates a local account and signs it in.
-     * Mapped only when &#x60;LocalLogin:AllowSelfRegistration&#x60; is true.
+     * Mapped only when &#x60;LocalLogin:AllowSelfRegistration&#x60; is true. With &#x60;LocalLogin:RequireVerifiedEmailForSignIn&#x60; on, &#x60;email&#x60; is required and the 201 carries an email-verification challenge instead of tokens; a code has been mailed to the address.
      * @endpoint post /auth/register
      * @param registerRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

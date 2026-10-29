@@ -39,6 +39,7 @@ const isWebKind = (kind: string): kind is CapabilityKind => (WEB_KINDS as readon
 export function capabilityAccountsOf(accounts: LinkedAccountDto[]): Record<CapabilityKind, CapabilityAccount[]> {
   const result = Object.fromEntries(WEB_KINDS.map((kind) => [kind, [] as CapabilityAccount[]])) as Record<CapabilityKind, CapabilityAccount[]>;
   for (const account of accounts) {
+    if (!account.id) continue;
     for (const capability of account.capabilities ?? []) {
       if (!isWebKind(capability.kind) || !capability.basePath) continue;
       result[capability.kind].push({
@@ -60,6 +61,7 @@ export function navGroupsOf(accounts: LinkedAccountDto[], providers: LinkProvide
   const order = new Map(providers.map((p, i) => [p.id, p.sortOrder * 1000 + i]));
   const groups = new Map<string, NavGroup>();
   for (const account of accounts) {
+    if (!account.id) continue;
     const group = groups.get(account.providerId) ?? { providerId: account.providerId, label: account.providerName, items: [] };
     for (const capability of account.capabilities ?? []) {
       const page = PAGE_KINDS[capability.kind];
@@ -107,7 +109,7 @@ export const LinkedAccountsStore = signalStore(
   withComputed((store) => ({
     capabilityAccounts: computed(() => capabilityAccountsOf(store.accounts())),
     navGroups: computed(() => navGroupsOf(store.accounts(), store.providers())),
-    hasAccounts: computed(() => store.accounts().length > 0),
+    hasAccounts: computed(() => store.accounts().some((a) => !!a.id)),
     syncing: computed(() => store.accounts().some((a) => a.status === 'syncing')),
     schoolAccounts: computed(() => store.accounts().filter((a) => a.capabilities?.some((c) => c.kind === 'school_data'))),
     linkableProviders: computed(() => store.providers().filter((p) => p.flows.length > 0)),
@@ -154,7 +156,8 @@ export const LinkedAccountsStore = signalStore(
       try {
         const rows = await firstValueFrom(api.accounts());
         if (mine !== sequence) return true;
-        const accounts = (Array.isArray(rows) ? rows : []).filter((a) => !!a.id);
+        // An entry with an empty id is a provider that failed to list its accounts; it stays so the card can say so.
+        const accounts = Array.isArray(rows) ? rows : [];
         patchState(store, { accounts, loaded: true, loadError: null });
         if (store.syncing()) schedulePoll();
         else {

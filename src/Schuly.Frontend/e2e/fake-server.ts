@@ -140,7 +140,7 @@ export class FakeServer {
       return route.fulfill({ json: this.accounts });
     });
     await page.route('**/api/linking/accounts/*/*', (route) => {
-      const [, , , , , providerId, id] = new URL(route.request().url()).pathname.split('/');
+      const [, , , , providerId, id] = new URL(route.request().url()).pathname.split('/');
       this.accounts = this.accounts.filter((a) => !(a.providerId === providerId && a.id === id));
       return route.fulfill({ status: 204 });
     });

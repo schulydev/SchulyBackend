@@ -1,10 +1,9 @@
-import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { LinkingService } from '../api';
 
 /*
- * Hand-written DTOs for /api/linking/** (linking contract section 2).
- * Swap for the generated client in src/app/api once the server OpenAPI is regenerated.
+ * DTOs for /api/linking/**: the generated models with string-literal unions instead of enums.
  */
 
 export type LinkPlatformName = 'web' | 'mobile';
@@ -152,37 +151,39 @@ export interface LinkSubmitBody {
   action?: string;
 }
 
-const enc = encodeURIComponent;
-
+/**
+ * Thin wrapper over the generated LinkingService. The generated models use TypeScript enums; the DTOs above are the same wire
+ * shapes with string-literal unions, which is what the step renderer switches on, so results are narrowed here once.
+ */
 @Service()
 export class LinkingApi {
-  private readonly http = inject(HttpClient);
+  private readonly api = inject(LinkingService);
 
   providers(platform: LinkPlatformName = 'web'): Observable<LinkProviderDto[]> {
-    return this.http.get<LinkProviderDto[]>('/api/linking/providers', { params: { platform } });
+    return this.api.apiLinkingProvidersGet(platform) as unknown as Observable<LinkProviderDto[]>;
   }
 
   start(providerId: string, body: LinkStartBody): Observable<LinkSessionDto> {
-    return this.http.post<LinkSessionDto>(`/api/linking/providers/${enc(providerId)}/start`, body);
+    return this.api.apiLinkingProvidersProviderIdStartPost(providerId, body) as unknown as Observable<LinkSessionDto>;
   }
 
   submit(sessionId: string, body: LinkSubmitBody): Observable<LinkSessionDto> {
-    return this.http.post<LinkSessionDto>(`/api/linking/sessions/${enc(sessionId)}/submit`, body);
+    return this.api.apiLinkingSessionsSessionIdSubmitPost(sessionId, body) as unknown as Observable<LinkSessionDto>;
   }
 
   poll(sessionId: string): Observable<LinkSessionDto> {
-    return this.http.get<LinkSessionDto>(`/api/linking/sessions/${enc(sessionId)}`);
+    return this.api.apiLinkingSessionsSessionIdGet(sessionId) as unknown as Observable<LinkSessionDto>;
   }
 
-  cancel(sessionId: string): Observable<void> {
-    return this.http.delete<void>(`/api/linking/sessions/${enc(sessionId)}`);
+  cancel(sessionId: string): Observable<unknown> {
+    return this.api.apiLinkingSessionsSessionIdDelete(sessionId);
   }
 
   accounts(): Observable<LinkedAccountDto[]> {
-    return this.http.get<LinkedAccountDto[]>('/api/linking/accounts');
+    return this.api.apiLinkingAccountsGet() as unknown as Observable<LinkedAccountDto[]>;
   }
 
-  unlink(providerId: string, accountId: string): Observable<void> {
-    return this.http.delete<void>(`/api/linking/accounts/${enc(providerId)}/${enc(accountId)}`);
+  unlink(providerId: string, accountId: string): Observable<unknown> {
+    return this.api.apiLinkingAccountsProviderIdAccountIdDelete(providerId, accountId);
   }
 }
