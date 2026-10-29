@@ -16,8 +16,8 @@ with a real domain.
 | `seaweedfs` | `chrislusf/seaweedfs` | internal (S3 document storage) |
 
 Sign-in is built into the backend - there is no separate identity provider. The
-backend issues and validates its own tokens, and loads the **Schulware** and
-**Microsoft** plugins declared in `config/plugins.yml` on startup (downloaded from the
+backend issues and validates its own tokens, and loads the **Schulware**,
+**OdaOrg** and **Microsoft** plugins declared in `config/plugins.yml` on startup (downloaded from the
 registry - no DLL baked into the image).
 
 ## Setup

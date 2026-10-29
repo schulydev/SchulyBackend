@@ -5,3 +5,5 @@ plugins:
     version: latest
   - name: Schuly.Plugin.Microsoft
     version: latest
+  - name: Schuly.Plugin.OdaOrg
+    version: latest
