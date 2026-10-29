@@ -2,6 +2,8 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { computed, effect, inject, untracked } from '@angular/core';
 import { patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
+import { cleanPreview } from '../core/preview-text';
+import { swrCache } from '../core/swr-cache';
 import { MicrosoftAccountsStore } from './microsoft-accounts.store';
 import { MicrosoftProblem } from './microsoft-resource';
 
@@ -21,6 +23,8 @@ export interface ChatSummary {
   topic?: string | null;
   chatType?: string | null;
   webUrl?: string | null;
+  /** The chat's own picture, when the data carries one. */
+  imageUrl?: string | null;
   lastUpdatedDateTime?: string | null;
   members?: ChatMember[] | null;
   viewpoint?: { lastMessageReadDateTime?: string | null } | null;
@@ -176,11 +180,12 @@ export const TeamsStore = signalStore(
         return {
           id: c.id,
           title: c.topic || people.map((m) => m.displayName).join(', ') || 'Chat',
+          image: c.imageUrl || null,
           kind: (c.chatType && chatKinds[c.chatType]) || null,
           oneOnOne: c.chatType === 'oneOnOne',
           people: people.map((m) => ({ id: m.userId ?? null, name: m.displayName ?? '' })),
           memberCount: members.length,
-          preview: !text ? '' : fromMe ? `You: ${text}` : sender?.displayName && c.chatType !== 'oneOnOne' ? `${sender.displayName}: ${text}` : text,
+          preview: cleanPreview(!text ? '' : fromMe ? `You: ${text}` : sender?.displayName && c.chatType !== 'oneOnOne' ? `${sender.displayName}: ${text}` : text),
           updated: lastAt ?? c.lastUpdatedDateTime ?? null,
           unread,
           link: c.webUrl ?? null,
@@ -219,11 +224,18 @@ export const TeamsStore = signalStore(
       if (!accountId) return;
       const seq = ++chatsSeq;
       const top = store.chatsTop();
-      if (mode === 'initial') patchState(store, { chatsLoading: true, problem: null });
+      const key = `${accountId}|chats`;
+      if (mode === 'initial') {
+        // Stale-while-revalidate: cached chats show at once, the request below refreshes them.
+        const hit = swrCache.get<ChatSummary[]>(key);
+        if (hit && !store.chats().length) patchState(store, { chats: hit.data, chatsLoading: false, problem: null });
+        else patchState(store, { chatsLoading: !store.chats().length, problem: null });
+      }
       try {
         const items = await firstValueFrom(http.get<ChatSummary[]>(`${base(accountId)}/chats`, { params: { top } }));
         if (accounts.selectedId() !== accountId || seq !== chatsSeq) return;
         const chats = Array.isArray(items) ? items : [];
+        if (top === CHATS_PAGE) swrCache.set(key, chats);
         patchState(store, {
           chats,
           chatsLoading: false,
@@ -242,7 +254,7 @@ export const TeamsStore = signalStore(
             chatsMoreFailed: true,
             chatsTop: Math.max(CHATS_PAGE, store.chats().length),
           });
-        } else if (mode === 'initial' || !store.chats().length) {
+        } else if (!store.chats().length) {
           // A failed background refresh keeps what is on screen.
           patchState(store, { chatsLoading: false, problem: problemOf(error) });
         }
@@ -257,13 +269,19 @@ export const TeamsStore = signalStore(
       if (!accountId || !chatId) return;
       const seq = ++messagesSeq;
       const top = store.messagesTop();
-      if (mode === 'initial') patchState(store, { messagesLoading: true, messagesProblem: null });
+      const key = `${accountId}|chat|${chatId}`;
+      if (mode === 'initial') {
+        const hit = swrCache.get<ChatMessage[]>(key);
+        if (hit && !store.messages().length) patchState(store, { messages: hit.data, messagesLoading: false, messagesProblem: null });
+        else patchState(store, { messagesLoading: !store.messages().length, messagesProblem: null });
+      }
       try {
         const items = await firstValueFrom(
           http.get<ChatMessage[]>(`${chatUrl(accountId, chatId)}/messages`, { params: { top } }),
         );
         if (accounts.selectedId() !== accountId || store.openId() !== chatId || seq !== messagesSeq) return;
         const messages = (Array.isArray(items) ? items : []).slice().reverse();
+        if (top === MESSAGES_PAGE) swrCache.set(key, messages);
         patchState(store, {
           messages,
           messagesLoading: false,
@@ -282,7 +300,7 @@ export const TeamsStore = signalStore(
             messagesMoreFailed: true,
             messagesTop: Math.max(MESSAGES_PAGE, store.messages().length),
           });
-        } else if (mode === 'initial' || !store.messages().length) {
+        } else if (!store.messages().length) {
           patchState(store, { messagesLoading: false, messagesProblem: problemOf(error) });
         }
       }
@@ -334,6 +352,17 @@ export const TeamsStore = signalStore(
     return {
       loadChats,
       refreshMessages: () => loadMessages(true),
+      /** Warms the cache for a chat the user is about to open (hover or focus). */
+      prefetchChat(chatId: string): void {
+        const accountId = accounts.selectedId();
+        if (!accountId || chatId === store.openId()) return;
+        const key = `${accountId}|chat|${chatId}`;
+        const hit = swrCache.get(key);
+        if (hit && hit.age < 30_000) return;
+        firstValueFrom(http.get<ChatMessage[]>(`${chatUrl(accountId, chatId)}/messages`, { params: { top: MESSAGES_PAGE } }))
+          .then((items) => Array.isArray(items) && swrCache.set(key, items.slice().reverse()))
+          .catch(() => undefined);
+      },
       /** Asks for one more page of chats; the list on screen stays until the longer one arrives. */
       loadMoreChats(): void {
         if (!store.chatsMore() || store.chatsLoadingMore() || store.chatsLoading()) return;

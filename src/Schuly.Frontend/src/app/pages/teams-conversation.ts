@@ -56,7 +56,7 @@ type LogItem =
           <ng-icon name="lucideArrowLeft" aria-hidden="true" />
           <span class="sr-only">Back to chats</span>
         </button>
-        <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" />
+        <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" [image]="chat.image" />
         <div class="min-w-0 flex-1">
           <h2 class="truncate text-base leading-tight font-semibold">{{ chat.title }}</h2>
           @if (!chat.oneOnOne && chat.memberCount > 1) {
@@ -79,7 +79,7 @@ type LogItem =
           [attr.aria-live]="store.messagesLoadingMore() ? 'off' : 'polite'"
           aria-label="Messages"
           [attr.aria-busy]="store.messagesLoadingMore()"
-          class="absolute inset-0 overflow-y-auto [overflow-anchor:none]"
+          tabindex="0" class="absolute inset-0 overflow-x-hidden overflow-y-auto [overflow-anchor:none] focus-visible:outline-ring focus-visible:outline-2 focus-visible:-outline-offset-2"
           (scroll)="onScroll()"
         >
           <div class="flex min-h-full w-full flex-col justify-end px-4 py-4 sm:px-6">
@@ -112,7 +112,7 @@ type LogItem =
                 @switch (item.kind) {
                   @case ('day') {
                     <div class="my-4 flex justify-center">
-                      <time class="bg-muted text-muted-foreground rounded-full px-3 py-0.5 text-xs font-medium" [attr.datetime]="item.date">
+                      <time class="bg-muted text-foreground/70 rounded-full px-3 py-0.5 text-xs font-medium" [attr.datetime]="item.date">
                         {{ item.label ?? (item.date | date: 'EEEE, d MMMM') }}
                       </time>
                     </div>
@@ -219,18 +219,18 @@ type LogItem =
         <p class="text-muted-foreground px-1 text-sm italic">This message has been deleted</p>
       } @else {
         <div
-          class="min-w-0 rounded-lg px-3 py-2 text-sm"
+          class="min-w-0 max-w-full rounded-lg px-3 py-2 text-sm wrap-anywhere"
           [class]="m.mine ? 'bg-sky-100 text-foreground dark:bg-sky-900/45' : 'bg-muted text-foreground'"
           [class.opacity-60]="m.status === 'sending'"
         >
           @if (m.html) {
             <div
-              class="leading-relaxed break-words [&_.mention]:bg-primary/15 [&_.mention]:rounded-sm [&_.mention]:px-1 [&_.mention]:font-medium [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:border-border [&_blockquote]:text-muted-foreground [&_blockquote]:border-s-2 [&_blockquote]:ps-3 [&_img]:max-w-full [&_img]:rounded-md [&_ol]:list-decimal [&_ol]:ps-5 [&_p+p]:mt-2 [&_pre]:overflow-x-auto [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:ps-5"
+              class="leading-relaxed wrap-anywhere [&_.mention]:bg-primary/15 [&_.mention]:rounded-sm [&_.mention]:px-1 [&_.mention]:font-medium [&_a]:font-medium [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:border-border [&_blockquote]:text-muted-foreground [&_blockquote]:border-s-2 [&_blockquote]:ps-3 [&_img]:max-w-full [&_img]:rounded-md [&_ol]:list-decimal [&_ol]:ps-5 [&_p+p]:mt-2 [&_pre]:overflow-x-auto [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:ps-5"
               [innerHTML]="m.html"
               (click)="onBodyClick($event)"
             ></div>
           } @else if (m.text) {
-            <p class="leading-relaxed break-words whitespace-pre-wrap">{{ m.text }}</p>
+            <p class="leading-relaxed wrap-anywhere whitespace-pre-wrap">{{ m.text }}</p>
           }
           @if (m.attachments.length) {
             <ul class="mt-1.5 flex flex-wrap gap-2">

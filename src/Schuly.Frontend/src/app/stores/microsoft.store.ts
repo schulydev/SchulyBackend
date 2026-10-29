@@ -1,5 +1,6 @@
 import { computed, inject } from '@angular/core';
-import { signalStore, withComputed, withMethods } from '@ngrx/signals';
+import { patchState, signalStore, withComputed, withMethods } from '@ngrx/signals';
+import { cleanPreview } from '../core/preview-text';
 import { MicrosoftAccountsStore } from './microsoft-accounts.store';
 import { withMicrosoftResource } from './microsoft-resource';
 
@@ -11,6 +12,8 @@ export interface MailMessage {
   receivedDateTime?: string | null;
   isRead?: boolean | null;
   webLink?: string | null;
+  hasAttachments?: boolean | null;
+  flag?: { flagStatus?: string | null } | null;
   toRecipients?: { emailAddress?: { name?: string | null; address?: string | null } | null }[] | null;
   from?: { emailAddress?: { name?: string | null; address?: string | null } | null } | null;
 }
@@ -64,7 +67,9 @@ export const MailStore = signalStore(
         sender: m.from?.emailAddress?.name || m.from?.emailAddress?.address || 'Unknown sender',
         address: m.from?.emailAddress?.address ?? null,
         subject: m.subject || '(no subject)',
-        preview: m.bodyPreview ?? '',
+        preview: cleanPreview(m.bodyPreview),
+        flagged: m.flag?.flagStatus === 'flagged',
+        hasAttachments: m.hasAttachments === true,
         to: (m.toRecipients ?? []).map((r) => r.emailAddress?.name || r.emailAddress?.address || '').filter(Boolean),
         received: m.receivedDateTime ?? null,
         unread: m.isRead === false,
@@ -77,6 +82,11 @@ export const MailStore = signalStore(
   withMethods((store) => ({
     setUnreadOnly: (unread: boolean) => store.setParam('unread', unread),
     setFolder: (folder: string) => store.setParam('folder', folder),
+    /** Removes a message from the loaded list after it was deleted or moved. */
+    drop: (id: string) => patchState(store, { items: store.items().filter((m) => m.id !== id) }),
+    /** Applies a local change (read, flag) to a loaded message so the list matches without a reload. */
+    patch: (id: string, change: Partial<MailMessage>) =>
+      patchState(store, { items: store.items().map((m) => (m.id === id ? { ...m, ...change } : m)) }),
   })),
 );
 
@@ -111,7 +121,7 @@ export const ChatsStore = signalStore(
           id: c.id,
           title: c.topic || names || 'Chat',
           kind: (c.chatType && chatKinds[c.chatType]) || null,
-          preview: preview && sender ? `${sender}: ${preview}` : preview,
+          preview: cleanPreview(preview && sender ? `${sender}: ${preview}` : preview),
           updated: last?.createdDateTime ?? c.lastUpdatedDateTime ?? null,
           link: c.webUrl ?? null,
         };

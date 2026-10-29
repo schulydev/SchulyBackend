@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
@@ -32,7 +32,7 @@ import { AppSidebar } from './app-sidebar';
   template: `
     <div hlmSidebarWrapper>
       <app-sidebar />
-      <main hlmSidebarInset>
+      <main hlmSidebarInset [class]="fullHeight() ? 'h-svh min-h-0 overflow-hidden' : ''">
         <header
           class="bg-background/90 sticky top-0 z-10 flex h-(--header-height) shrink-0 items-center gap-2 border-b backdrop-blur transition-[width,height] ease-linear"
         >
@@ -47,7 +47,7 @@ import { AppSidebar } from './app-sidebar';
             </div>
           </div>
         </header>
-        <div class="@container/main flex flex-1 flex-col">
+        <div class="@container/main flex min-h-0 flex-1 flex-col" [class.overflow-hidden]="fullHeight()">
           <router-outlet />
         </div>
       </main>
@@ -58,16 +58,20 @@ export class AppLayout {
   private readonly router = inject(Router);
   protected readonly theme = inject(ThemeStore);
 
-  protected readonly title = toSignal(
+  private readonly leaf = toSignal(
     this.router.events.pipe(
       filter((event) => event instanceof NavigationEnd),
       startWith(null),
       map(() => {
         let route = this.router.routerState.snapshot.root;
         while (route.firstChild) route = route.firstChild;
-        return route.title ?? 'Schuly';
+        return { title: route.title ?? 'Schuly', fullHeight: route.data['fullHeight'] === true };
       }),
     ),
-    { initialValue: 'Schuly' },
+    { initialValue: { title: 'Schuly', fullHeight: false } },
   );
+
+  protected readonly title = computed(() => this.leaf().title);
+  /** Routes with `data: { fullHeight: true }` fill the viewport and scroll inside their own panes, never the page. */
+  protected readonly fullHeight = computed(() => this.leaf().fullHeight);
 }

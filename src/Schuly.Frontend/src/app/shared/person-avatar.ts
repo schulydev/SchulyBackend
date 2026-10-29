@@ -10,9 +10,9 @@ import { TeamsStore } from '../stores/teams.store';
   template: `
     <hlm-avatar [size]="size()">
       @if (url(); as src) {
-        <img [src]="src" alt="" class="size-full rounded-full object-cover" />
+        <img [src]="src" alt="" width="64" height="64" loading="lazy" decoding="async" class="size-full rounded-full object-cover" />
       } @else {
-        <span hlmAvatarFallback>{{ letters() }}</span>
+        <span hlmAvatarFallback class="text-foreground">{{ letters() }}</span>
       }
     </hlm-avatar>
   `,
