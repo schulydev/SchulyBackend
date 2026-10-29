@@ -1,9 +1,9 @@
 import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, signal } from '@angular/core';
 import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
 import { initials } from '../core/initials';
-import { TeamsStore } from '../stores/teams.store';
+import { ChatStore } from '../stores/chat.store';
 
-/** Profile photo of a Microsoft user, fetched lazily once the avatar scrolls into view, with an initials fallback. */
+/** Profile photo of a chat participant, fetched lazily once the avatar scrolls into view, with an initials fallback. */
 @Component({
   selector: 'app-person-avatar',
   imports: [HlmAvatarImports],
@@ -19,7 +19,7 @@ import { TeamsStore } from '../stores/teams.store';
   host: { class: 'inline-flex shrink-0' },
 })
 export class PersonAvatar {
-  private readonly store = inject(TeamsStore);
+  private readonly store = inject(ChatStore);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
 

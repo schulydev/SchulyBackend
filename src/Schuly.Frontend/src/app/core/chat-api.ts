@@ -1,10 +1,10 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, effect, inject, signal, untracked } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { MicrosoftAccountsStore } from '../stores/microsoft-accounts.store';
+import { LinkedAccountsStore } from '../stores/linked-accounts.store';
 import { Importance } from './chat-media';
 import { createQueue } from './request-queue';
-import { Catalogue, catalogueLocale, parseCatalogue } from './teams-emoji';
+import { Catalogue, catalogueLocale, parseCatalogue } from './chat-emoji';
 
 export interface Gif {
   id: string;
@@ -61,11 +61,11 @@ export function safeApiPath(path: string, base: string): string | null {
   return `${base}/${path}`;
 }
 
-/** Everything the Teams composer and message bubbles ask of accounts/{id}/... besides the chat list and messages themselves. */
+/** Everything the chat composer and message bubbles ask of accounts/{id}/... besides the chat list and messages themselves. */
 @Injectable()
-export class TeamsApi {
+export class ChatApi {
   private readonly http = inject(HttpClient);
-  private readonly accounts = inject(MicrosoftAccountsStore);
+  private readonly accounts = inject(LinkedAccountsStore);
 
   /** null until the GIF endpoint answered once: true when configured, false on 503. */
   readonly gifsAvailable = signal<boolean | null>(null);
@@ -77,7 +77,7 @@ export class TeamsApi {
   constructor() {
     // A different account must not see another account's cached blobs.
     effect(() => {
-      this.accounts.selectedId();
+      this.accounts.selectedId('chat');
       untracked(() => {
         this.revokeAll();
         this.gifsAvailable.set(null);
@@ -87,13 +87,12 @@ export class TeamsApi {
   }
 
   base(): string | null {
-    const id = this.accounts.selectedId();
-    return id ? `/api/plugins/microsoft/accounts/${encodeURIComponent(id)}` : null;
+    return this.accounts.endpoint('chat');
   }
 
   private require(): string {
     const base = this.base();
-    if (!base) throw new Error('No Microsoft account selected.');
+    if (!base) throw new Error('No chat account selected.');
     return base;
   }
 
@@ -118,7 +117,7 @@ export class TeamsApi {
 
   /** An object URL for an image behind an API path, de-duplicated and fetched at most four at a time; null when it has none. */
   imageUrl(path: string): Promise<string | null> {
-    const key = `${this.accounts.selectedId()}|${path}`;
+    const key = `${this.accounts.selectedId('chat')}|${path}`;
     let found = this.urls.get(key);
     if (!found) {
       found = this.queue(() => this.blob(path))
@@ -157,7 +156,7 @@ export class TeamsApi {
    * null when the server has none, so callers fall back to unicode.
    */
   catalogue(): Promise<Catalogue | null> {
-    const account = this.accounts.selectedId();
+    const account = this.accounts.selectedId('chat');
     const base = this.base();
     if (!account || !base) return Promise.resolve(null);
     if (this.catalogueCache?.account !== account) {

@@ -25,15 +25,15 @@ import { persistedNumber } from '../core/persisted';
 import { EmptyState } from '../shared/empty-state';
 import { ListTime } from '../shared/list-time';
 import { LoadMore } from '../shared/load-more';
-import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
-import { MicrosoftProblem } from '../shared/microsoft-problem';
+import { AccountPicker } from '../shared/account-picker';
+import { AccountProblem } from '../shared/account-problem';
 import { SenderPhotos } from '../core/sender-photos';
 import { SearchField } from '../shared/search-field';
 import { SenderAvatar } from '../shared/sender-avatar';
 import { SplitHandle } from '../shared/split-handle';
 import { FolderKind, MailClient } from '../stores/mail-client';
-import { MailStore } from '../stores/microsoft.store';
-import { MicrosoftAccountsStore } from '../stores/microsoft-accounts.store';
+import { MailStore } from '../stores/capability-data.store';
+import { LinkedAccountsStore } from '../stores/linked-accounts.store';
 import { ComposeMode, MailCompose } from './mail-compose';
 import { MailReader, MailSummary } from './mail-reader';
 
@@ -69,8 +69,8 @@ interface Composing {
     LoadMore,
     MailCompose,
     MailReader,
-    MicrosoftAccountPicker,
-    MicrosoftProblem,
+    AccountPicker,
+    AccountProblem,
     SearchField,
     SplitHandle,
   ],
@@ -100,7 +100,7 @@ interface Composing {
   host: { class: 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', '(keydown.escape)': 'onEscape($event)' },
   template: `
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div class="px-4 has-[label]:pt-4 lg:px-6"><app-microsoft-account-picker /></div>
+      <div class="px-4 has-[label]:pt-4 lg:px-6"><app-account-picker kind="mail" /></div>
       <p class="bg-muted mx-4 mt-2 truncate rounded-md px-3 py-1.5 text-sm empty:hidden lg:mx-6" role="status" aria-live="polite">{{ sent() }}</p>
 
       <div
@@ -212,7 +212,7 @@ interface Composing {
                 }
               </div>
             } @else if (mail.problem(); as problem) {
-              <div class="p-3"><app-microsoft-problem [problem]="problem" /></div>
+              <div class="p-3"><app-account-problem [problem]="problem" /></div>
             } @else if (filtered().length) {
               <ul [attr.aria-busy]="mail.loadingMore()">
                 @for (message of filtered(); track message.id) {
@@ -313,7 +313,7 @@ interface Composing {
 export class Mail {
   protected readonly mail = inject(MailStore);
   protected readonly client = inject(MailClient);
-  private readonly accounts = inject(MicrosoftAccountsStore);
+  private readonly accounts = inject(LinkedAccountsStore);
   private readonly injector = inject(Injector);
 
   protected readonly iconOf = (kind: FolderKind): string => FOLDER_ICONS[kind];
@@ -346,7 +346,7 @@ export class Mail {
   constructor() {
     // Folders per account: cached ones show at once and are refreshed in the background.
     effect(() => {
-      this.accounts.selectedId();
+      this.accounts.selectedId('mail');
       untracked(() => void this.client.loadFolders());
     });
     // Inbox is the default; fall back to it when the remembered folder is not in this mailbox.

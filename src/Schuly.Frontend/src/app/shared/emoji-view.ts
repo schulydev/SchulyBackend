@@ -1,6 +1,6 @@
 import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import { TeamsApi } from '../core/teams-api';
-import { EmojiRef, TeamsEmoji } from '../core/teams-emoji';
+import { ChatApi } from '../core/chat-api';
+import { EmojiRef, ChatEmoji } from '../core/chat-emoji';
 
 /**
  * One emoji, either a unicode character or a Teams emoji (a still image, or a vertical sprite strip of square frames).
@@ -70,7 +70,7 @@ import { EmojiRef, TeamsEmoji } from '../core/teams-emoji';
   host: { class: 'inline-block align-middle leading-none', '(mouseenter)': 'replay()' },
 })
 export class EmojiView {
-  private readonly api = inject(TeamsApi);
+  private readonly api = inject(ChatApi);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -78,9 +78,9 @@ export class EmojiView {
   /** Edge of the emoji on screen, in pixels. */
   readonly size = input(24);
 
-  protected readonly teams = computed<TeamsEmoji | null>(() => {
+  protected readonly teams = computed<ChatEmoji | null>(() => {
     const e = this.emoji();
-    return e.kind === 'teams' ? e.emoji : null;
+    return e.kind === 'native' ? e.emoji : null;
   });
   protected readonly unicode = computed(() => {
     const e = this.emoji();
@@ -95,7 +95,7 @@ export class EmojiView {
   /** True when the picture is a sprite strip rather than a single image. */
   protected readonly sprite = computed(() => {
     const e = this.teams();
-    return !!e && e.kind === 'teams' && e.animated && e.frames > 1 && !!e.animatedUrl;
+    return !!e && e.kind === 'native' && e.animated && e.frames > 1 && !!e.animatedUrl;
   });
   /** The URL being drawn. */
   protected readonly shown = computed(() => {

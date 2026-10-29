@@ -1,10 +1,10 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods } from '@ngrx/signals';
 import { cleanPreview } from '../core/preview-text';
-import { MicrosoftAccountsStore } from './microsoft-accounts.store';
-import { withMicrosoftResource } from './microsoft-resource';
+import { withAccountResource } from './account-resource';
+import { LinkedAccountsStore } from './linked-accounts.store';
 
-/** Microsoft Graph message, as returned by SchulyMicrosoft GET /api/mail (outnote `emails`). */
+/** A mail message as the mail capability returns it from `<basePath>/{id}/mail`. */
 export interface MailMessage {
   id: string;
   subject?: string | null;
@@ -18,24 +18,8 @@ export interface MailMessage {
   from?: { emailAddress?: { name?: string | null; address?: string | null } | null } | null;
 }
 
-/** Microsoft Graph chat with expanded members and lastMessagePreview (outnote `chats`). */
-export interface TeamsChat {
-  id: string;
-  topic?: string | null;
-  chatType?: string | null;
-  webUrl?: string | null;
-  lastUpdatedDateTime?: string | null;
-  members?: { displayName?: string | null; email?: string | null }[] | null;
-  lastMessagePreview?: {
-    createdDateTime?: string | null;
-    isDeleted?: boolean | null;
-    body?: { content?: string | null; contentType?: string | null } | null;
-    from?: { user?: { displayName?: string | null } | null } | null;
-  } | null;
-}
-
-/** OneNote notebook from me/onenote/notebooks (outnote `notebooks`). */
-export interface OneNoteNotebook {
+/** A notebook as the notes capability returns it from `<basePath>/{id}/notebooks`. */
+export interface Notebook {
   id: string;
   displayName?: string | null;
   lastModifiedDateTime?: string | null;
@@ -44,7 +28,7 @@ export interface OneNoteNotebook {
 }
 
 /**
- * OneDrive driveItem from me/drive/{path}/children (outnote `files`). Folders carry `folder`, files carry `file`;
+ * A drive item as the drive capability returns it from `<basePath>/{id}/files`. Folders carry `folder`, files carry `file`;
  * `@microsoft.graph.downloadUrl` is a short-lived pre-authenticated link and only present on files.
  */
 export interface DriveItem {
@@ -59,7 +43,7 @@ export interface DriveItem {
 }
 
 export const MailStore = signalStore(
-  withMicrosoftResource<MailMessage>('mail', { folder: 'inbox', unread: false }, { pageSize: 25, max: 500 }),
+  withAccountResource<MailMessage>('mail', 'mail', { folder: 'inbox', unread: false }, { pageSize: 25, max: 500 }),
   withComputed((store) => ({
     messages: computed(() =>
       store.items().map((m) => ({
@@ -90,48 +74,8 @@ export const MailStore = signalStore(
   })),
 );
 
-const plainText = (body?: { content?: string | null; contentType?: string | null } | null): string => {
-  const content = body?.content ?? '';
-  if (!content) return '';
-  return (body?.contentType === 'html' ? htmlText(content) : content).replace(/\s+/g, ' ').trim();
-};
-
-/** Visible text of an HTML message; script and style contents are not text a reader sees. */
-const htmlText = (html: string): string => {
-  const body = new DOMParser().parseFromString(html, 'text/html').body;
-  body.querySelectorAll('script, style').forEach((element) => element.remove());
-  return body.textContent ?? '';
-};
-
-const chatKinds: Record<string, string> = { oneOnOne: 'Chat', group: 'Group', meeting: 'Meeting' };
-
-export const ChatsStore = signalStore(
-  withMicrosoftResource<TeamsChat>('chats', { top: 25 }),
-  withComputed((store, accounts = inject(MicrosoftAccountsStore)) => ({
-    chats: computed(() => {
-      const own = accounts.selected()?.email?.toLowerCase();
-      return store.items().map((c) => {
-        const members = (c.members ?? []).filter((m) => m.displayName);
-        const others = members.filter((m) => !own || m.email?.toLowerCase() !== own);
-        const names = (others.length ? others : members).map((m) => m.displayName).join(', ');
-        const last = c.lastMessagePreview;
-        const preview = last?.isDeleted ? '' : plainText(last?.body);
-        const sender = last?.from?.user?.displayName;
-        return {
-          id: c.id,
-          title: c.topic || names || 'Chat',
-          kind: (c.chatType && chatKinds[c.chatType]) || null,
-          preview: cleanPreview(preview && sender ? `${sender}: ${preview}` : preview),
-          updated: last?.createdDateTime ?? c.lastUpdatedDateTime ?? null,
-          link: c.webUrl ?? null,
-        };
-      });
-    }),
-  })),
-);
-
 export const NotebooksStore = signalStore(
-  withMicrosoftResource<OneNoteNotebook>('notebooks'),
+  withAccountResource<Notebook>('notes', 'notebooks'),
   withComputed((store) => ({
     notebooks: computed(() =>
       store
@@ -174,7 +118,7 @@ const kindOf = (item: DriveItem, name: string): DriveKind => {
 };
 
 export const DriveStore = signalStore(
-  withMicrosoftResource<DriveItem>('files', { path: 'root' }, { pageSize: 100, max: 1000 }),
+  withAccountResource<DriveItem>('drive', 'files', { path: 'root' }, { pageSize: 100, max: 1000 }),
   withComputed((store) => ({
     entries: computed(() =>
       store

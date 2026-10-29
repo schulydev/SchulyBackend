@@ -12,7 +12,7 @@ import { HlmTextarea } from '@spartan-ng/helm/textarea';
 import { Importance } from '../core/chat-media';
 import { toIsoDate } from '../core/dates';
 import { htmlToText } from '../core/rich-html';
-import { ScheduledMessage, TeamsApi, apiMessage } from '../core/teams-api';
+import { ScheduledMessage, ChatApi, apiMessage } from '../core/chat-api';
 import { DateTimeField } from '../shared/date-time-field';
 
 const MINUTE = 60_000;
@@ -88,7 +88,7 @@ export function combine(date: string, time: string): Date | null {
   `,
 })
 export class ScheduleDialog {
-  private readonly api = inject(TeamsApi);
+  private readonly api = inject(ChatApi);
 
   readonly open = model(false);
   readonly chatId = input.required<string>();
@@ -225,7 +225,7 @@ export class DeliveryDialog {
   ];
 }
 
-/** Create a Teams meeting with this chat's members. */
+/** Create an online meeting with this chat's members. */
 @Component({
   selector: 'app-meeting-dialog',
   imports: [HlmButton, HlmDialogImports, HlmFieldImports, HlmInput, HlmSpinner, HlmTextarea, DateTimeField],
@@ -234,7 +234,7 @@ export class DeliveryDialog {
       <hlm-dialog-content *hlmDialogPortal="let ctx" class="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <hlm-dialog-header>
           <h2 hlmDialogTitle>Schedule meeting</h2>
-          <p hlmDialogDescription>Invites everyone in this chat to a Teams meeting.</p>
+          <p hlmDialogDescription>Invites everyone in this chat to an online meeting.</p>
         </hlm-dialog-header>
         <form class="flex flex-col gap-4" (submit)="submit($event)">
           <div hlmField>
@@ -268,7 +268,7 @@ export class DeliveryDialog {
   `,
 })
 export class MeetingDialog {
-  private readonly api = inject(TeamsApi);
+  private readonly api = inject(ChatApi);
 
   readonly open = model(false);
   readonly chatId = input.required<string>();

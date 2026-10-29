@@ -6,26 +6,26 @@ import { ChatAvatar } from '../shared/chat-avatar';
 import { EmptyState } from '../shared/empty-state';
 import { ListTime } from '../shared/list-time';
 import { LoadMore } from '../shared/load-more';
-import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
-import { MicrosoftProblem } from '../shared/microsoft-problem';
+import { AccountPicker } from '../shared/account-picker';
+import { AccountProblem } from '../shared/account-problem';
 import { SearchField } from '../shared/search-field';
 import { SplitHandle } from '../shared/split-handle';
 import { persistedNumber } from '../core/persisted';
-import { TeamsApi } from '../core/teams-api';
-import { TeamsStore } from '../stores/teams.store';
-import { TeamsConversation } from './teams-conversation';
+import { ChatApi } from '../core/chat-api';
+import { ChatStore } from '../stores/chat.store';
+import { ChatConversation } from './chat-conversation';
 
 const MESSAGE_POLL_MS = 15_000;
 const CHAT_POLL_MS = 60_000;
 
 @Component({
-  selector: 'app-teams',
-  imports: [HlmSkeletonImports, NgIcon, ChatAvatar, EmptyState, ListTime, LoadMore, MicrosoftAccountPicker, MicrosoftProblem, SearchField, SplitHandle, TeamsConversation],
-  providers: [provideIcons({ lucideMessagesSquare }), TeamsStore, TeamsApi],
+  selector: 'app-chat',
+  imports: [HlmSkeletonImports, NgIcon, ChatAvatar, EmptyState, ListTime, LoadMore, AccountPicker, AccountProblem, SearchField, SplitHandle, ChatConversation],
+  providers: [provideIcons({ lucideMessagesSquare }), ChatStore, ChatApi],
   host: { class: 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' },
   template: `
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div class="px-4 has-[label]:pt-4 lg:px-6"><app-microsoft-account-picker /></div>
+      <div class="px-4 has-[label]:pt-4 lg:px-6"><app-account-picker kind="chat" /></div>
 
       <div class="flex min-h-0 min-w-0 flex-1 overflow-hidden" [style.--list-w.px]="listWidth.value()">
         <section
@@ -58,7 +58,7 @@ const CHAT_POLL_MS = 60_000;
                 }
               </div>
             } @else if (store.problem(); as problem) {
-              <div class="p-3"><app-microsoft-problem [problem]="problem" /></div>
+              <div class="p-3"><app-account-problem [problem]="problem" /></div>
             } @else if (visibleChats().length) {
               <ul [attr.aria-busy]="store.chatsLoadingMore()">
                 @for (chat of visibleChats(); track chat.id) {
@@ -104,7 +104,7 @@ const CHAT_POLL_MS = 60_000;
             } @else if (store.chatItems().length) {
               <app-empty-state icon="lucideMessagesSquare" title="No matching chats" description="Try a different search." />
             } @else {
-              <app-empty-state icon="lucideMessagesSquare" title="No chats yet" description="Your recent Teams chats appear here." />
+              <app-empty-state icon="lucideMessagesSquare" title="No chats yet" description="Your recent chats appear here." />
             }
             <app-load-more
               label="Load more chats"
@@ -128,7 +128,7 @@ const CHAT_POLL_MS = 60_000;
 
         <section class="min-w-0 flex-1 flex-col overflow-hidden max-lg:w-full" [class]="store.openId() ? 'flex' : 'hidden lg:flex'" aria-label="Conversation">
           @if (store.openId()) {
-            <app-teams-conversation (back)="close()" />
+            <app-chat-conversation (back)="close()" />
           } @else {
             <div class="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 text-sm">
               <ng-icon name="lucideMessagesSquare" class="text-2xl" aria-hidden="true" />
@@ -140,13 +140,13 @@ const CHAT_POLL_MS = 60_000;
     </div>
   `,
 })
-export class Teams {
-  protected readonly store = inject(TeamsStore);
+export class Chat {
+  protected readonly store = inject(ChatStore);
   private readonly injector = inject(Injector);
   private readonly rows = viewChildren<ElementRef<HTMLElement>>('row');
 
   protected readonly query = signal('');
-  protected readonly listWidth = persistedNumber('schuly.teams.list', 320);
+  protected readonly listWidth = persistedNumber('schuly.chat.list', 320);
 
   protected readonly visibleChats = computed(() => {
     const q = this.query().trim().toLowerCase();

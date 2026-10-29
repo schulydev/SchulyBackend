@@ -2,14 +2,14 @@
  * An emoji in a message or in the picker is either a unicode character or one of Teams' own emojis
  * (a still image, or a vertical sprite strip of `frames` square frames that animates).
  */
-export interface TeamsEmoji {
+export interface ChatEmoji {
   /** Catalogue id (sent back as `<emoji id>`); the message key for emojis read from a message. */
   id: string;
   /** Accessible name, for example "hundred points". */
   label: string;
   /** The unicode character this emoji stands for; shown when an image cannot load. */
   alt: string;
-  kind: 'teams' | 'custom';
+  kind: 'native' | 'custom';
   documentId: string | null;
   animated: boolean;
   staticUrl: string | null;
@@ -23,7 +23,7 @@ export interface TeamsEmoji {
   size: number;
 }
 
-export type EmojiRef = { kind: 'unicode'; char: string; label?: string } | { kind: 'teams'; emoji: TeamsEmoji };
+export type EmojiRef = { kind: 'unicode'; char: string; label?: string } | { kind: 'native'; emoji: ChatEmoji };
 
 /** An item of a message's `emojis[]`. */
 export interface MessageEmoji {
@@ -57,13 +57,13 @@ export function trustedEmojiUrl(url: string | null | undefined): string | null {
 
 const count = (value: number | null | undefined, fallback: number): number => (typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback);
 
-export function fromMessageEmoji(raw: MessageEmoji): TeamsEmoji {
+export function fromMessageEmoji(raw: MessageEmoji): ChatEmoji {
   const frames = count(raw.frames, 1);
   return {
     id: raw.key || raw.id || '',
     label: raw.title || raw.alt || '',
     alt: raw.alt || '',
-    kind: raw.kind === 'custom' ? 'custom' : 'teams',
+    kind: raw.kind === 'custom' ? 'custom' : 'native',
     documentId: raw.documentId ?? null,
     animated: raw.animated !== false && frames > 1,
     staticUrl: trustedEmojiUrl(raw.staticUrl),
@@ -90,7 +90,7 @@ interface CatalogueEmojiRaw {
   firstFrame?: number;
 }
 
-export interface CatalogueEmoji extends TeamsEmoji {
+export interface CatalogueEmoji extends ChatEmoji {
   shortcuts: string[];
   keywords: string[];
   /** Lower-cased title, keywords and shortcuts, for search. */

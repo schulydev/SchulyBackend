@@ -7,6 +7,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "e2e": "playwright test",
     "apigen": "openapi-generator-cli generate"
   },
   "private": true,
@@ -44,7 +45,9 @@
     "@angular/build": "^22.2.0",
     "@angular/cli": "^22.2.0",
     "@angular/compiler-cli": "^22.2.0",
+    "@axe-core/playwright": "^4.14.0",
     "@openapitools/openapi-generator-cli": "^2.42.0",
+    "@playwright/test": "^1.64.1",
     "@spartan-ng/cli": "^1.8.3",
     "@tailwindcss/postcss": "^4.1.12",
     "@types/qrcode": "^1.5.6",

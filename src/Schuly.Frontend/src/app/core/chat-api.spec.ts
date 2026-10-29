@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { safeApiPath } from './teams-api';
+import { safeApiPath } from './chat-api';
 
 const BASE = '/api/plugins/microsoft/accounts/acc1';
 const BS = String.fromCharCode(92);

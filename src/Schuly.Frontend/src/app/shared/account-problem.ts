@@ -2,10 +2,10 @@ import { Component, computed, input } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideTriangleAlert } from '@ng-icons/lucide';
 import { HlmAlertImports } from '@spartan-ng/helm/alert';
-import { MicrosoftProblem as Problem, microsoftProblemText } from '../stores/microsoft-resource';
+import { AccountProblem as Problem, accountProblemText } from '../stores/account-resource';
 
 @Component({
-  selector: 'app-microsoft-problem',
+  selector: 'app-account-problem',
   imports: [HlmAlertImports, NgIcon],
   providers: [provideIcons({ lucideTriangleAlert })],
   template: `
@@ -16,7 +16,7 @@ import { MicrosoftProblem as Problem, microsoftProblemText } from '../stores/mic
     </div>
   `,
 })
-export class MicrosoftProblem {
+export class AccountProblem {
   readonly problem = input.required<Problem>();
-  protected readonly text = computed(() => microsoftProblemText[this.problem()]);
+  protected readonly text = computed(() => accountProblemText[this.problem()]);
 }

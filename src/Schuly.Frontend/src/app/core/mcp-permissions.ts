@@ -14,7 +14,7 @@ export type McpAccessLevel = 'Off' | 'Read' | 'ReadWrite';
 export interface McpPermissionSet {
   areas: Partial<Record<McpArea, McpAccessLevel>>;
   allowDestructive: boolean;
-  /** null means every Microsoft account, including ones linked later. */
+  /** null means every linked account, including ones linked later. */
   microsoftAccountIds: string[] | null;
 }
 
@@ -39,13 +39,13 @@ export const MCP_GROUPS: McpAreaGroup[] = [
       {
         area: 'Calendar',
         label: 'Calendar & agenda',
-        description: 'Your school agenda and your Microsoft 365 calendar.',
+        description: 'Your school agenda and the calendars of your linked accounts.',
         canWrite: false,
       },
       {
         area: 'Absences',
         label: 'Absences',
-        description: 'Read absences. Write also reports and withdraws absences in Schulnetz.',
+        description: 'Read absences. Write also reports and withdraws absences with your school.',
         canWrite: true,
       },
       { area: 'Documents', label: 'Documents', description: 'Documents from your school.', canWrite: false },
@@ -58,7 +58,7 @@ export const MCP_GROUPS: McpAreaGroup[] = [
     ],
   },
   {
-    label: 'Microsoft 365',
+    label: 'Linked accounts',
     areas: [
       {
         area: 'Mail',

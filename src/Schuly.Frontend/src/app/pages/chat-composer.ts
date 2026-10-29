@@ -35,13 +35,13 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { Importance, formatSize } from '../core/chat-media';
 import { EmojiMatch, emojiCompleteAt, emojiQueryAt, loadEmoji, searchEmoji } from '../core/emoji';
 import { Composed, compose } from '../core/rich-html';
-import { Gif } from '../core/teams-api';
-import { TeamsApi } from '../core/teams-api';
-import { EmojiRef, TeamsEmoji, normalizeShortcut, searchShortcuts } from '../core/teams-emoji';
-import { Outgoing, TeamsStore } from '../stores/teams.store';
-import { ClipDialog } from './teams-clip-dialog';
-import { DeliveryDialog, MeetingDialog, ScheduleDialog } from './teams-dialogs';
-import { EmojiPicker } from './teams-emoji-picker';
+import { Gif } from '../core/chat-api';
+import { ChatApi } from '../core/chat-api';
+import { EmojiRef, ChatEmoji, normalizeShortcut, searchShortcuts } from '../core/chat-emoji';
+import { Outgoing, ChatStore } from '../stores/chat.store';
+import { ClipDialog } from './chat-clip-dialog';
+import { DeliveryDialog, MeetingDialog, ScheduleDialog } from './chat-dialogs';
+import { EmojiPicker } from './chat-emoji-picker';
 
 export const MAX_LENGTH = 4000;
 export const MAX_INLINE_BYTES = 3 * 1024 * 1024;
@@ -63,7 +63,7 @@ interface Suggestion {
   /** Member id, for mention suggestions. */
   userId?: string;
   /** Teams emoji, for suggestions from the catalogue. */
-  teams?: TeamsEmoji;
+  teams?: ChatEmoji;
 }
 
 interface SuggestState {
@@ -76,9 +76,9 @@ interface SuggestState {
 
 const EMPTY: Composed = { html: '', text: '', mentions: [], imageIds: [], plain: true, empty: true };
 
-/** The Teams-style composer: rich editor, formatting toolbar, emoji and GIF picker, attachments, mentions, and the "+" actions. */
+/** The chat composer: rich editor, formatting toolbar, emoji and GIF picker, attachments, mentions, and the "+" actions. */
 @Component({
-  selector: 'app-teams-composer',
+  selector: 'app-chat-composer',
   imports: [NgIcon, HlmButton, HlmDropdownMenuImports, HlmPopoverImports, HlmSpinner, EmojiPicker, ScheduleDialog, DeliveryDialog, MeetingDialog, ClipDialog],
   providers: [
     provideIcons({
@@ -367,9 +367,9 @@ const EMPTY: Composed = { html: '', text: '', mentions: [], imageIds: [], plain:
   `,
   host: { class: 'block' },
 })
-export class TeamsComposer {
-  private readonly store = inject(TeamsStore);
-  private readonly api = inject(TeamsApi);
+export class ChatComposer {
+  private readonly store = inject(ChatStore);
+  private readonly api = inject(ChatApi);
   private readonly injector = inject(Injector);
 
   readonly chat = input.required<ComposerChat>();
@@ -746,7 +746,7 @@ export class TeamsComposer {
   }
 
   /** The editor shows a Teams emoji as its still image; it is sent as an `<emoji id>` tag. */
-  private emojiNode(e: TeamsEmoji): HTMLImageElement {
+  private emojiNode(e: ChatEmoji): HTMLImageElement {
     const img = document.createElement('img');
     img.setAttribute('data-emoji-id', e.id);
     img.alt = e.alt;

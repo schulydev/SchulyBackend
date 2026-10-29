@@ -20,10 +20,10 @@ import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { EmptyState } from '../shared/empty-state';
 import { FileViewer, ViewerFile } from '../shared/file-viewer';
 import { LoadMore } from '../shared/load-more';
-import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
-import { MicrosoftProblem } from '../shared/microsoft-problem';
+import { AccountPicker } from '../shared/account-picker';
+import { AccountProblem } from '../shared/account-problem';
 import { SearchField } from '../shared/search-field';
-import { DriveKind, DriveStore } from '../stores/microsoft.store';
+import { DriveKind, DriveStore } from '../stores/capability-data.store';
 
 const kindIcons: Record<DriveKind, string> = {
   folder: 'lucideFolder',
@@ -50,7 +50,7 @@ function formatSize(bytes: number): string {
 
 @Component({
   selector: 'app-drive',
-  imports: [HlmBreadcrumbImports, HlmButton, HlmSkeletonImports, NgIcon, EmptyState, FileViewer, LoadMore, MicrosoftAccountPicker, MicrosoftProblem, SearchField],
+  imports: [HlmBreadcrumbImports, HlmButton, HlmSkeletonImports, NgIcon, EmptyState, FileViewer, LoadMore, AccountPicker, AccountProblem, SearchField],
   providers: [
     provideIcons({
       lucideDownload,
@@ -70,7 +70,7 @@ function formatSize(bytes: number): string {
   ],
   template: `
     <div class="flex flex-col gap-4 p-4 lg:p-6">
-      <app-microsoft-account-picker />
+      <app-account-picker kind="drive" />
 
       @if (!store.problem()) {
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -134,7 +134,7 @@ function formatSize(bytes: number): string {
           }
         </div>
       } @else if (store.problem(); as problem) {
-        <app-microsoft-problem [problem]="problem" />
+        <app-account-problem [problem]="problem" />
       } @else if (filtered().length) {
         <div
           role="listbox"

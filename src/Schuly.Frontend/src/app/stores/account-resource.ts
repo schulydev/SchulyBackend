@@ -5,20 +5,21 @@ import { patchState, signalStoreFeature, withComputed, withHooks, withMethods, w
 import { Subject, map, of, switchMap, tap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { swrCache } from '../core/swr-cache';
-import { MicrosoftAccountsStore } from './microsoft-accounts.store';
+import { CapabilityKind, LinkedAccountsStore } from './linked-accounts.store';
+import { DataRefresh } from './data-refresh';
 
-export type MicrosoftProblem = 'expired' | 'missing' | 'failed';
+export type AccountProblem = 'expired' | 'missing' | 'failed';
 
-export const microsoftProblemText: Record<MicrosoftProblem, { title: string; description: string }> = {
+export const accountProblemText: Record<AccountProblem, { title: string; description: string }> = {
   expired: {
     title: 'Sign-in expired',
-    description: 'Your Microsoft sign-in expired. Reconnect the account in the Schuly mobile app.',
+    description: 'Your sign-in for this account expired. Re-authenticate it in Settings > Schools & accounts.',
   },
   missing: {
     title: 'Account not available',
-    description: 'This Microsoft account was removed or the Microsoft 365 plugin is not installed.',
+    description: 'This account was removed or is not available any more.',
   },
-  failed: { title: 'Could not load data', description: 'Microsoft 365 did not respond. Try again later.' },
+  failed: { title: 'Could not load data', description: 'The service did not respond. Try again later.' },
 };
 
 type ResourceParams = Record<string, string | number | boolean>;
@@ -34,7 +35,7 @@ export interface ResourcePaging {
 interface ResourceState<T> {
   items: T[];
   loading: boolean;
-  problem: MicrosoftProblem | null;
+  problem: AccountProblem | null;
   params: ResourceParams;
   /** The `top` currently requested; only meaningful for paged resources. */
   top: number;
@@ -48,18 +49,19 @@ interface ResourceState<T> {
 
 interface ResourceRequest {
   id: string | null;
+  base: string | null;
   params: ResourceParams;
   top: number;
   more: boolean;
 }
 
-// The plugin answers an expired Microsoft sign-in with 409; a 401 is the Schuly session and the auth interceptor handles it.
+// The plugin answers an expired sign-in with 409; a 401 is the Schuly session and the auth interceptor handles it.
 const PREFETCH_FRESH_MS = 30_000;
 
 const cacheKey = (id: string, resource: string, params: ResourceParams, top: number) =>
   `${id}|${resource}|${JSON.stringify(Object.entries(params).sort(([a], [b]) => a.localeCompare(b)))}|${top}`;
 
-const problemOf = (error: unknown): MicrosoftProblem =>
+const problemOf = (error: unknown): AccountProblem =>
   error instanceof HttpErrorResponse && error.status === 409
     ? 'expired'
     : error instanceof HttpErrorResponse && error.status === 404
@@ -67,10 +69,10 @@ const problemOf = (error: unknown): MicrosoftProblem =>
       : 'failed';
 
 /**
- * Loads a list from /api/plugins/microsoft/accounts/{id}/{resource} for the selected account, reloading when the account or a query parameter changes.
+ * Loads a list from `<capability basePath>/{id}/{resource}` for the selected account of a capability kind, reloading when the account or a query parameter changes.
  * With `paging`, `loadMore()` requests a longer list while the current items stay on screen; any reload starts again at one page.
  */
-export function withMicrosoftResource<T>(resource: string, params: ResourceParams = {}, paging?: ResourcePaging) {
+export function withAccountResource<T>(kind: CapabilityKind, resource: string, params: ResourceParams = {}, paging?: ResourcePaging) {
   const pageSize = paging?.pageSize ?? 0;
   return signalStoreFeature(
     withState<ResourceState<T>>({
@@ -85,12 +87,12 @@ export function withMicrosoftResource<T>(resource: string, params: ResourceParam
       loadedMore: null,
     }),
     withComputed((store) => {
-      const accounts = inject(MicrosoftAccountsStore);
+      const accounts = inject(LinkedAccountsStore);
       return { waiting: computed(() => !accounts.loaded()), hasMore: computed(() => store.more()) };
     }),
     withMethods((store) => {
       const http = inject(HttpClient);
-      const accounts = inject(MicrosoftAccountsStore);
+      const accounts = inject(LinkedAccountsStore);
       const requests = new Subject<ResourceRequest>();
 
       requests
@@ -111,9 +113,9 @@ export function withMicrosoftResource<T>(resource: string, params: ResourceParam
             });
           }),
           switchMap((r) => {
-            if (!r.id) return of(null);
+            if (!r.id || !r.base) return of(null);
             const query = paging ? { ...r.params, top: r.top } : r.params;
-            return http.get<T[]>(`/api/plugins/microsoft/accounts/${encodeURIComponent(r.id)}/${resource}`, { params: query }).pipe(
+            return http.get<T[]>(`${r.base}/${resource}`, { params: query }).pipe(
               map((items) => (Array.isArray(items) ? items : [])),
               tapResponse({
                 next: (items) => {
@@ -144,33 +146,37 @@ export function withMicrosoftResource<T>(resource: string, params: ResourceParam
           patchState(store, { params: { ...store.params(), [key]: value } }),
         /** Warms the cache for another parameter set (hover or focus) without touching what is on screen. */
         prefetch: (extra: ResourceParams) => {
-          const id = accounts.selectedId();
-          if (!id) return;
+          const id = accounts.selectedId(kind);
+          const base = accounts.endpoint(kind);
+          if (!id || !base) return;
           const params = { ...store.params(), ...extra };
           const key = cacheKey(id, resource, params, paging ? pageSize : 0);
           const hit = swrCache.get(key);
           if (hit && hit.age < PREFETCH_FRESH_MS) return;
           const query = paging ? { ...params, top: pageSize } : params;
           http
-            .get<T[]>(`/api/plugins/microsoft/accounts/${encodeURIComponent(id)}/${resource}`, { params: query })
+            .get<T[]>(`${base}/${resource}`, { params: query })
             .subscribe({ next: (items) => Array.isArray(items) && swrCache.set(key, items), error: () => undefined });
         },
         /** Reloads from the first page for the selected account. */
-        reload: () => requests.next({ id: accounts.selectedId(), params: store.params(), top: pageSize, more: false }),
+        reload: () => requests.next({ id: accounts.selectedId(kind), base: accounts.endpoint(kind), params: store.params(), top: pageSize, more: false }),
         /** Asks for one more page; the current items stay until the longer list arrives. */
         loadMore: () => {
           if (!paging || !store.more() || store.loading() || store.loadingMore()) return;
           const top = Math.min(store.top() + pageSize, paging.max);
           patchState(store, { top });
-          requests.next({ id: accounts.selectedId(), params: store.params(), top, more: true });
+          requests.next({ id: accounts.selectedId(kind), base: accounts.endpoint(kind), params: store.params(), top, more: true });
         },
       };
     }),
     withHooks({
       onInit: (store) => {
-        const accounts = inject(MicrosoftAccountsStore);
+        const accounts = inject(LinkedAccountsStore);
+        const refresh = inject(DataRefresh, { optional: true });
         effect(() => {
-          accounts.selectedId();
+          accounts.selectedId(kind);
+          accounts.endpoint(kind);
+          refresh?.revision();
           store.params();
           untracked(() => store.reload());
         });

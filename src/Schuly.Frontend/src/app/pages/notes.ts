@@ -5,20 +5,20 @@ import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmSkeletonImports } from '@spartan-ng/helm/skeleton';
 import { EmptyState } from '../shared/empty-state';
 import { ListTime } from '../shared/list-time';
-import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
-import { MicrosoftProblem } from '../shared/microsoft-problem';
+import { AccountPicker } from '../shared/account-picker';
+import { AccountProblem } from '../shared/account-problem';
 import { PageHeader } from '../shared/page-header';
 import { SearchField } from '../shared/search-field';
 import { StatusPill } from '../shared/status-pill';
-import { NotebooksStore } from '../stores/microsoft.store';
+import { NotebooksStore } from '../stores/capability-data.store';
 
 @Component({
-  selector: 'app-onenote',
-  imports: [HlmButton, HlmSkeletonImports, NgIcon, EmptyState, ListTime, MicrosoftAccountPicker, MicrosoftProblem, PageHeader, SearchField, StatusPill],
+  selector: 'app-notes',
+  imports: [HlmButton, HlmSkeletonImports, NgIcon, EmptyState, ListTime, AccountPicker, AccountProblem, PageHeader, SearchField, StatusPill],
   providers: [provideIcons({ lucideExternalLink, lucideNotebook }), NotebooksStore],
   template: `
     <div class="flex flex-col gap-4 p-4 lg:p-6">
-      <app-microsoft-account-picker />
+      <app-account-picker kind="notes" />
 
       <app-page-header>
         @if (!store.problem()) {
@@ -33,7 +33,7 @@ import { NotebooksStore } from '../stores/microsoft.store';
           }
         </div>
       } @else if (store.problem(); as problem) {
-        <app-microsoft-problem [problem]="problem" />
+        <app-account-problem [problem]="problem" />
       } @else if (filtered().length) {
         <div class="@container">
           <div
@@ -64,7 +64,7 @@ import { NotebooksStore } from '../stores/microsoft.store';
                   @if (notebook.link) {
                     <a hlmBtn variant="ghost" size="icon-sm" [href]="notebook.link" target="_blank" rel="noopener">
                       <ng-icon name="lucideExternalLink" aria-hidden="true" />
-                      <span class="sr-only">Open {{ notebook.name }} in OneNote (opens in a new tab)</span>
+                      <span class="sr-only">Open {{ notebook.name }} online (opens in a new tab)</span>
                     </a>
                   }
                 </span>
@@ -75,12 +75,12 @@ import { NotebooksStore } from '../stores/microsoft.store';
       } @else if (store.notebooks().length) {
         <app-empty-state icon="lucideNotebook" title="No matching notebooks" description="Try a different search." />
       } @else {
-        <app-empty-state icon="lucideNotebook" title="No notebooks" description="Your OneNote notebooks appear here." />
+        <app-empty-state icon="lucideNotebook" title="No notebooks" description="Your notebooks appear here." />
       }
     </div>
   `,
 })
-export class OneNote {
+export class Notes {
   protected readonly store = inject(NotebooksStore);
   protected readonly query = signal('');
 

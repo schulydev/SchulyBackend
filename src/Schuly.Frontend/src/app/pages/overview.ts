@@ -1,4 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
+import { SyncingNotice } from '../shared/syncing-notice';
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
@@ -26,7 +27,7 @@ import { UserStore } from '../stores/user.store';
 
 @Component({
   selector: 'app-overview',
-  imports: [
+  imports: [SyncingNotice, 
     HlmCardImports,
     HlmBadge,
     HlmButton,
@@ -52,6 +53,7 @@ import { UserStore } from '../stores/user.store';
   ],
   template: `
     <div class="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+      <div class="px-4 lg:px-6 empty:hidden"><app-syncing-notice /></div>
       <div class="px-4 lg:px-6">
         <h2 class="text-2xl font-semibold tracking-tight">Hi {{ firstName() }}</h2>
         <p class="text-muted-foreground text-sm">Here is what is going on at school.</p>

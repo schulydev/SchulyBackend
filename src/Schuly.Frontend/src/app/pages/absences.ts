@@ -1,4 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
+import { SyncingNotice } from '../shared/syncing-notice';
 import { Component, inject } from '@angular/core';
 import { provideIcons } from '@ng-icons/core';
 import { lucideUserX } from '@ng-icons/lucide';
@@ -15,7 +16,7 @@ import { AbsenceFilter, AbsencesStore } from '../stores/absences.store';
 
 @Component({
   selector: 'app-absences',
-  imports: [
+  imports: [SyncingNotice, 
     HlmCardImports,
     HlmTableImports,
     HlmBadge,
@@ -30,6 +31,7 @@ import { AbsenceFilter, AbsencesStore } from '../stores/absences.store';
   providers: [provideIcons({ lucideUserX }), AbsenceReportsStore],
   template: `
     <div class="flex flex-col gap-4 p-4 md:gap-6 lg:p-6">
+      <app-syncing-notice />
       <div class="grid grid-cols-3 gap-2 sm:gap-4">
         <div hlmCard class="py-3 sm:py-4">
           <div hlmCardHeader class="px-3 sm:px-4">

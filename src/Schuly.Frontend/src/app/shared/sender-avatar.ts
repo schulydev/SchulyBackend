@@ -3,7 +3,7 @@ import { HlmAvatarImports } from '@spartan-ng/helm/avatar';
 import { initials } from '../core/initials';
 import { SenderPhotos } from '../core/sender-photos';
 
-/** Avatar of a mail sender: the Microsoft photo for the address once the avatar scrolls into view, initials otherwise. */
+/** Avatar of a mail sender: the account's photo for the address once the avatar scrolls into view, initials otherwise. */
 @Component({
   selector: 'app-sender-avatar',
   imports: [HlmAvatarImports],

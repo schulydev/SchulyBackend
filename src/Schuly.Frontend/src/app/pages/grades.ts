@@ -1,4 +1,5 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
+import { SyncingNotice } from '../shared/syncing-notice';
 import { Component, inject } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideChartColumn, lucideSearch } from '@ng-icons/lucide';
@@ -13,7 +14,7 @@ import { GradesStore } from '../stores/grades.store';
 
 @Component({
   selector: 'app-grades',
-  imports: [
+  imports: [SyncingNotice, 
     HlmCardImports,
     HlmTableImports,
     HlmInputGroupImports,
@@ -28,6 +29,7 @@ import { GradesStore } from '../stores/grades.store';
   providers: [provideIcons({ lucideSearch, lucideChartColumn })],
   template: `
     <div class="flex flex-col gap-4 p-4 md:gap-6 lg:p-6">
+      <app-syncing-notice />
       <div class="grid grid-cols-2 gap-4 @3xl/main:grid-cols-4">
         <div hlmCard class="py-4">
           <div hlmCardHeader class="px-4">

@@ -2,7 +2,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { swrCache } from '../core/swr-cache';
-import { MicrosoftAccountsStore } from './microsoft-accounts.store';
+import { LinkedAccountsStore } from './linked-accounts.store';
 
 export type FolderKind = 'inbox' | 'sent' | 'drafts' | 'archive' | 'deleted' | 'junk' | 'outbox' | 'history' | 'rss' | 'sync' | 'system' | 'other';
 
@@ -257,7 +257,7 @@ export function safeFileName(name: string): string {
 @Injectable()
 export class MailClient {
   private readonly http = inject(HttpClient);
-  private readonly accounts = inject(MicrosoftAccountsStore);
+  private readonly accounts = inject(LinkedAccountsStore);
 
   readonly folders = signal<MailFolder[]>(FALLBACK_FOLDERS);
   /** False while the server only offers the built-in folder list. */
@@ -276,12 +276,12 @@ export class MailClient {
   private openSeq = 0;
 
   private base(): string | null {
-    const id = this.accounts.selectedId();
-    return id ? `/api/plugins/microsoft/accounts/${encodeURIComponent(id)}/mail` : null;
+    const base = this.accounts.endpoint('mail');
+    return base ? `${base}/mail` : null;
   }
 
   private key(suffix: string): string {
-    return `${this.accounts.selectedId()}|mail|${suffix}`;
+    return `${this.accounts.selectedId('mail')}|mail|${suffix}`;
   }
 
   async loadFolders(): Promise<void> {

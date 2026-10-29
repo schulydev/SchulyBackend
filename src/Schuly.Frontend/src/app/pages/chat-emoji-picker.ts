@@ -6,8 +6,8 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { HlmTabsImports } from '@spartan-ng/helm/tabs';
 import { PickerGroup, filterPickerEmoji, loadEmojiGroups } from '../core/emoji';
 import { allowedMediaUrl } from '../core/chat-media';
-import { Gif, TeamsApi } from '../core/teams-api';
-import { Catalogue, CatalogueEmoji, EmojiRef, searchCatalogue } from '../core/teams-emoji';
+import { Gif, ChatApi } from '../core/chat-api';
+import { Catalogue, CatalogueEmoji, EmojiRef, searchCatalogue } from '../core/chat-emoji';
 import { EmojiView } from '../shared/emoji-view';
 
 const GROUP_ICONS: Record<string, string> = {
@@ -81,7 +81,7 @@ const GROUP_ICONS: Record<string, string> = {
                     (click)="pickTeams(t)"
                   >
                     @if (hovered() === t.id) {
-                      <app-emoji [emoji]="{ kind: 'teams', emoji: t }" [size]="28" />
+                      <app-emoji [emoji]="{ kind: 'native', emoji: t }" [size]="28" />
                     } @else if (t.staticUrl) {
                       <img [src]="t.staticUrl" alt="" width="28" height="28" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
                     } @else {
@@ -134,7 +134,7 @@ const GROUP_ICONS: Record<string, string> = {
   host: { class: 'block w-full' },
 })
 export class EmojiPicker implements OnInit {
-  protected readonly api = inject(TeamsApi);
+  protected readonly api = inject(ChatApi);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
 
   constructor() {
@@ -226,6 +226,6 @@ export class EmojiPicker implements OnInit {
   }
 
   protected pickTeams(emoji: CatalogueEmoji): void {
-    this.emoji.emit({ kind: 'teams', emoji });
+    this.emoji.emit({ kind: 'native', emoji });
   }
 }

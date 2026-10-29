@@ -2,7 +2,7 @@ export interface RenderedBody {
   /** HTML to bind with [innerHTML]; Angular's sanitizer runs on it again. Empty for text-only or empty messages. */
   html: string;
   text: string;
-  /** Images that need Microsoft sign-in and were removed. */
+  /** Images that need the sender's service sign-in and were removed. */
   removedImages: number;
   /** Message keys of the `<emoji key>` placeholders, in document order; each one is a `.emoji-slot` span in `html`. */
   emojiKeys: string[];
@@ -12,7 +12,7 @@ export interface RenderedBody {
 
 const authImage = /graph\.microsoft\.com|hostedcontents/i;
 
-/** Prepares a Teams message body: drops auth-gated images, scripts and styles, marks mentions and opens links in a new tab. */
+/** Prepares a chat message body: drops auth-gated images, scripts and styles, marks mentions and opens links in a new tab. */
 export interface RenderOptions {
   /** Public GIF URLs the message lists in `media`; their `<img>` is dropped from the text because the media block shows them. */
   gifUrls?: string[];

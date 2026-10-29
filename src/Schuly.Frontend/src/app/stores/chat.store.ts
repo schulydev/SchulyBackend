@@ -3,12 +3,12 @@ import { computed, effect, inject, untracked } from '@angular/core';
 import { patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { Importance, MessageCard, MessageFile, MessageMedia } from '../core/chat-media';
-import { MessageEmoji } from '../core/teams-emoji';
+import { MessageEmoji } from '../core/chat-emoji';
 import { NOTES_TITLE, chatPeople } from '../core/chat-people';
 import { cleanPreview } from '../core/preview-text';
 import { swrCache } from '../core/swr-cache';
-import { MicrosoftAccountsStore } from './microsoft-accounts.store';
-import { MicrosoftProblem } from './microsoft-resource';
+import { AccountProblem } from './account-resource';
+import { LinkedAccountsStore } from './linked-accounts.store';
 
 export interface ChatMember {
   displayName?: string | null;
@@ -105,16 +105,16 @@ export interface Me {
   mail?: string | null;
 }
 
-interface TeamsState {
+interface ChatState {
   chats: ChatSummary[];
   chatsLoading: boolean;
-  problem: MicrosoftProblem | null;
+  problem: AccountProblem | null;
   me: Me | null;
   openId: string | null;
   /** Oldest first. */
   messages: ChatMessage[];
   messagesLoading: boolean;
-  messagesProblem: MicrosoftProblem | null;
+  messagesProblem: AccountProblem | null;
   pending: PendingMessage[];
   /** Requested page sizes; they grow with "load more" and the background refreshes keep them. */
   chatsTop: number;
@@ -131,8 +131,8 @@ interface TeamsState {
   photos: Record<string, string | null>;
 }
 
-// The plugin answers an expired Microsoft sign-in with 409; a 401 is the Schuly session and the auth interceptor handles it.
-const problemOf = (error: unknown): MicrosoftProblem =>
+// The plugin answers an expired sign-in with 409; a 401 is the Schuly session and the auth interceptor handles it.
+const problemOf = (error: unknown): AccountProblem =>
   error instanceof HttpErrorResponse && error.status === 409
     ? 'expired'
     : error instanceof HttpErrorResponse && error.status === 404
@@ -177,8 +177,8 @@ const firstMessagePages = {
 
 type LoadMode = 'initial' | 'silent' | 'more';
 
-export const TeamsStore = signalStore(
-  withState<TeamsState>({
+export const ChatStore = signalStore(
+  withState<ChatState>({
     chats: [],
     chatsLoading: false,
     problem: null,
@@ -192,11 +192,11 @@ export const TeamsStore = signalStore(
     ...firstMessagePages,
     photos: {},
   }),
-  withComputed((store, accounts = inject(MicrosoftAccountsStore)) => {
+  withComputed((store, accounts = inject(LinkedAccountsStore)) => {
     const meId = computed(() => {
       const me = store.me();
       if (me?.id) return me.id;
-      const own = accounts.selected()?.email?.toLowerCase();
+      const own = accounts.selected('chat')?.detail?.toLowerCase();
       if (!own) return null;
       for (const chat of store.chats()) {
         const found = chat.members?.find((m) => m.email?.toLowerCase() === own && m.userId);
@@ -207,7 +207,7 @@ export const TeamsStore = signalStore(
 
     const chatItems = computed(() => {
       const mine = meId();
-      const ownEmail = accounts.selected()?.email ?? null;
+      const ownEmail = accounts.selected('chat')?.detail ?? null;
       return store.chats().map((c) => {
         const last = c.lastMessagePreview;
         const { people, memberCount, notes } = chatPeople(c, mine, ownEmail, last?.from?.user);
@@ -243,8 +243,8 @@ export const TeamsStore = signalStore(
       openChat: computed(() => chatItems().find((c) => c.id === store.openId()) ?? null),
     };
   }),
-  withMethods((store, http = inject(HttpClient), accounts = inject(MicrosoftAccountsStore)) => {
-    const base = (id: string) => `/api/plugins/microsoft/accounts/${encodeURIComponent(id)}`;
+  withMethods((store, http = inject(HttpClient), accounts = inject(LinkedAccountsStore)) => {
+    const base = (_id: string) => accounts.endpoint('chat') ?? '';
     const chatUrl = (id: string, chatId: string) => `${base(id)}/chats/${encodeURIComponent(chatId)}`;
 
     const photoQueue: (() => void)[] = [];
@@ -294,7 +294,7 @@ export const TeamsStore = signalStore(
     let messagesSeq = 0;
 
     async function fetchChats(mode: LoadMode): Promise<void> {
-      const accountId = accounts.selectedId();
+      const accountId = accounts.selectedId('chat');
       if (!accountId) return;
       const seq = ++chatsSeq;
       const top = store.chatsTop();
@@ -307,7 +307,7 @@ export const TeamsStore = signalStore(
       }
       try {
         const items = await firstValueFrom(http.get<ChatSummary[]>(`${base(accountId)}/chats`, { params: { top } }));
-        if (accounts.selectedId() !== accountId || seq !== chatsSeq) return;
+        if (accounts.selectedId('chat') !== accountId || seq !== chatsSeq) return;
         const chats = Array.isArray(items) ? items : [];
         if (top === CHATS_PAGE) swrCache.set(key, chats);
         patchState(store, {
@@ -320,7 +320,7 @@ export const TeamsStore = signalStore(
           chatsLoadedMore: mode === 'more' ? { count: Math.max(0, chats.length - store.chats().length) } : store.chatsLoadedMore(),
         });
       } catch (error) {
-        if (accounts.selectedId() !== accountId || seq !== chatsSeq) return;
+        if (accounts.selectedId('chat') !== accountId || seq !== chatsSeq) return;
         if (mode === 'more' || store.chatsLoadingMore()) {
           // Keep the list and let the user retry; the page size goes back to what is shown.
           patchState(store, {
@@ -338,7 +338,7 @@ export const TeamsStore = signalStore(
     const loadChats = (silent = false) => fetchChats(silent ? 'silent' : 'initial');
 
     async function fetchMessages(mode: LoadMode): Promise<void> {
-      const accountId = accounts.selectedId();
+      const accountId = accounts.selectedId('chat');
       const chatId = store.openId();
       if (!accountId || !chatId) return;
       const seq = ++messagesSeq;
@@ -353,7 +353,7 @@ export const TeamsStore = signalStore(
         const items = await firstValueFrom(
           http.get<ChatMessage[]>(`${chatUrl(accountId, chatId)}/messages`, { params: { top } }),
         );
-        if (accounts.selectedId() !== accountId || store.openId() !== chatId || seq !== messagesSeq) return;
+        if (accounts.selectedId('chat') !== accountId || store.openId() !== chatId || seq !== messagesSeq) return;
         const messages = (Array.isArray(items) ? items : []).slice().reverse();
         if (top === MESSAGES_PAGE) swrCache.set(key, messages);
         patchState(store, {
@@ -367,7 +367,7 @@ export const TeamsStore = signalStore(
             mode === 'more' ? { count: Math.max(0, messages.length - store.messages().length) } : store.messagesLoadedMore(),
         });
       } catch (error) {
-        if (accounts.selectedId() !== accountId || store.openId() !== chatId || seq !== messagesSeq) return;
+        if (accounts.selectedId('chat') !== accountId || store.openId() !== chatId || seq !== messagesSeq) return;
         if (mode === 'more' || store.messagesLoadingMore()) {
           patchState(store, {
             messagesLoadingMore: false,
@@ -383,7 +383,7 @@ export const TeamsStore = signalStore(
     const loadMessages = (silent: boolean) => fetchMessages(silent ? 'silent' : 'initial');
 
     async function markRead(): Promise<void> {
-      const accountId = accounts.selectedId();
+      const accountId = accounts.selectedId('chat');
       const chatId = store.openId();
       if (!accountId || !chatId) return;
       try {
@@ -400,7 +400,7 @@ export const TeamsStore = signalStore(
     }
 
     async function post(pending: PendingMessage): Promise<void> {
-      const accountId = accounts.selectedId();
+      const accountId = accounts.selectedId('chat');
       if (!accountId) return;
       patchState(store, {
         pending: store.pending().map((p) => (p.localId === pending.localId ? { ...p, status: 'sending' as const } : p)),
@@ -426,7 +426,7 @@ export const TeamsStore = signalStore(
       refreshMessages: () => loadMessages(true),
       /** Warms the cache for a chat the user is about to open (hover or focus). */
       prefetchChat(chatId: string): void {
-        const accountId = accounts.selectedId();
+        const accountId = accounts.selectedId('chat');
         if (!accountId || chatId === store.openId()) return;
         const key = `${accountId}|chat|${chatId}`;
         const hit = swrCache.get(key);
@@ -488,22 +488,22 @@ export const TeamsStore = signalStore(
 
       /** Asks for a profile photo once per (account, user); the result lands in `photos`. */
       requestPhoto(userId: string): void {
-        const accountId = accounts.selectedId();
+        const accountId = accounts.selectedId('chat');
         if (!accountId || !userId) return;
         queuePhoto(`${accountId}:${userId}`, `${base(accountId)}/photos/${encodeURIComponent(userId)}`);
       },
       /** A chat's own picture, loaded and cached exactly like member photos (same queue, same auth, same blob URLs). */
       requestChatImage(chatId: string): void {
-        const accountId = accounts.selectedId();
+        const accountId = accounts.selectedId('chat');
         if (!accountId || !chatId) return;
         queuePhoto(`${accountId}:chat:${chatId}`, `${base(accountId)}/chats/${encodeURIComponent(chatId)}/photo`);
       },
       chatImageFor: (chatId: string | null | undefined): string | null => {
-        const accountId = accounts.selectedId();
+        const accountId = accounts.selectedId('chat');
         return accountId && chatId ? (store.photos()[`${accountId}:chat:${chatId}`] ?? null) : null;
       },
       photoFor: (userId: string | null | undefined): string | null => {
-        const accountId = accounts.selectedId();
+        const accountId = accounts.selectedId('chat');
         return accountId && userId ? (store.photos()[`${accountId}:${userId}`] ?? null) : null;
       },
       revokePhotos(): void {
@@ -511,11 +511,11 @@ export const TeamsStore = signalStore(
         patchState(store, { photos: {} });
       },
       async loadMe(): Promise<void> {
-        const accountId = accounts.selectedId();
+        const accountId = accounts.selectedId('chat');
         if (!accountId) return;
         try {
           const me = await firstValueFrom(http.get<Me>(`${base(accountId)}/me`));
-          if (accounts.selectedId() === accountId) patchState(store, { me: me?.id ? me : null });
+          if (accounts.selectedId('chat') === accountId) patchState(store, { me: me?.id ? me : null });
         } catch {
           // Without /me, own messages are recognised through the account email.
         }
@@ -536,9 +536,9 @@ export const TeamsStore = signalStore(
   }),
   withHooks({
     onInit: (store) => {
-      const accounts = inject(MicrosoftAccountsStore);
+      const accounts = inject(LinkedAccountsStore);
       effect(() => {
-        const id = accounts.selectedId();
+        const id = accounts.selectedId('chat');
         untracked(() => {
           store.reset();
           if (id) {

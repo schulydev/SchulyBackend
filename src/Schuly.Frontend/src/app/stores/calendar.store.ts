@@ -1,5 +1,5 @@
-import { HttpErrorResponse } from '@angular/common/http';
-import { computed, inject } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { computed, effect, inject, untracked } from '@angular/core';
 import { tapResponse } from '@ngrx/operators';
 import {
   patchState,
@@ -10,14 +10,8 @@ import {
   withState,
 } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, tap } from 'rxjs';
-import {
-  AgendaEntryDto,
-  AgendaEntryType,
-  CalendarService,
-  MicrosoftCalendarAccount,
-  MicrosoftCalendarEvent,
-} from '../api';
+import { catchError, forkJoin, map, of, pipe, switchMap, tap } from 'rxjs';
+import { AgendaEntryDto, AgendaEntryType } from '../api';
 import {
   CalendarItem,
   CalendarSource,
@@ -32,6 +26,38 @@ import {
 } from '../core/calendar';
 import { AgendaStore } from './agenda.store';
 import { GradesStore } from './grades.store';
+import { DataRefresh } from './data-refresh';
+import { LinkedAccountsStore } from './linked-accounts.store';
+
+/** One linked account in a calendar capability's feed (`GET <basePath>?start&end`). */
+export interface FeedAccount {
+  id: string;
+  email: string;
+  displayName: string | null;
+  status: string;
+  message: string | null;
+}
+
+export interface FeedEvent {
+  id: string;
+  accountId: string;
+  title: string;
+  start: string;
+  end: string;
+  isAllDay: boolean;
+  location: string | null;
+  organizer: string | null;
+  preview: string | null;
+  webLink: string | null;
+  joinUrl: string | null;
+  showAs: string | null;
+  isCancelled: boolean;
+}
+
+interface Feed {
+  accounts: FeedAccount[];
+  events: FeedEvent[];
+}
 
 const HIDDEN_KEY = 'schuly-calendar-hidden';
 const VIEW_KEY = 'schuly-calendar-view';
@@ -66,10 +92,10 @@ interface CalendarState {
   selectedDay: Date;
   selectedId: string | null;
   hidden: string[];
-  accounts: MicrosoftCalendarAccount[];
-  microsoftEvents: MicrosoftCalendarEvent[];
-  microsoftLoading: boolean;
-  microsoftAvailable: boolean;
+  accounts: FeedAccount[];
+  feedEvents: FeedEvent[];
+  feedLoading: boolean;
+  feedAvailable: boolean;
 }
 
 function readStored<T>(key: string, fallback: T): T {
@@ -115,10 +141,10 @@ function fromAgenda(entry: AgendaEntryDto): CalendarItem {
   };
 }
 
-function fromMicrosoft(event: MicrosoftCalendarEvent): CalendarItem {
+function fromFeed(event: FeedEvent): CalendarItem {
   return {
-    id: `ms:${event.accountId}:${event.id}:${event.start}`,
-    sourceId: `ms:${event.accountId}`,
+    id: `acct:${event.accountId}:${event.id}:${event.start}`,
+    sourceId: `acct:${event.accountId}`,
     title: event.title,
     start: parseDate(event.start, event.isAllDay ?? false),
     end: parseDate(event.end, event.isAllDay ?? false),
@@ -132,11 +158,11 @@ function fromMicrosoft(event: MicrosoftCalendarEvent): CalendarItem {
   };
 }
 
-function accountProblem(account: MicrosoftCalendarAccount): string | null {
+function accountProblem(account: FeedAccount): string | null {
   if (account.status === 'reconnect')
-    return 'Sign-in expired. Link this account again in the Schuly app.';
+    return 'Sign-in expired. Re-authenticate this account in Settings > Schools & accounts.';
   if (account.status === 'unavailable')
-    return account.message ?? 'Microsoft is not answering for this account right now.';
+    return account.message ?? 'This account is not answering right now.';
   return null;
 }
 
@@ -148,9 +174,9 @@ export const CalendarStore = signalStore(
     selectedId: null,
     hidden: readStored<string[]>(HIDDEN_KEY, []),
     accounts: [],
-    microsoftEvents: [],
-    microsoftLoading: false,
-    microsoftAvailable: true,
+    feedEvents: [],
+    feedLoading: false,
+    feedAvailable: true,
   })),
   withComputed((state, agenda = inject(AgendaStore), grades = inject(GradesStore)) => {
     const range = computed(() => visibleRange(state.view(), state.anchor()));
@@ -158,7 +184,7 @@ export const CalendarStore = signalStore(
     const sources = computed<CalendarSource[]>(() => [
       ...SCHULY_SOURCES,
       ...state.accounts().map((account, i) => ({
-        id: `ms:${account.id}`,
+        id: `acct:${account.id}`,
         label: account.email,
         detail: account.displayName ? `${account.displayName} (${account.email})` : account.email,
         color: ACCOUNT_COLORS[i % ACCOUNT_COLORS.length],
@@ -191,7 +217,7 @@ export const CalendarStore = signalStore(
       return [
         ...agenda.items().map(fromAgenda),
         ...exams,
-        ...state.microsoftEvents().map(fromMicrosoft),
+        ...state.feedEvents().map(fromFeed),
       ].sort((a, b) => a.start.getTime() - b.start.getTime());
     });
 
@@ -210,7 +236,7 @@ export const CalendarStore = signalStore(
       sources,
       visibleItems,
       colors,
-      loading: computed(() => agenda.loading() || grades.loading() || state.microsoftLoading()),
+      loading: computed(() => agenda.loading() || grades.loading() || state.feedLoading()),
       selected: computed(() => allItems().find((item) => item.id === state.selectedId()) ?? null),
       selectedDayItems: computed(() =>
         visibleItems().filter((item) => overlapsDay(item, state.selectedDay())),
@@ -218,7 +244,7 @@ export const CalendarStore = signalStore(
       problems: computed(() => sources().filter((source) => source.problem)),
     };
   }),
-  withMethods((state, api = inject(CalendarService)) => {
+  withMethods((state, http = inject(HttpClient), linked = inject(LinkedAccountsStore)) => {
     const move = (direction: 1 | -1) => {
       const anchor = state.anchor();
       const view = state.view();
@@ -257,37 +283,46 @@ export const CalendarStore = signalStore(
         patchState(state, { hidden });
         store(HIDDEN_KEY, hidden);
       },
-      loadMicrosoft: rxMethod<{ start: Date; end: Date }>(
+      loadFeeds: rxMethod<{ start: Date; end: Date; paths: string[] }>(
         pipe(
-          tap(() => patchState(state, { microsoftLoading: true })),
-          switchMap(({ start, end }) =>
-            api.apiPluginsMicrosoftCalendarGet(start.toISOString(), end.toISOString()).pipe(
-              tapResponse({
-                next: (feed) =>
-                  patchState(state, {
-                    accounts: feed.accounts ?? [],
-                    microsoftEvents: feed.events ?? [],
-                    microsoftLoading: false,
-                    microsoftAvailable: true,
-                  }),
-                error: (error: unknown) =>
-                  patchState(state, {
-                    microsoftLoading: false,
-                    microsoftEvents: [],
-                    microsoftAvailable: !(
-                      error instanceof HttpErrorResponse && error.status === 404
-                    ),
-                  }),
-              }),
-            ),
-          ),
+          tap(() => patchState(state, { feedLoading: true })),
+          switchMap(({ start, end, paths }) => {
+            if (!paths.length) return of(null).pipe(tap(() => patchState(state, { accounts: [], feedEvents: [], feedLoading: false })));
+            const params = { start: start.toISOString(), end: end.toISOString() };
+            const feeds = paths.map((path) =>
+              http.get<Feed>(path, { params }).pipe(
+                map((feed) => ({ feed, missing: false })),
+                catchError((error: unknown) =>
+                  of({ feed: { accounts: [], events: [] } as Feed, missing: error instanceof HttpErrorResponse && error.status === 404 }),
+                ),
+              ),
+            );
+            return forkJoin(feeds).pipe(
+              tap((results) =>
+                patchState(state, {
+                  accounts: results.flatMap((r) => r.feed.accounts ?? []),
+                  feedEvents: results.flatMap((r) => r.feed.events ?? []),
+                  feedLoading: false,
+                  feedAvailable: !results.every((r) => r.missing),
+                }),
+              ),
+            );
+          }),
         ),
       ),
+      feedPaths: () => [...new Set(linked.capabilityAccounts().calendar.map((a) => a.basePath))],
     };
   }),
   withHooks({
     onInit(state) {
-      state.loadMicrosoft(state.range);
+      const refresh = inject(DataRefresh, { optional: true });
+      // The feed lives at each calendar capability's basePath; it reloads when the range, the linked accounts or the data revision change.
+      effect(() => {
+        const range = state.range();
+        refresh?.revision();
+        const paths = state.feedPaths();
+        untracked(() => state.loadFeeds({ ...range, paths }));
+      });
     },
   }),
 );

@@ -3,7 +3,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideCalendarDays, lucideChartColumn, lucideClipboardList, lucideFileText, lucideHardDrive, lucideLayoutDashboard, lucideMail, lucideMessagesSquare, lucideNotebook, lucidePlug, lucideUserX } from '@ng-icons/lucide';
 import { HlmSidebarImports } from '@spartan-ng/helm/sidebar';
-import { MicrosoftAccountsStore } from '../stores/microsoft-accounts.store';
+import { LinkedAccountsStore } from '../stores/linked-accounts.store';
 import { NavUser } from './nav-user';
 
 interface NavItem {
@@ -69,17 +69,7 @@ interface NavItem {
   `,
 })
 export class AppSidebar {
-  private readonly microsoft = inject(MicrosoftAccountsStore);
-
-  private readonly microsoftGroup = {
-    label: 'Microsoft 365',
-    items: [
-      { title: 'Mail', url: '/mail', icon: 'lucideMail' },
-      { title: 'Teams', url: '/teams', icon: 'lucideMessagesSquare' },
-      { title: 'Drive', url: '/drive', icon: 'lucideHardDrive' },
-      { title: 'OneNote', url: '/onenote', icon: 'lucideNotebook' },
-    ],
-  };
+  private readonly linked = inject(LinkedAccountsStore);
 
   private readonly aiGroup = {
     label: 'AI',
@@ -91,7 +81,7 @@ export class AppSidebar {
 
   protected readonly groups = computed<{ label: string; items: NavItem[] }[]>(() => [
     ...this.schoolGroups,
-    ...(this.microsoft.hasAccounts() ? [this.microsoftGroup] : []),
+    ...this.linked.navGroups().map((group) => ({ label: group.label, items: group.items })),
     this.aiGroup,
   ]);
 

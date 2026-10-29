@@ -10,17 +10,17 @@ import { EmptyState } from '../shared/empty-state';
 import { BubbleFile, BubbleMedia, BubbleSticker, CardView, Importance, allowedMediaUrl, cardView, isHttps } from '../core/chat-media';
 import { describeEvent } from '../core/chat-events';
 import { fileKindOf } from '../core/file-kind';
-import { TeamsApi } from '../core/teams-api';
-import { TeamsEmoji, fromMessageEmoji } from '../core/teams-emoji';
+import { ChatApi } from '../core/chat-api';
+import { ChatEmoji, fromMessageEmoji } from '../core/chat-emoji';
 import { ChatMedia } from '../shared/chat-media';
 import { EmojiSlots } from '../shared/emoji-slots';
 import { FileViewer, ViewerFile } from '../shared/file-viewer';
-import { TeamsComposer } from './teams-composer';
+import { ChatComposer } from './chat-composer';
 import { ChatAvatar } from '../shared/chat-avatar';
 import { LoadMore } from '../shared/load-more';
-import { MicrosoftProblem } from '../shared/microsoft-problem';
+import { AccountProblem } from '../shared/account-problem';
 import { PersonAvatar } from '../shared/person-avatar';
-import { TeamsStore, bodyText } from '../stores/teams.store';
+import { ChatStore, bodyText } from '../stores/chat.store';
 
 const GROUP_WINDOW_MS = 5 * 60 * 1000;
 const NEAR_BOTTOM_PX = 80;
@@ -54,15 +54,15 @@ type LogItem =
       stickers: BubbleSticker[];
       cards: CardView[];
       emojiKeys: string[];
-      emojiMap: Record<string, TeamsEmoji>;
+      emojiMap: Record<string, ChatEmoji>;
       emojiSize: number;
       reactions: Reaction[];
       status: 'sent' | 'sending' | 'failed';
     };
 
 @Component({
-  selector: 'app-teams-conversation',
-  imports: [DatePipe, NgTemplateOutlet, HlmButton, HlmSkeletonImports, NgIcon, ChatAvatar, ChatMedia, EmojiSlots, EmptyState, FileViewer, LoadMore, MicrosoftProblem, PersonAvatar, TeamsComposer],
+  selector: 'app-chat-conversation',
+  imports: [DatePipe, NgTemplateOutlet, HlmButton, HlmSkeletonImports, NgIcon, ChatAvatar, ChatMedia, EmojiSlots, EmptyState, FileViewer, LoadMore, AccountProblem, PersonAvatar, ChatComposer],
   providers: [provideIcons({ lucideArrowLeft, lucideArrowDown, lucideExternalLink, lucideMessagesSquare, lucidePaperclip, lucideTriangleAlert, lucideCircleAlert })],
   template: `
     @if (store.openChat(); as chat) {
@@ -80,7 +80,7 @@ type LogItem =
         </div>
         @if (chat.link) {
           <a hlmBtn variant="ghost" size="sm" class="shrink-0" [href]="chat.link" target="_blank" rel="noopener">
-            <span class="max-sm:sr-only">Open in Teams</span>
+            <span class="max-sm:sr-only">Open online</span>
             <ng-icon name="lucideExternalLink" class="text-base" aria-hidden="true" />
             <span class="sr-only">(opens in a new tab)</span>
           </a>
@@ -119,7 +119,7 @@ type LogItem =
                 }
               </div>
             } @else if (store.messagesProblem(); as problem) {
-              <app-microsoft-problem [problem]="problem" />
+              <app-account-problem [problem]="problem" />
             } @else if (!items().length) {
               <app-empty-state icon="lucideMessagesSquare" title="No messages yet" description="Say hello to start the conversation." />
             } @else {
@@ -193,7 +193,7 @@ type LogItem =
         }
       </div>
 
-      <app-teams-composer #composer class="w-full px-4 pt-1 pb-4 sm:px-6" [chat]="chat" (sent)="onSent()" />
+      <app-chat-composer #composer class="w-full px-4 pt-1 pb-4 sm:px-6" [chat]="chat" (sent)="onSent()" />
     }
 
     <app-file-viewer [file]="viewing()" (closed)="viewing.set(null)" />
@@ -246,7 +246,7 @@ type LogItem =
                   @if (store.openChat()?.link; as link) {
                     <span class="text-muted-foreground" aria-hidden="true">&middot;</span>
                     <a class="shrink-0 font-medium underline underline-offset-2" [href]="link" target="_blank" rel="noopener">
-                      Open in Teams<span class="sr-only"> (opens in a new tab)</span>
+                      Open online<span class="sr-only"> (opens in a new tab)</span>
                     </a>
                   }
                 </li>
@@ -267,18 +267,18 @@ type LogItem =
   `,
   host: { class: 'flex min-h-0 flex-1 flex-col' },
 })
-export class TeamsConversation {
-  protected readonly store = inject(TeamsStore);
+export class ChatConversation {
+  protected readonly store = inject(ChatStore);
   private readonly injector = inject(Injector);
 
   readonly back = output<void>();
 
-  private readonly api = inject(TeamsApi);
+  private readonly api = inject(ChatApi);
   protected readonly viewing = signal<ViewerFile | null>(null);
   private readonly localUrls = new Map<File, string>();
   protected readonly newBelow = signal(false);
   private readonly log = viewChild<ElementRef<HTMLElement>>('log');
-  private readonly composer = viewChild<TeamsComposer>('composer');
+  private readonly composer = viewChild<ChatComposer>('composer');
 
   /** Scroll geometry from just before older messages were requested; restoring it keeps the same message in view. */
   private anchor: { height: number; top: number } | null = null;
@@ -386,7 +386,7 @@ export class TeamsConversation {
         const view = cardView(c, i);
         if (view) cards.push({ ...view, key: `${id}-${view.key}` });
       });
-      const emojiMap: Record<string, TeamsEmoji> = {};
+      const emojiMap: Record<string, ChatEmoji> = {};
       for (const e of m?.emojis ?? []) if (e.key) emojiMap[e.key] = fromMessageEmoji(e);
       // Hosted images are shown from `media`; only images the server did not list still fall back to a placeholder.
       const uncovered = Math.max(0, (rendered?.removedImages ?? 0) - hosted.length);
