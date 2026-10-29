@@ -20,6 +20,7 @@ import { AuthApi, SignInProvider } from '../../core/auth-api';
 import { beginExternalSignIn, externalErrors, takePending } from '../../core/external-sign-in';
 import { AuthStore, authErrorMessage } from '../../stores/auth.store';
 import { AuthLayout } from './auth-layout';
+import { ConfirmEmail, confirmEmailHint } from './confirm-email';
 
 const CODE_LENGTH = 6;
 
@@ -42,12 +43,13 @@ const CODE_LENGTH = 6;
     HlmSeparator,
     HlmSpinner,
     AuthLayout,
+    ConfirmEmail,
   ],
   providers: [provideIcons({ lucideEye, lucideEyeOff })],
   template: `
     <app-auth-layout
-      [title]="step() === 'code' ? 'One more step.' : 'School, at a glance.'"
-      [subtitle]="step() === 'code' ? codeHint() : 'Grades, agenda and absences in one calm place.'"
+      [title]="title()"
+      [subtitle]="subtitle()"
     >
       @if (changed() && step() === 'credentials') {
         <div hlmAlert>
@@ -56,6 +58,9 @@ const CODE_LENGTH = 6;
           </p>
         </div>
       }
+      @if (step() === 'email') {
+        <app-confirm-email (signedIn)="finishEmail()" (twoFactor)="step.set('code')" (cancelled)="startOver()" />
+      } @else {
       <section hlmCard>
         <div hlmCardContent>
           @if (step() === 'credentials') {
@@ -195,10 +200,11 @@ const CODE_LENGTH = 6;
           }
         </div>
       </section>
+      }
 
       @if (step() === 'code') {
         <button hlmBtn variant="link" type="button" (click)="startOver()">Back to sign in</button>
-      } @else {
+      } @else if (step() === 'credentials') {
         <p class="text-muted-foreground text-center text-sm">
           New to Schuly?
           <a
@@ -222,7 +228,7 @@ export class Login implements OnInit {
 
   protected readonly codeLength = CODE_LENGTH;
   protected readonly slots = Array.from({ length: CODE_LENGTH }, (_, index) => index);
-  protected readonly step = signal<'credentials' | 'code'>('credentials');
+  protected readonly step = signal<'credentials' | 'email' | 'code'>('credentials');
   protected readonly passwordVisible = signal(false);
   protected readonly usingRecoveryCode = signal(false);
   protected readonly rememberDevice = signal(false);
@@ -267,10 +273,27 @@ export class Login implements OnInit {
     try {
       const result = await this.auth.signInExternal(code, verifier);
       if (result === 'challenge') this.step.set('code');
+      else if (result === 'email') this.step.set('email');
       else await this.router.navigateByUrl('/');
     } catch (error) {
       this.error.set(authErrorMessage(error, externalErrors['external_login_failed']));
     }
+  }
+
+  protected title(): string {
+    if (this.step() === 'email') return 'Confirm your email';
+    return this.step() === 'code' ? 'One more step.' : 'School, at a glance.';
+  }
+
+  protected subtitle(): string {
+    if (this.step() === 'email') return confirmEmailHint(this.auth.emailChallenge());
+    return this.step() === 'code'
+      ? this.codeHint()
+      : 'Grades, agenda and absences in one calm place.';
+  }
+
+  protected async finishEmail(): Promise<void> {
+    await this.router.navigateByUrl('/');
   }
 
   protected codeHint(): string {
@@ -300,6 +323,7 @@ export class Login implements OnInit {
     try {
       const result = await this.auth.signIn(identifier.trim(), password);
       if (result === 'challenge') this.step.set('code');
+      else if (result === 'email') this.step.set('email');
       else await this.router.navigateByUrl('/');
     } catch (error) {
       this.error.set(

@@ -3,7 +3,7 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { Observable, catchError, finalize, firstValueFrom, from, map, of, shareReplay } from 'rxjs';
-import { AuthApi, TokenResponse, isChallenge } from '../core/auth-api';
+import { AuthApi, SignInResponse, TokenResponse, isChallenge, isEmailVerification } from '../core/auth-api';
 
 export type AuthStatus = 'unknown' | 'signedIn' | 'signedOut';
 
@@ -11,21 +11,48 @@ interface AuthState {
   accessToken: string | null;
   status: AuthStatus;
   challenge: string | null;
+  emailChallenge: EmailChallenge | null;
 }
+
+export interface EmailChallenge {
+  challenge: string;
+  email: string | null;
+  method: string;
+}
+
+export type SignInResult = 'signedIn' | 'challenge' | 'email';
 
 export const AuthStore = signalStore(
   { providedIn: 'root' },
-  withState<AuthState>({ accessToken: null, status: 'unknown', challenge: null }),
+  withState<AuthState>({ accessToken: null, status: 'unknown', challenge: null, emailChallenge: null }),
   withMethods((store, api = inject(AuthApi), router = inject(Router)) => {
     let refreshing: Observable<string | null> | null = null;
 
     const accept = (tokens: TokenResponse) => {
       saveSession(tokens);
-      patchState(store, { accessToken: tokens.access_token, status: 'signedIn', challenge: null });
+      patchState(store, { accessToken: tokens.access_token, status: 'signedIn', challenge: null, emailChallenge: null });
+    };
+    const handle = (response: SignInResponse): SignInResult => {
+      if (isEmailVerification(response)) {
+        patchState(store, {
+          emailChallenge: {
+            challenge: response.challenge,
+            email: response.email ?? null,
+            method: response.method,
+          },
+        });
+        return 'email';
+      }
+      if (isChallenge(response)) {
+        patchState(store, { challenge: response.challenge, emailChallenge: null });
+        return 'challenge';
+      }
+      accept(response);
+      return 'signedIn';
     };
     const clear = () => {
       saveSession(null);
-      patchState(store, { accessToken: null, status: 'signedOut', challenge: null });
+      patchState(store, { accessToken: null, status: 'signedOut', challenge: null, emailChallenge: null });
     };
 
     const refresh = (): Observable<string | null> => {
@@ -51,32 +78,40 @@ export const AuthStore = signalStore(
         if (saved) patchState(store, { accessToken: saved, status: 'signedIn' });
         else await firstValueFrom(refresh());
       },
-      async signIn(identifier: string, password: string): Promise<'signedIn' | 'challenge'> {
-        const response = await firstValueFrom(api.login(identifier, password));
-        if (isChallenge(response)) {
-          patchState(store, { challenge: response.challenge });
-          return 'challenge';
-        }
-        accept(response);
-        return 'signedIn';
+      async signIn(identifier: string, password: string): Promise<SignInResult> {
+        return handle(await firstValueFrom(api.login(identifier, password)));
       },
-      async signInExternal(code: string, verifier: string): Promise<'signedIn' | 'challenge'> {
-        const response = await firstValueFrom(api.exchangeExternal(code, verifier));
-        if (isChallenge(response)) {
-          patchState(store, { challenge: response.challenge });
-          return 'challenge';
-        }
-        accept(response);
-        return 'signedIn';
+      async verifyEmailCode(code: string): Promise<'signedIn' | 'challenge'> {
+        const pending = store.emailChallenge();
+        if (!pending) throw new Error('No email confirmation is waiting for a code.');
+        const result = handle(await firstValueFrom(api.verifyEmailCode(pending.challenge, code)));
+        return result === 'email' ? 'challenge' : result;
+      },
+      async resendEmailCode(): Promise<void> {
+        const pending = store.emailChallenge();
+        if (!pending) throw new Error('No email confirmation is waiting for a code.');
+        await firstValueFrom(api.resendEmailCode(pending.challenge));
+      },
+      cancelEmailChallenge(): void {
+        patchState(store, { emailChallenge: null });
+      },
+      async signInExternal(code: string, verifier: string): Promise<SignInResult> {
+        return handle(await firstValueFrom(api.exchangeExternal(code, verifier)));
       },
       async verifyCode(code: string, rememberDevice: boolean): Promise<void> {
         const challenge = store.challenge();
         if (!challenge) throw new Error('No sign-in is waiting for a code.');
         accept(await firstValueFrom(api.verifyTwoFactor(challenge, code, rememberDevice)));
       },
-      async register(userName: string, email: string, password: string): Promise<void> {
-        accept(await firstValueFrom(api.register(userName, email, password)));
+      async register(userName: string, email: string, password: string): Promise<'signedIn' | 'email'> {
+        const response = await firstValueFrom(api.register(userName, email, password));
+        if (isEmailVerification(response)) {
+          handle(response);
+          return 'email';
+        }
+        accept(response);
         await firstValueFrom(api.requestEmailVerification(email, password)).catch(() => undefined);
+        return 'signedIn';
       },
       cancelChallenge(): void {
         patchState(store, { challenge: null });
@@ -97,6 +132,22 @@ export const AuthStore = signalStore(
     };
   }),
 );
+
+/** Reads the machine code (e.g. invalid_code) from an error body, tolerating several shapes. */
+export function errorCode(error: unknown): string | null {
+  if (!(error instanceof HttpErrorResponse)) return null;
+  const body: unknown = error.error;
+  if (typeof body !== 'object' || !body) return null;
+  const record = body as Record<string, unknown>;
+  for (const key of ['error', 'code']) {
+    if (typeof record[key] === 'string') return record[key];
+  }
+  if (Array.isArray(record['errors'])) {
+    const hit = record['errors'].find((item) => typeof item === 'string' && /^[a-z_]+$/.test(item));
+    if (typeof hit === 'string') return hit;
+  }
+  return null;
+}
 
 export function authErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof HttpErrorResponse) {

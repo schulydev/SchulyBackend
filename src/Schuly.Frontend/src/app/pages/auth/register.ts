@@ -8,6 +8,7 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSpinner } from '@spartan-ng/helm/spinner';
 import { AuthStore, authErrorMessage } from '../../stores/auth.store';
 import { AuthLayout } from './auth-layout';
+import { ConfirmEmail, confirmEmailHint } from './confirm-email';
 
 @Component({
   selector: 'app-register',
@@ -21,12 +22,16 @@ import { AuthLayout } from './auth-layout';
     HlmInput,
     HlmSpinner,
     AuthLayout,
+    ConfirmEmail,
   ],
   template: `
     <app-auth-layout
-      title="Create your account."
-      subtitle="Free, and your school data stays yours."
+      [title]="confirming() ? 'Confirm your email' : 'Create your account.'"
+      [subtitle]="confirming() ? hint() : 'Free, and your school data stays yours.'"
     >
+      @if (confirming()) {
+        <app-confirm-email (signedIn)="finish()" (twoFactor)="toSignIn()" (cancelled)="toSignIn()" />
+      } @else {
       <section hlmCard>
         <div hlmCardContent>
           <form [formRoot]="account" class="flex flex-col gap-4">
@@ -51,7 +56,7 @@ import { AuthLayout } from './auth-layout';
                 placeholder="you@example.com"
                 [formField]="account.email"
               />
-              <p hlmFieldDescription>We send a link to confirm it.</p>
+              <p hlmFieldDescription>We send a code to confirm it.</p>
             </div>
             <div hlmField>
               <label hlmFieldLabel for="new-password">Password</label>
@@ -98,6 +103,7 @@ import { AuthLayout } from './auth-layout';
         Already have an account?
         <a routerLink="/login" class="text-foreground font-medium underline-offset-4 hover:underline">Sign in</a>
       </p>
+      }
     </app-auth-layout>
   `,
 })
@@ -105,6 +111,19 @@ export class Register {
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
   protected readonly error = signal<string | null>(null);
+  protected readonly confirming = signal(false);
+
+  protected hint(): string {
+    return confirmEmailHint(this.auth.emailChallenge());
+  }
+
+  protected async finish(): Promise<void> {
+    await this.router.navigateByUrl('/');
+  }
+
+  protected toSignIn(): void {
+    void this.router.navigateByUrl('/login');
+  }
 
   private readonly model = signal({ userName: '', email: '', password: '' });
   protected readonly account = form(
@@ -123,8 +142,9 @@ export class Register {
     this.error.set(null);
     const { userName, email, password } = this.model();
     try {
-      await this.auth.register(userName.trim(), email.trim(), password);
-      await this.router.navigateByUrl('/');
+      const result = await this.auth.register(userName.trim(), email.trim(), password);
+      if (result === 'email') this.confirming.set(true);
+      else await this.router.navigateByUrl('/');
     } catch (error) {
       this.error.set(authErrorMessage(error, 'That username or email is already taken.'));
     }
