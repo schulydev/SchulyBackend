@@ -56,7 +56,7 @@ type LogItem =
           <ng-icon name="lucideArrowLeft" aria-hidden="true" />
           <span class="sr-only">Back to chats</span>
         </button>
-        <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" />
+        <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" [image]="chat.image" />
         <div class="min-w-0 flex-1">
           <h2 class="truncate text-base leading-tight font-semibold">{{ chat.title }}</h2>
           @if (!chat.oneOnOne && chat.memberCount > 1) {

@@ -1,3 +1,4 @@
+import { swrCache } from '../core/swr-cache';
 import { HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
@@ -51,6 +52,7 @@ export const AuthStore = signalStore(
       return 'signedIn';
     };
     const clear = () => {
+      swrCache.clear();
       saveSession(null);
       patchState(store, { accessToken: null, status: 'signedOut', challenge: null, emailChallenge: null });
     };

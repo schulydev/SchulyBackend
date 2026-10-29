@@ -9,6 +9,8 @@ import { LoadMore } from '../shared/load-more';
 import { MicrosoftAccountPicker } from '../shared/microsoft-account-picker';
 import { MicrosoftProblem } from '../shared/microsoft-problem';
 import { SearchField } from '../shared/search-field';
+import { SplitHandle } from '../shared/split-handle';
+import { persistedNumber } from '../core/persisted';
 import { TeamsStore } from '../stores/teams.store';
 import { TeamsConversation } from './teams-conversation';
 
@@ -17,15 +19,16 @@ const CHAT_POLL_MS = 60_000;
 
 @Component({
   selector: 'app-teams',
-  imports: [HlmSkeletonImports, NgIcon, ChatAvatar, EmptyState, ListTime, LoadMore, MicrosoftAccountPicker, MicrosoftProblem, SearchField, TeamsConversation],
+  imports: [HlmSkeletonImports, NgIcon, ChatAvatar, EmptyState, ListTime, LoadMore, MicrosoftAccountPicker, MicrosoftProblem, SearchField, SplitHandle, TeamsConversation],
   providers: [provideIcons({ lucideMessagesSquare }), TeamsStore],
+  host: { class: 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' },
   template: `
-    <div class="flex h-[calc(100svh-var(--header-height,3.0625rem))] min-h-0 flex-col">
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div class="px-4 has-[label]:pt-4 lg:px-6"><app-microsoft-account-picker /></div>
 
-      <div class="flex min-h-0 flex-1">
+      <div class="flex min-h-0 min-w-0 flex-1 overflow-hidden" [style.--list-w.px]="listWidth.value()">
         <section
-          class="flex min-h-0 w-full flex-col lg:w-80 lg:shrink-0 lg:border-e"
+          class="flex min-h-0 min-w-0 w-full flex-col overflow-hidden lg:w-(--list-w) lg:shrink-0"
           [class.max-lg:hidden]="store.openId()"
           aria-label="Chats"
         >
@@ -38,7 +41,7 @@ const CHAT_POLL_MS = 60_000;
               }
             </div>
           }
-          <div class="min-h-0 flex-1 overflow-y-auto">
+          <div class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
             @if (store.waiting() || store.chatsLoading()) {
               <div class="flex flex-col gap-1 p-3" aria-busy="true">
                 @for (i of [1, 2, 3, 4, 5]; track i) {
@@ -56,27 +59,29 @@ const CHAT_POLL_MS = 60_000;
             } @else if (visibleChats().length) {
               <ul [attr.aria-busy]="store.chatsLoadingMore()">
                 @for (chat of visibleChats(); track chat.id) {
-                  <li>
+                  <li class="min-w-0">
                     <button
                       #row
                       type="button"
-                      class="hover:bg-muted/60 aria-[current=true]:bg-muted focus-visible:outline-ring relative flex h-15 w-full items-center gap-3 px-3 text-left focus-visible:outline-2 focus-visible:-outline-offset-2"
+                      class="hover:bg-muted/60 aria-[current=true]:bg-muted focus-visible:outline-ring relative flex h-15 w-full min-w-0 items-center overflow-hidden gap-3 px-3 text-left focus-visible:outline-2 focus-visible:-outline-offset-2"
                       [attr.data-id]="chat.id"
                       [attr.aria-current]="chat.id === store.openId() ? 'true' : null"
                       (click)="open(chat.id)"
+                      (pointerenter)="store.prefetchChat(chat.id)"
+                      (focus)="store.prefetchChat(chat.id)"
                     >
                       @if (chat.id === store.openId()) {
                         <span class="bg-primary absolute inset-y-2 start-0 w-0.75 rounded-e-full" aria-hidden="true"></span>
                       }
-                      <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" />
-                      <span class="min-w-0 flex-1">
-                        <span class="flex items-baseline gap-2">
+                      <app-chat-avatar [people]="chat.people" [oneOnOne]="chat.oneOnOne" [title]="chat.title" [image]="chat.image" />
+                      <span class="block min-w-0 flex-1 overflow-hidden">
+                        <span class="flex min-w-0 items-baseline gap-2">
                           <span class="min-w-0 flex-1 truncate text-sm" [class]="chat.unread ? 'text-foreground font-bold' : 'font-medium'">
                             {{ chat.title }}
                           </span>
                           <span class="text-muted-foreground shrink-0 text-xs"><app-list-time [value]="chat.updated" [weekday]="true" /></span>
                         </span>
-                        <span class="flex items-center gap-2">
+                        <span class="flex min-w-0 items-center gap-2">
                           <span
                             class="block min-w-0 flex-1 truncate text-xs"
                             [class]="chat.unread ? 'text-foreground font-semibold' : 'text-muted-foreground'"
@@ -109,7 +114,16 @@ const CHAT_POLL_MS = 60_000;
           </div>
         </section>
 
-        <section class="min-w-0 flex-1 flex-col max-lg:w-full" [class]="store.openId() ? 'flex' : 'hidden lg:flex'" aria-label="Conversation">
+        <app-split-handle
+          label="Resize chat list"
+          [width]="listWidth.value()"
+          [min]="240"
+          [max]="560"
+          [initial]="320"
+          (widthChange)="listWidth.set($event)"
+        />
+
+        <section class="min-w-0 flex-1 flex-col overflow-hidden lg:border-s max-lg:w-full" [class]="store.openId() ? 'flex' : 'hidden lg:flex'" aria-label="Conversation">
           @if (store.openId()) {
             <app-teams-conversation (back)="close()" />
           } @else {
@@ -129,6 +143,7 @@ export class Teams {
   private readonly rows = viewChildren<ElementRef<HTMLElement>>('row');
 
   protected readonly query = signal('');
+  protected readonly listWidth = persistedNumber('schuly.teams.list', 320);
 
   protected readonly visibleChats = computed(() => {
     const q = this.query().trim().toLowerCase();
