@@ -46,15 +46,50 @@ namespace Schuly.Tests
         }
 
         [Test]
-        public async Task A_provider_only_account_with_the_administrator_email_gets_the_role()
+        public async Task A_provider_verified_administrator_email_gets_the_role()
+        {
+            var db = TestDb.NewContext(Guid.NewGuid().ToString());
+            var user = new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com" };
+            db.Set<ToamaisutaaExternalLogin>().Add(ExternalLogin(user, verified: true));
+            await db.SaveChangesAsync();
+            var provider = new UserRoleProvider(Config("admin@example.com"), db);
+
+            await Assert.That(await provider.GetRolesAsync(user)).Contains("Administrator");
+        }
+
+        [Test]
+        public async Task Without_proof_of_the_administrator_email_there_is_no_role()
+        {
+            var db = TestDb.NewContext(Guid.NewGuid().ToString());
+            var unverified = new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com" };
+            db.Set<ToamaisutaaExternalLogin>().Add(ExternalLogin(unverified, verified: false));
+            await db.SaveChangesAsync();
+            var provider = new UserRoleProvider(Config("admin@example.com"), db);
+
+            await Assert.That(await provider.GetRolesAsync(unverified)).IsEmpty();
+            await Assert.That(await provider.GetRolesAsync(new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com" })).IsEmpty();
+        }
+
+        [Test]
+        public async Task An_address_entry_never_matches_a_user_name()
         {
             var db = TestDb.NewContext(Guid.NewGuid().ToString());
             var provider = new UserRoleProvider(Config("admin@example.com"), db);
 
-            var roles = await provider.GetRolesAsync(new ToamaisutaaUser { Id = Guid.NewGuid(), Email = "admin@example.com" });
+            var roles = await provider.GetRolesAsync(new ToamaisutaaUser { Id = Guid.NewGuid(), UserName = "admin@example.com", Email = "other@example.com" });
 
-            await Assert.That(roles).Contains("Administrator");
+            await Assert.That(roles).IsEmpty();
         }
+
+        private static ToamaisutaaExternalLogin ExternalLogin(ToamaisutaaUser user, bool verified) => new()
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            ProviderKey = "gaggaoid",
+            Subject = Guid.NewGuid().ToString(),
+            Email = user.Email,
+            EmailVerified = verified,
+        };
 
         private static ToamaisutaaPasswordCredential Credential(ToamaisutaaUser user, bool confirmed) => new()
         {
