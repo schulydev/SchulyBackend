@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Schuly.API.Linking;
 using Schuly.Application.Abstractions;
 using Schuly.Domain;
 using Schuly.Infrastructure;
@@ -13,12 +14,13 @@ using Schuly.Infrastructure.Plugins;
 using Schuly.Infrastructure.Storage;
 using Schuly.Infrastructure.Vault;
 using Schuly.Plugin.Abstractions;
+using Schuly.Plugin.Abstractions.Linking;
 
 namespace Schuly.API.Plugins
 {
     public sealed record LoadedPluginInfo(string Name, string Version);
 
-    public sealed class PluginHost(IServiceProvider rootProvider, IConfiguration configuration, ApplicationPartManager partManager, PluginEndpointDataSource endpointSource, PluginAssemblyMap assemblyMap, IPluginTaskScheduler scheduler, ILogger<PluginHost> logger) : IPluginEventDispatcher, IPluginTaskRunner
+    public sealed class PluginHost(IServiceProvider rootProvider, IConfiguration configuration, ApplicationPartManager partManager, PluginEndpointDataSource endpointSource, PluginAssemblyMap assemblyMap, IPluginTaskScheduler scheduler, ILogger<PluginHost> logger) : IPluginEventDispatcher, IPluginTaskRunner, ILinkProviderCatalog
     {
         private readonly ConcurrentDictionary<string, LoadedPlugin> _loaded = new(StringComparer.OrdinalIgnoreCase);
         private readonly SemaphoreSlim _gate = new(1, 1);
@@ -31,6 +33,74 @@ namespace Schuly.API.Plugins
 
         public IReadOnlyList<ISchulyPlugin> Instances() =>
             _loaded.Values.Select(p => p.Instance).ToList();
+
+        public IReadOnlyList<LinkProviderEntry> Providers =>
+            _loaded.Values.SelectMany(p => p.LinkProviders).OrderBy(e => e.Descriptor.SortOrder).ThenBy(e => e.Descriptor.DisplayName, StringComparer.OrdinalIgnoreCase).ToList();
+
+        public LinkProviderEntry? Find(string providerId) =>
+            _loaded.Values.SelectMany(p => p.LinkProviders).FirstOrDefault(e => e.Descriptor.Id == providerId);
+
+        public ILinkProviderLease? Open(string providerId)
+        {
+            var owner = _loaded.Values.FirstOrDefault(p => p.LinkProviders.Any(e => e.Descriptor.Id == providerId));
+            if (owner is null)
+                return null;
+
+            var scope = owner.Provider.CreateScope();
+            var provider = scope.ServiceProvider.GetServices<ILinkProvider>().FirstOrDefault(p => p.Descriptor.Id == providerId);
+            if (provider is null)
+            {
+                scope.Dispose();
+                return null;
+            }
+
+            return new LinkProviderLease(scope, provider);
+        }
+
+        /// <summary>Reads each plugin's ILinkProvider descriptors once at load; invalid or duplicate ones are logged and skipped.</summary>
+        private List<LinkProviderEntry> DiscoverLinkProviders(string pluginName, IServiceProvider pluginProvider)
+        {
+            var entries = new List<LinkProviderEntry>();
+            try
+            {
+                using var scope = pluginProvider.CreateScope();
+                foreach (var linkProvider in scope.ServiceProvider.GetServices<ILinkProvider>())
+                {
+                    try
+                    {
+                        var descriptor = linkProvider.Descriptor;
+                        var validation = LinkDescriptorValidator.ValidateDescriptor(descriptor);
+                        if (!validation.IsValid)
+                        {
+                            logger.LogWarning("Plugin {Name} declares an invalid link provider and it is skipped: {Errors}", pluginName, string.Join(" ", validation.Errors));
+                            continue;
+                        }
+
+                        if (entries.Any(e => e.Descriptor.Id == descriptor.Id) || _loaded.Values.Any(p => p.Name != pluginName && p.LinkProviders.Any(e => e.Descriptor.Id == descriptor.Id)))
+                        {
+                            logger.LogWarning("Plugin {Name} declares link provider {Id} which already exists; skipped", pluginName, descriptor.Id);
+                            continue;
+                        }
+
+                        var svg = SvgSanitizer.Sanitize(descriptor.Icon.Svg);
+                        if (descriptor.Icon.Svg is not null && svg is null)
+                            logger.LogWarning("Link provider {Id} has an icon that was rejected by the SVG sanitizer", descriptor.Id);
+
+                        entries.Add(new LinkProviderEntry(descriptor, svg, svg is null ? null : SvgSanitizer.Version(svg)));
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning("Plugin {Name} has a link provider that could not be read ({ExceptionType}); skipped", pluginName, ex.GetType().Name);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Plugin {Name} link providers could not be discovered ({ExceptionType})", pluginName, ex.GetType().Name);
+            }
+
+            return entries;
+        }
 
         public bool IsLoaded(string name) => _loaded.ContainsKey(name);
 
@@ -189,6 +259,7 @@ namespace Schuly.API.Plugins
                         Part = part,
                         Endpoints = endpoints,
                         TaskCts = new CancellationTokenSource(),
+                        LinkProviders = DiscoverLinkProviders(plugin.Name, provider),
                     };
                     _loaded[plugin.Name] = loaded;
 
@@ -445,7 +516,14 @@ namespace Schuly.API.Plugins
             public required AssemblyPart Part { get; init; }
             public required IReadOnlyList<Endpoint> Endpoints { get; init; }
             public required CancellationTokenSource TaskCts { get; init; }
+            public required IReadOnlyList<LinkProviderEntry> LinkProviders { get; init; }
             public int InFlightRuns;
+        }
+
+        private sealed class LinkProviderLease(IServiceScope scope, ILinkProvider provider) : ILinkProviderLease
+        {
+            public ILinkProvider Provider { get; } = provider;
+            public void Dispose() => scope.Dispose();
         }
     }
 }

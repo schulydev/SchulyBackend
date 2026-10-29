@@ -46,6 +46,7 @@ builder.Services.AddSingleton<PluginTaskScheduler>();
 builder.Services.AddSingleton<IPluginTaskScheduler>(sp => sp.GetRequiredService<PluginTaskScheduler>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<PluginTaskScheduler>());
 builder.Services.AddSchulyPlugins(builder.Configuration, mvcBuilder);
+builder.Services.AddSchulyLinking();
 
 builder.Services.AddSchulyAuthentication(builder.Configuration);
 builder.Services.AddSchulyAuthorization(builder.Configuration);
